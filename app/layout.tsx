@@ -12,7 +12,7 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="light">
       <body className={inter.className + " bg-white text-black overflow-x-hidden"}>
         <Header />
         <main className="w-full px-6 py-12">{children}</main>
