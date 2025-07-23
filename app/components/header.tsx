@@ -23,9 +23,9 @@ export default function Header() {
 
         <div className={`flex-col sm:flex sm:flex-row sm:space-x-6 ${menuOpen ? "flex" : "hidden"} sm:items-center w-full sm:w-auto text-center sm:text-left`}>
           <Link href="/about" className="py-2 sm:py-0">About</Link>
-          <Link href="/code" className="py-2 sm:py-0">Software</Link>
+          <Link href="/software" className="py-2 sm:py-0">Software</Link>
           <Link href="/music" className="py-2 sm:py-0">Music</Link>
-          <Link href="/video" className="py-2 sm:py-0">Photo/Video</Link>
+          <Link href="/photo" className="py-2 sm:py-0">Photo</Link>
           <Link href="/tennis" className="py-2 sm:py-0">Tennis</Link>
           <Link href="/education" className="py-2 sm:py-0">Education</Link>
           <Link href="/professional" className="py-2 sm:py-0">Professional</Link>
