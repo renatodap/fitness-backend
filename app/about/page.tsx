@@ -4,194 +4,103 @@ import Button from "../components/button";
 
 export default function About() {
   return (
-    <div className="space-y-32">
+    <div className="space-y-16">
       {/* Hero Section */}
-      <section className="relative flex flex-col items-center text-center pt-8 pb-16">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <h1 className="text-5xl font-bold tracking-tight">About</h1>
-          <p className="text-xl text-neutral-600 max-w-2xl mx-auto leading-relaxed">
-            A polymath exploring the intersection of code, music, video, and sports. 
-            Building systems that matter while creating art that resonates.
+      <section className="relative w-full flex flex-col items-center text-center pt-0 pb-0 mb-16">
+        <div className="w-full h-64 md:h-96 relative mb-8">
+          <img
+            src="/about-picture.jpg"
+            alt="Renato DAP portrait"
+            className="object-cover w-full h-full rounded-none shadow-lg"
+            style={{ maxHeight: '40rem', objectPosition: '50% 45%' }}
+          />
+        </div>
+        <div className="max-w-4xl mx-auto space-y-6">
+          <h1 className="text-5xl font-bold tracking-tight">Software Engineer & Creative Mind</h1>
+          <p className="text-xl text-neutral-700 max-w-3xl mx-auto leading-relaxed">
+            I'm a Computer Science student at Rose-Hulman, focused on building software tools
+            that solve real problems, producing music and video that tell meaningful stories,
+            and leading as captain of the men's varsity tennis team. I work across code, creativity,
+            and competition—always looking to make things that matter.
           </p>
         </div>
       </section>
 
-      {/* Introduction */}
-      <section className="relative bg-gradient-to-b from-teal-50 to-white py-20 px-4 sm:px-6">
+      {/* What I Do */}
+      <section className="py-16 px-4 sm:px-6 bg-teal-50 border-t border-teal-100 mb-16">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center space-y-6 mb-16">
-            <h2 className="text-3xl font-bold tracking-tight">Hello, I'm Renato</h2>
-            <p className="text-neutral-600 text-lg max-w-2xl mx-auto">
-              Where logic meets rhythm, and connection bridges creativity
-            </p>
-          </div>
-          
-          <div className="prose prose-lg max-w-none text-neutral-700 leading-relaxed space-y-6">
-            <p>
-              I'm a computer science student at Rose-Hulman Institute of Technology, 
-              class of 2026, where I balance rigorous academics with creative pursuits 
-              and athletic leadership as the men's tennis team captain.
-            </p>
-            
-            <p>
-              My work spans from blockchain infrastructure development to music creation 
-              across multiple instruments. I believe in building systems that solve real 
-              problems while exploring the creative potential of technology.
-            </p>
-            
-            <p>
-              Whether I'm developing a lightweight blockchain client, recording a new 
-              cover song, editing a video, or leading my tennis team, I approach each 
-              endeavor with the same curiosity and commitment to excellence.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Core Areas */}
-      <section className="py-20 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center space-y-6 mb-16">
-            <h2 className="text-3xl font-bold tracking-tight">What I Do</h2>
+          <div className="text-center space-y-4 mb-12">
+            <h2 className="text-4xl font-bold tracking-tight">What I Do</h2>
             <p className="text-neutral-600 text-lg max-w-2xl mx-auto">
               Four core areas where I invest my time and energy
             </p>
           </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Software */}
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-teal-100 rounded-2xl flex items-center justify-center mx-auto">
-                <svg className="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                </svg>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Software Card */}
+            <div className="flex flex-col items-center bg-white border border-neutral-200 rounded-xl p-8 shadow-sm hover:shadow-lg transition min-h-[280px]">
+              <div className="mb-4">
+                <div className="bg-teal-200 rounded-lg flex items-center justify-center w-12 h-12">
+                  <span className="text-black text-xl font-mono">{'</>'}</span>
+                </div>
               </div>
-              <h3 className="text-lg font-semibold">Software</h3>
-              <p className="text-sm text-neutral-600">
-                Building blockchain infrastructure, web applications, and tools that solve real problems
-              </p>
-              <Button href="/software" variant="outline" className="text-xs px-3 py-1">
-                View Projects
-              </Button>
+              <h3 className="text-lg font-semibold mb-2">Software</h3>
+              <p className="text-sm text-neutral-600 mb-4 text-center flex-1">Building blockchain infrastructure, web applications, and tools that solve real problems</p>
+              <Button href="/software" variant="outline" className="w-full mt-auto">View Projects</Button>
             </div>
-            
-            {/* Music */}
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-teal-100 rounded-2xl flex items-center justify-center mx-auto">
-                <svg className="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                </svg>
+            {/* Music Card */}
+            <div className="flex flex-col items-center bg-white border border-neutral-200 rounded-xl p-8 shadow-sm hover:shadow-lg transition min-h-[280px]">
+              <div className="mb-4">
+                <span className="text-black text-3xl">🎵</span>
               </div>
-              <h3 className="text-lg font-semibold">Music</h3>
-              <p className="text-sm text-neutral-600">
-                Multi-instrumentalist creating original music and covers across drums, guitar, piano, and more
-              </p>
-              <Button href="/music" variant="outline" className="text-xs px-3 py-1">
-                Listen Now
-              </Button>
+              <h3 className="text-lg font-semibold mb-2">Music</h3>
+              <p className="text-sm text-neutral-600 mb-4 text-center flex-1">Multi-instrumentalist creating original music and covers across drums, guitar, piano, and more</p>
+              <Button href="/music" variant="outline" className="w-full mt-auto">Listen Now</Button>
             </div>
-            
-            {/* Video */}
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-teal-100 rounded-2xl flex items-center justify-center mx-auto">
-                <svg className="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
+            {/* Photo & Video Card */}
+            <div className="flex flex-col items-center bg-white border border-neutral-200 rounded-xl p-8 shadow-sm hover:shadow-lg transition min-h-[280px]">
+              <div className="mb-4">
+                <span className="text-black text-3xl">🎥</span>
               </div>
-              <h3 className="text-lg font-semibold">Photo & Video</h3>
-              <p className="text-sm text-neutral-600">
-                Photography portfolio and video creation showcasing technical and creative skills
-              </p>
-              <Button href="/photo" variant="outline" className="text-xs px-3 py-1">
-                View Portfolio
-              </Button>
+              <h3 className="text-lg font-semibold mb-2">Photo & Video</h3>
+              <p className="text-sm text-neutral-600 mb-4 text-center flex-1">Photography portfolio and video creation showcasing technical and creative skills</p>
+              <Button href="/photo" variant="outline" className="w-full mt-auto">View Portfolio</Button>
             </div>
-            
-            {/* Tennis */}
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-teal-100 rounded-2xl flex items-center justify-center mx-auto">
-                <svg className="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+            {/* Tennis Card */}
+            <div className="flex flex-col items-center bg-white border border-neutral-200 rounded-xl p-8 shadow-sm hover:shadow-lg transition min-h-[280px]">
+              <div className="mb-4">
+                <span className="text-black text-3xl">⚡</span>
               </div>
-              <h3 className="text-lg font-semibold">Tennis</h3>
-              <p className="text-sm text-neutral-600">
-                Team captain of Rose-Hulman Men's Tennis, leading through competitive excellence
-              </p>
-              <Button href="/tennis" variant="outline" className="text-xs px-3 py-1">
-                Athletic Journey
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Philosophy */}
-      <section className="relative bg-black text-white py-20 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
-          <h2 className="text-3xl font-bold tracking-tight">Philosophy</h2>
-          <div className="space-y-6 text-lg text-gray-300 leading-relaxed">
-            <p>
-              "True innovation happens at the intersection of disciplines. 
-              The rhythm I find in music informs the patterns I see in code. 
-              The strategic thinking from tennis shapes how I approach complex problems."
-            </p>
-            <p>
-              "I believe in building things that matter—whether it's a piece of software 
-              that solves a real problem, a song that resonates with someone, or 
-              leading a team to achieve something greater than the sum of its parts."
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Current Focus */}
-      <section className="py-20 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center space-y-6 mb-16">
-            <h2 className="text-3xl font-bold tracking-tight">What I'm Building Now</h2>
-            <p className="text-neutral-600 text-lg max-w-2xl mx-auto">
-              Current projects and areas of focus
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-gradient-to-br from-teal-50 to-blue-50 rounded-2xl p-6">
-              <h3 className="text-xl font-semibold mb-3">Technical</h3>
-              <ul className="space-y-2 text-neutral-700">
-                <li>• Accumulate Lite Client development</li>
-                <li>• Full-stack web applications</li>
-                <li>• Blockchain infrastructure research</li>
-                <li>• Open source contributions</li>
-              </ul>
-            </div>
-            
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6">
-              <h3 className="text-xl font-semibold mb-3">Creative</h3>
-              <ul className="space-y-2 text-neutral-700">
-                <li>• New music releases on Spotify</li>
-                <li>• YouTube video production</li>
-                <li>• Photography projects</li>
-                <li>• Tennis team leadership</li>
-              </ul>
+              <h3 className="text-lg font-semibold mb-2">Tennis</h3>
+              <p className="text-sm text-neutral-600 mb-4 text-center flex-1">Team captain of Rose-Hulman Men's Tennis, leading through competitive excellence</p>
+              <Button href="/tennis" variant="outline" className="w-full mt-auto">Athletic Journey</Button>
             </div>
           </div>
         </div>
       </section>
 
       {/* Call to Action */}
-      <section className="py-20 px-4 sm:px-6 text-center">
+      <section className="py-16 px-4 sm:px-6 text-center">
         <div className="max-w-3xl mx-auto space-y-8">
           <h2 className="text-3xl font-bold tracking-tight">Let's Connect</h2>
           <p className="text-xl text-neutral-600 leading-relaxed">
-            Interested in collaborating, discussing ideas, or just saying hello? 
-            I'd love to hear from you.
+            Interested in collaborating, discussing ideas, or just saying hello? I'd love to hear from you.
           </p>
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-4">
+          <div className="flex flex-row justify-center items-center gap-6 pt-4">
+            <a href="https://linkedin.com/in/renatodap" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+              <svg className="w-7 h-7 text-black hover:text-teal-600 transition" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.761 0 5-2.239 5-5v-14c0-2.761-2.239-5-5-5zm-11 19h-3v-10h3v10zm-1.5-11.268c-.966 0-1.75-.784-1.75-1.75s.784-1.75 1.75-1.75 1.75.784 1.75 1.75-.784 1.75-1.75 1.75zm13.5 11.268h-3v-5.604c0-1.337-.025-3.063-1.868-3.063-1.869 0-2.156 1.459-2.156 2.967v5.7h-3v-10h2.881v1.367h.041c.401-.761 1.381-1.563 2.841-1.563 3.041 0 3.602 2.002 3.602 4.604v5.592z" /></svg>
+            </a>
+            <a href="https://open.spotify.com/artist/3VZ8V9XhQ9oZb5XnZ9g8yB" target="_blank" rel="noopener noreferrer" aria-label="Spotify">
+              <svg className="w-7 h-7 text-black hover:text-teal-600 transition" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.371 0 0 5.371 0 12s5.371 12 12 12 12-5.371 12-12S18.629 0 12 0zm5.363 17.463c-.221.364-.691.482-1.055.262-2.891-1.764-6.543-2.16-10.824-1.18-.418.096-.844-.162-.94-.576-.096-.418.162-.844.576-.94 4.663-1.08 8.727-.641 11.947 1.262.364.22.482.69.262 1.055zm1.504-2.67c-.276.447-.854.59-1.301.314-3.309-2.04-8.362-2.635-12.284-1.44-.51.158-1.055-.117-1.213-.627-.158-.51.117-1.055.627-1.213 4.406-1.361 9.927-.709 13.722 1.578.447.276.59.854.314 1.301zm.146-2.835C15.06 9.684 8.924 9.5 5.934 10.384c-.623.182-1.283-.159-1.464-.783-.181-.624.159-1.283.783-1.464 3.417-.99 10.184-.785 14.047 2.016.527.389.642 1.135.254 1.662-.389.527-1.135.643-1.662.254z" /></svg>
+            </a>
+            <a href="https://www.youtube.com/@RenatoDAP" target="_blank" rel="noopener noreferrer" aria-label="YouTube">
+              <svg className="w-7 h-7 text-black hover:text-teal-600 transition" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a2.994 2.994 0 0 0-2.112-2.117C19.257 3.5 12 3.5 12 3.5s-7.257 0-9.386.569A2.994 2.994 0 0 0 .502 6.186C0 8.313 0 12 0 12s0 3.687.502 5.814a2.994 2.994 0 0 0 2.112 2.117C4.743 20.5 12 20.5 12 20.5s7.257 0 9.386-.569a2.994 2.994 0 0 0 2.112-2.117C24 15.687 24 12 24 12s0-3.687-.502-5.814zM9.75 15.5v-7l6.5 3.5-6.5 3.5z" /></svg>
+            </a>
+          </div>
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-6">
             <Button href="/professional" variant="solid">
               Professional Experience
             </Button>
-            <Button href="mailto:contact@renatodap.com" variant="outline">
+            <Button href="mailto:renatodaprado@gmail.com" variant="outline">
               Get in Touch
             </Button>
           </div>
