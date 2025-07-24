@@ -79,7 +79,7 @@ export default function About() {
       </section>
 
       {/* Call to Action */}
-      <section className="py-16 px-4 sm:px-6 text-center">
+      <section className="py-0 px-4 sm:px-6 text-center">
         <div className="max-w-3xl mx-auto space-y-8">
           <h2 className="text-3xl font-bold tracking-tight">Let's Connect</h2>
           <p className="text-xl text-neutral-600 leading-relaxed">

@@ -4,71 +4,63 @@ import Button from "../components/button";
 
 export default function Software() {
   return (
-    <div className="space-y-32">
+    <div className="space-y-16">
       {/* Hero Section */}
-      <section className="relative flex flex-col items-center text-center pt-8 pb-16">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <h1 className="text-5xl font-bold tracking-tight">Software</h1>
+      <section className="relative flex flex-col items-center text-center py-5">
+        <div className="max-w-4xl mx-auto px-6 space-y-8">
+          <h1 className="text-6xl font-bold tracking-tight">Software</h1>
           <p className="text-xl text-neutral-600 max-w-2xl mx-auto leading-relaxed">
-            Building systems that matter. From blockchain infrastructure to 
-            full-stack applications, exploring the intersection of code and creativity.
+            Building systems that matter. From blockchain infrastructure to full-stack applications, exploring the intersection of code and creativity.
           </p>
         </div>
       </section>
 
       {/* Featured Project - Accumulate Lite Client */}
-      <section className="relative bg-gradient-to-b from-teal-50 to-white py-20 px-4 sm:px-6">
+      <section className="relative bg-gradient-to-b from-teal-50 to-white py-10 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center space-y-6 mb-16">
-            <h2 className="text-3xl font-bold tracking-tight">Featured Project</h2>
-            <p className="text-neutral-600 text-lg max-w-2xl mx-auto">
+            <h2 className="text-4xl font-bold tracking-tight">Featured Project</h2>
+            <p className="text-neutral-600 text-xl max-w-2xl mx-auto">
               Deep dive into blockchain infrastructure and validation systems
             </p>
           </div>
           
-          <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+          <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-gray-100">
             {/* Project Header */}
-            <div className="p-8 border-b border-gray-100">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                <div className="space-y-2">
-                  <h3 className="text-2xl font-bold">Accumulate Lite Client</h3>
-                  <p className="text-teal-600 font-medium">Blockchain Infrastructure • Go, Protocol Buffers</p>
-                </div>
-                <div className="flex gap-3">
-                  <Button href="#" variant="solid">View Code</Button>
-                  <Button href="#" variant="outline">Live Demo</Button>
+            <div className="p-10 border-b border-gray-100">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y- lg:space-y-0">
+                <div className="space-y-3">
+                  <h3 className="text-3xl font-bold">Accumulate Lite Client</h3>
+                  <p className="text-teal-600 font-medium text-lg">Blockchain Infrastructure • Go, Protocol Buffers</p>
+                  <p className="text-sm text-neutral-500 font-medium">Summer 2024</p>
                 </div>
               </div>
             </div>
 
             {/* Project Content */}
-            <div className="p-8 space-y-8">
-              <div className="prose prose-lg max-w-none">
-                <p className="text-neutral-700 leading-relaxed">
-                  A lightweight, secure blockchain validation client built for the future of 
-                  distributed systems. The Accumulate Lite Client provides efficient block 
-                  validation and state verification without requiring a full node setup.
+            <div className="p-10 space-y-10">
+              <div className="prose prose-xl max-w-none">
+                <p className="text-neutral-700 leading-relaxed text-lg">
+                  A lightweight, secure blockchain validation client built for the future of distributed systems. The Accumulate Lite Client provides efficient block validation and state verification without requiring a full node setup. Developed as part of Genialt's KYA (Know Your Agent) identity framework for AI model traceability.
                 </p>
               </div>
 
               {/* Video Section */}
-              <div className="space-y-4">
-                <h4 className="text-lg font-semibold">Technical Deep Dive</h4>
-                <div className="bg-gray-100 rounded-xl aspect-video flex items-center justify-center">
-                  <div className="text-center space-y-3">
-                    <div className="w-16 h-16 bg-teal-500 rounded-full flex items-center justify-center mx-auto">
-                      <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <p className="text-neutral-600">
-                      [Video: Explaining the Accumulate Lite Client Architecture]
-                    </p>
-                    <p className="text-sm text-neutral-500">
-                      Technical walkthrough and implementation details
-                    </p>
-                  </div>
+              <div className="space-y-6">
+                <h4 className="text-xl font-semibold">Building the Next Generation AI Deployment Platform with Blockchain</h4>
+                <div className="relative w-full rounded-2xl overflow-hidden shadow-lg" style={{ paddingBottom: '56.25%' }}>
+                  <iframe
+                    className="absolute top-0 left-0 w-full h-full"
+                    src="https://www.youtube.com/embed/mcVZXHcuO70"
+                    title="Building the Next Generation AI Deployment Platform with Blockchain"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  ></iframe>
                 </div>
+                <p className="text-neutral-500">
+                  Explains the role of the Lite Client in cryptographic identity verification for AI agents.
+                </p>
               </div>
 
               {/* Key Features */}
@@ -77,19 +69,27 @@ export default function Software() {
                   <h4 className="text-lg font-semibold">Key Features</h4>
                   <ul className="space-y-2 text-neutral-700">
                     <li className="flex items-start space-x-2">
-                      <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mt-2 flex-shrink-0"></span>
+                      <svg className="w-5 h-5 text-teal-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
                       <span>Lightweight block validation</span>
                     </li>
                     <li className="flex items-start space-x-2">
-                      <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mt-2 flex-shrink-0"></span>
+                      <svg className="w-5 h-5 text-teal-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
                       <span>Efficient state verification</span>
                     </li>
                     <li className="flex items-start space-x-2">
-                      <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mt-2 flex-shrink-0"></span>
+                      <svg className="w-5 h-5 text-teal-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
                       <span>Protocol buffer integration</span>
                     </li>
                     <li className="flex items-start space-x-2">
-                      <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mt-2 flex-shrink-0"></span>
+                      <svg className="w-5 h-5 text-teal-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
                       <span>Secure cryptographic validation</span>
                     </li>
                   </ul>
@@ -98,11 +98,11 @@ export default function Software() {
                 <div className="space-y-3">
                   <h4 className="text-lg font-semibold">Technologies</h4>
                   <div className="flex flex-wrap gap-2">
-                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">Go</span>
-                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">Protocol Buffers</span>
-                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">Blockchain</span>
-                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">Cryptography</span>
-                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">Distributed Systems</span>
+                    <span className="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm font-medium">Go</span>
+                    <span className="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm font-medium">Protocol Buffers</span>
+                    <span className="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm font-medium">Blockchain</span>
+                    <span className="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm font-medium">Cryptography</span>
+                    <span className="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm font-medium">Distributed Systems</span>
                   </div>
                 </div>
               </div>
@@ -112,86 +112,184 @@ export default function Software() {
       </section>
 
       {/* Other Projects Grid */}
-      <section className="py-20 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto">
+      <section className="py-6 px-6">
+        <div className="max-w-7xl mx-auto">
           <div className="text-center space-y-6 mb-16">
-            <h2 className="text-3xl font-bold tracking-tight">Other Projects</h2>
-            <p className="text-neutral-600 text-lg max-w-2xl mx-auto">
+            <h2 className="text-4xl font-bold tracking-tight">Other Projects</h2>
+            <p className="text-neutral-600 text-xl max-w-2xl mx-auto">
               A collection of applications, tools, and experiments across different domains
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Project Card 1 */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-shadow">
-              <div className="space-y-4">
-                <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            {/* Project 1: Digital Media Library Desktop App */}
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="space-y-6">
+                <div className="w-14 h-14 bg-teal-100 rounded-xl flex items-center justify-center">
+                  <svg className="w-7 h-7 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">[Project Name]</h3>
-                  <p className="text-neutral-600 text-sm mb-3">
-                    [Brief project description and key functionality]
-                  </p>
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Tech 1</span>
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Tech 2</span>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-xl font-semibold">Digital Media Library Desktop App</h3>
+                    <span className="text-sm text-neutral-500 font-medium">Fall 2023</span>
                   </div>
-                  <div className="flex gap-2">
-                    <Button href="#" variant="outline" className="text-xs px-3 py-1">Code</Button>
-                    <Button href="#" variant="outline" className="text-xs px-3 py-1">Demo</Button>
+                  <p className="text-teal-600 text-sm font-medium mb-4">Cross-Platform Application • Python, PyQt5, SQL Server</p>
+                  <p className="text-neutral-600 text-sm mb-4 leading-relaxed">
+                    Built a desktop application for media storage and playback using Python and PyQt5. Implemented secure authentication, tabbed browsing UI, and robust CRUD operations with SQL Server stored procedures.
+                  </p>
+                  <div className="text-xs text-neutral-500 mb-4">
+                    <span className="font-medium">Class:</span> CSSE333 — Database Systems | <span className="font-medium">Team:</span> Group of 3
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">Python</span>
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">PyQt5</span>
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">SQL Server</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Project Card 2 */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-shadow">
-              <div className="space-y-4">
-                <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {/* Project 2: Game Tracker Web App */}
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="space-y-6">
+                <div className="w-14 h-14 bg-teal-100 rounded-xl flex items-center justify-center">
+                  <svg className="w-7 h-7 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">[Web Application]</h3>
-                  <p className="text-neutral-600 text-sm mb-3">
-                    [Description of web application and its purpose]
-                  </p>
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">React</span>
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Node.js</span>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-xl font-semibold">Game Tracker Web App</h3>
+                    <span className="text-sm text-neutral-500 font-medium">Spring 2024</span>
                   </div>
-                  <div className="flex gap-2">
-                    <Button href="#" variant="outline" className="text-xs px-3 py-1">Code</Button>
-                    <Button href="#" variant="outline" className="text-xs px-3 py-1">Live</Button>
+                  <p className="text-teal-600 text-sm font-medium mb-4">Full-Stack Web App • React, JavaScript, HTML, CSS</p>
+                  <p className="text-neutral-600 text-sm mb-4 leading-relaxed">
+                    Developed a dynamic web application to track game sessions and display personalized stats. Integrated persistent client/server data flow and built with full frontend/backend separation.
+                  </p>
+                  <div className="text-xs text-neutral-500 mb-4">
+                    <span className="font-medium">Class:</span> Front-End Web Development | <span className="font-medium">Team:</span> Group of 3
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">React</span>
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">JS</span>
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">CSS</span>
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">UX</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Project Card 3 */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-shadow">
-              <div className="space-y-4">
-                <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+            {/* Project 3: Pipelined Processor Design */}
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="space-y-6">
+                <div className="w-14 h-14 bg-teal-100 rounded-xl flex items-center justify-center">
+                  <svg className="w-7 h-7 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">[Tool/Utility]</h3>
-                  <p className="text-neutral-600 text-sm mb-3">
-                    [Description of tool or utility and its use case]
-                  </p>
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Python</span>
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">CLI</span>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-xl font-semibold">Pipelined Processor Design</h3>
+                    <span className="text-sm text-neutral-500 font-medium">Winter 2024</span>
                   </div>
-                  <div className="flex gap-2">
-                    <Button href="#" variant="outline" className="text-xs px-3 py-1">Code</Button>
-                    <Button href="#" variant="outline" className="text-xs px-3 py-1">Docs</Button>
+                  <p className="text-teal-600 text-sm font-medium mb-4">Hardware Simulation • Verilog, RISC-V</p>
+                  <p className="text-neutral-600 text-sm mb-4 leading-relaxed">
+                    Designed a 5-stage pipelined RISC-V processor supporting branches, jumps, and memory instructions. Tested thoroughly using waveform analysis and Verilog testbenches.
+                  </p>
+                  <div className="text-xs text-neutral-500 mb-4">
+                    <span className="font-medium">Class:</span> CSSE232 - Comp Arch I | <span className="font-medium">Team:</span> Team of 3
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">Verilog</span>
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">RISC-V</span>
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">Simulation</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Project 4: Java Linter & Static Analysis Tool */}
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="space-y-6">
+                <div className="w-14 h-14 bg-teal-100 rounded-xl flex items-center justify-center">
+                  <svg className="w-7 h-7 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-xl font-semibold">Java Linter & Static Analysis Tool</h3>
+                    <span className="text-sm text-neutral-500 font-medium">Fall 2024</span>
+                  </div>
+                  <p className="text-teal-600 text-sm font-medium mb-4">Code Quality Engine • Java, Bytecode Analysis</p>
+                  <p className="text-neutral-600 text-sm mb-4 leading-relaxed">
+                    Created a configurable static analysis engine to enforce custom design rules, principles, and patterns for Java projects. Supported multi-file input, directory scanning, and extensible check definitions.
+                  </p>
+                  <div className="text-xs text-neutral-500 mb-4">
+                    <span className="font-medium">Class:</span> CSSE374 — Software Design | <span className="font-medium">Team:</span> Team of 4
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">Java</span>
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">Linter</span>
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">Design Patterns</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Project 5: Placeholder Project */}
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="space-y-6">
+                <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center">
+                  <svg className="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-xl font-semibold text-gray-400">[Project Title]</h3>
+                    <span className="text-sm text-neutral-400 font-medium">[Duration]</span>
+                  </div>
+                  <p className="text-gray-400 text-sm font-medium mb-4">[Project Type] • [Technologies]</p>
+                  <p className="text-gray-400 text-sm mb-4 leading-relaxed">
+                    [Project description and key features will be added here]
+                  </p>
+                  <div className="text-xs text-gray-400 mb-4">
+                    <span className="font-medium">Context:</span> [Class/Work/Personal] | <span className="font-medium">Team:</span> [Team Size]
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-3 py-1 bg-gray-50 text-gray-400 rounded-full text-xs font-medium">[Tech]</span>
+                    <span className="px-3 py-1 bg-gray-50 text-gray-400 rounded-full text-xs font-medium">[Tech]</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Project 6: Placeholder Project */}
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="space-y-6">
+                <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center">
+                  <svg className="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-xl font-semibold text-gray-400">[Project Title]</h3>
+                    <span className="text-sm text-neutral-400 font-medium">[Duration]</span>
+                  </div>
+                  <p className="text-gray-400 text-sm font-medium mb-4">[Project Type] • [Technologies]</p>
+                  <p className="text-gray-400 text-sm mb-4 leading-relaxed">
+                    [Project description and key features will be added here]
+                  </p>
+                  <div className="text-xs text-gray-400 mb-4">
+                    <span className="font-medium">Context:</span> [Class/Work/Personal] | <span className="font-medium">Team:</span> [Team Size]
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-3 py-1 bg-gray-50 text-gray-400 rounded-full text-xs font-medium">[Tech]</span>
+                    <span className="px-3 py-1 bg-gray-50 text-gray-400 rounded-full text-xs font-medium">[Tech]</span>
                   </div>
                 </div>
               </div>
@@ -200,73 +298,140 @@ export default function Software() {
         </div>
       </section>
 
-      {/* Technical Skills */}
-      <section className="relative bg-black text-white py-20 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto">
+      {/* Technical Stack */}
+      <section className="relative bg-gradient-to-b from-gray-50 to-white py-16 px-6">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center space-y-6 mb-16">
-            <h2 className="text-3xl font-bold tracking-tight">Technical Stack</h2>
-            <p className="text-gray-300 text-lg max-w-2xl mx-auto">
+            <h2 className="text-4xl font-bold tracking-tight">Technical Stack</h2>
+            <p className="text-neutral-600 text-xl max-w-2xl mx-auto">
               Languages, frameworks, and tools I work with regularly
             </p>
           </div>
 
-          <div className="grid md:grid-cols-4 gap-8">
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-teal-400">Languages</h3>
-              <ul className="space-y-2 text-gray-300 text-sm">
-                <li>Go</li>
-                <li>JavaScript/TypeScript</li>
-                <li>Python</li>
-                <li>Java</li>
-                <li>C++</li>
-              </ul>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Languages Card */}
+            <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
+              <div className="space-y-6">
+                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-4">Languages</h3>
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">Go</span>
+                      <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">Python</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">JavaScript</span>
+                      <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">Java</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">C++</span>
+                      <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">SQL</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-teal-400">Frontend</h3>
-              <ul className="space-y-2 text-gray-300 text-sm">
-                <li>React</li>
-                <li>Next.js</li>
-                <li>Tailwind CSS</li>
-                <li>Vue.js</li>
-              </ul>
+
+            {/* Frontend Card */}
+            <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
+              <div className="space-y-6">
+                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-4">Frontend</h3>
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm font-medium">React</span>
+                      <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm font-medium">Next.js</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm font-medium">Tailwind CSS</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-teal-400">Backend</h3>
-              <ul className="space-y-2 text-gray-300 text-sm">
-                <li>Node.js</li>
-                <li>Express</li>
-                <li>PostgreSQL</li>
-                <li>MongoDB</li>
-                <li>Redis</li>
-              </ul>
+
+            {/* Backend Card */}
+            <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
+              <div className="space-y-6">
+                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-4">Backend</h3>
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-sm font-medium">Node.js</span>
+                      <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-sm font-medium">Express</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-sm font-medium">PostgreSQL</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-sm font-medium">SQL Server</span>
+                      <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-sm font-medium">Redis</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-teal-400">Tools & Platforms</h3>
-              <ul className="space-y-2 text-gray-300 text-sm">
-                <li>Docker</li>
-                <li>AWS</li>
-                <li>Git</li>
-                <li>Linux</li>
-                <li>Protocol Buffers</li>
-              </ul>
+
+            {/* Tools Card */}
+            <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
+              <div className="space-y-6">
+                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                  <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-4">Tools</h3>
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-sm font-medium">Docker</span>
+                      <span className="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-sm font-medium">AWS</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-sm font-medium">Git</span>
+                      <span className="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-sm font-medium">Linux</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-sm font-medium">Protocol Buffers</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-sm font-medium">PyQt5</span>
+                      <span className="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-sm font-medium">Verilog</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Call to Action */}
-      <section className="py-20 px-4 sm:px-6 text-center">
-        <div className="max-w-3xl mx-auto space-y-8">
-          <h2 className="text-3xl font-bold tracking-tight">Explore More</h2>
-          <p className="text-xl text-neutral-600 leading-relaxed">
-            Interested in the technical details or want to collaborate on a project?
+      <section className="py-4 px-6 text-center">
+        <div className="max-w-4xl mx-auto space-y-8">
+          <h2 className="text-4xl font-bold tracking-tight">Let's Build Something Together</h2>
+          <p className="text-xl text-neutral-600 leading-relaxed max-w-2xl mx-auto">
+            Interested in collaborating on a project, discussing technical ideas, or exploring opportunities? I'd love to connect.
           </p>
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-4">
-            <Button href="https://github.com/renatodap" variant="solid">
-              GitHub Profile
+            <Button href="mailto:renatodaprado@gmail.com" variant="solid">
+              Get in Touch
             </Button>
             <Button href="/professional" variant="outline">
               Professional Experience
