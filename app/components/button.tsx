@@ -14,6 +14,7 @@ type ButtonProps = {
   magnetic?: boolean;
   shimmer?: boolean;
   disabled?: boolean;
+  textColor?: "white" | "black";
 };
 
 export default function Button({
@@ -26,6 +27,7 @@ export default function Button({
   magnetic = true,
   shimmer = false,
   disabled = false,
+  textColor,
 }: ButtonProps) {
   const buttonRef = useRef<HTMLAnchorElement>(null);
 
@@ -118,7 +120,8 @@ export default function Button({
       
     case "gradient":
       if (variant === "solid") {
-        colorStyles = "bg-gradient-to-r from-rose-400 via-teal-500 to-orange-400 text-white shadow-lg";
+        const textColorClass = textColor === "white" ? "text-white" : "text-black";
+        colorStyles = `bg-gradient-to-r from-rose-400 via-teal-500 to-orange-400 ${textColorClass} shadow-lg`;
         hoverStyles = "hover:shadow-xl hover:scale-105";
         focusStyles = "focus:ring-teal-500";
       } else if (variant === "outline") {

@@ -86,51 +86,53 @@ export default function HeroSection() {
         >
             {/* Enhanced Video Background */}
             <motion.div
-                className="absolute inset-0 z-[-3] bg-black"
+                className="absolute inset-0 z-[-3] bg-black overflow-hidden"
                 style={{ scale }}
             >
-                {/* Desktop Video */}
-                <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    preload="metadata"
-                    src="/hero-video2.mp4"
-                    className="absolute inset-0 w-full h-full object-cover hidden sm:block"
-                    onLoadedData={handleVideoLoad}
-                    onCanPlay={handleVideoLoad}
-                    onLoadedMetadata={(e) => {
-                        const video = e.target as HTMLVideoElement;
-                        handleVideoLoad();
-                        video.play().catch(() => console.log('Desktop video autoplay blocked'));
-                    }}
-                />
+                {/* Desktop Video with Overlay */}
+                <div className="absolute inset-0 w-full h-full hidden sm:block">
+                    <video
+                        ref={videoRef}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        preload="metadata"
+                        src="/hero-video2.mp4"
+                        className="w-full h-full object-cover"
+                        onLoadedData={handleVideoLoad}
+                        onCanPlay={handleVideoLoad}
+                        onLoadedMetadata={(e) => {
+                            const video = e.target as HTMLVideoElement;
+                            handleVideoLoad();
+                            video.play().catch(() => console.log('Desktop video autoplay blocked'));
+                        }}
+                    />
 
-                {/* Mobile Video */}
-                <video
-                    ref={mobileVideoRef}
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    preload="metadata"
-                    src="/hero-video-square2.mp4"
-                    className="absolute inset-0 w-full h-full object-cover sm:hidden"
-                    onLoadedData={handleVideoLoad}
-                    onCanPlay={handleVideoLoad}
-                    onLoadedMetadata={(e) => {
-                        const video = e.target as HTMLVideoElement;
-                        handleVideoLoad();
-                        video.play().catch(() => console.log('Mobile video autoplay blocked'));
-                    }}
-                />
-                
+                </div>
 
+                {/* Mobile Video with Overlay */}
+                <div className="absolute inset-0 w-full h-full block sm:hidden">
+                    <video
+                        ref={mobileVideoRef}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        preload="metadata"
+                        src="/hero-video-mobile2.mp4"
+                        className="w-full h-full object-cover"
+                        onLoadedData={handleVideoLoad}
+                        onCanPlay={handleVideoLoad}
+                        onLoadedMetadata={(e) => {
+                            const video = e.target as HTMLVideoElement;
+                            handleVideoLoad();
+                            video.play().catch(() => console.log('Mobile video autoplay blocked'));
+                        }}
+                    />
+
+                </div>
             </motion.div>
-
-
 
             {/* Main Content */}
             <motion.div
@@ -186,6 +188,7 @@ export default function HeroSection() {
                         color="gradient"
                         size="md"
                         shimmer={true}
+                        textColor="white"
                         className="w-full sm:w-auto text-sm sm:text-base"
                     >
                         View Projects
