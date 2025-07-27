@@ -18,7 +18,7 @@ export default function LiteClientSection() {
   }, []);
 
   return (
-    <section className="relative bg-gradient-to-b from-sky-50 to-white py-24 px-6 sm:px-8 overflow-hidden">
+    <section className="py-24 px-6 sm:px-8 overflow-hidden">
       <div className="text-center space-y-6 max-w-3xl mx-auto z-10 relative">
         <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-neutral-900">
           Accumulate Lite Client

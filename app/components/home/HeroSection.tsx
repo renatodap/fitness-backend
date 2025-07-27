@@ -10,21 +10,18 @@ export default function HeroSection() {
     const [autoplayFailed, setAutoplayFailed] = useState(false);
   return (
     <section className="relative w-full h-[420px] sm:h-[480px] md:h-[540px] lg:h-[600px] overflow-hidden flex items-center justify-center text-center">
-         {/* Desktop Video */}
-         <video
+      {/* Desktop Video */}
+      <video
         autoPlay
         muted
         loop
         playsInline
-        preload="auto"
         src="/hero-video.mp4"
         className="absolute inset-0 w-full h-full object-cover hidden sm:block z-[-2]"
         poster="/fallback-image.png"
       />
-
       {/* Mobile Video */}
       <video
-        ref={mobileRef}
         autoPlay
         muted
         loop
@@ -34,29 +31,14 @@ export default function HeroSection() {
         className="absolute inset-0 w-full h-full object-cover sm:hidden z-[-2]"
         poster="/fallback-image-mobile.png"
         onLoadedMetadata={(e) => {
+          // Force play on mobile after metadata loads
           const video = e.target as HTMLVideoElement;
-          const promise = video.play();
-          if (promise !== undefined) {
-            promise.catch(() => {
-              console.log('Autoplay blocked on mobile.');
-              setAutoplayFailed(true);
-            });
-          }
+          video.play().catch(() => {
+            // Fallback if autoplay fails
+            console.log('Autoplay blocked, user interaction required');
+          });
         }}
       />
-
-      {/* Optional fallback play button (only if autoplay fails) */}
-      {autoplayFailed && (
-        <button
-          onClick={() => {
-            mobileRef.current?.play();
-            setAutoplayFailed(false);
-          }}
-          className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10 bg-black/70 text-white px-4 py-2 rounded-full shadow-lg"
-        >
-          ▶ Tap to Play
-        </button>
-      )}
 
       {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/60 z-[-1]" />

@@ -1,11 +1,11 @@
-// components/home/CapstoneSection.tsx
+// components/home/AllAboutFoodSection.tsx
 
 'use client';
 
 import Button from '../button';
 import { useEffect, useRef, useState } from 'react';
 
-export default function CapstoneSection() {
+export default function AllAboutFoodSection() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [canPlay, setCanPlay] = useState(false);
 
@@ -18,31 +18,25 @@ export default function CapstoneSection() {
   }, []);
 
   return (
-    <section className="relative bg-gradient-to-b from-white to-gray-50 py-24 px-6 sm:px-8 overflow-hidden">
+    <section className="py-24 px-6 sm:px-8 overflow-hidden">
       <div className="text-center space-y-6 max-w-3xl mx-auto z-10 relative">
         <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-neutral-900">
-          Capstone Project: AllAboutFood
+          All About Food
         </h2>
         <p className="text-neutral-600 text-base sm:text-lg">
-          An AI-powered recipe engine built for real users. It personalizes meals, adapts to dietary needs, and learns from preferences — all in a smooth, intuitive web experience.
+          A full-stack AI-powered recipe engine that transforms images, PDFs, or text files into structured, searchable, voice-ready cooking instructions. Built with Flutter, AWS, OpenAI, and Alexa.
         </p>
         <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-4">
-          <Button
-            href="https://youtube.com/your-capstone-video"
-            variant="solid"
-          >
-            Watch Demo
+          <Button href="/projects/allaboutfood" variant="solid">
+            See Case Study
           </Button>
-          <Button
-            href="https://github.com/renatodap/allaboutfood"
-            variant="outline"
-          >
+          <Button href="https://github.com/renatodap/allaboutfood" variant="outline">
             View Code
           </Button>
         </div>
       </div>
 
-      {/* Visual media — video with fallback */}
+      {/* Media */}
       <div className="mt-16 flex justify-center items-center">
         {canPlay ? (
           <video
