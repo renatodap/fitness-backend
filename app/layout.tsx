@@ -23,7 +23,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="light">
-      <body className={`${inter.variable} ${jetbrainsMono.variable} bg-black text-white overflow-x-hidden min-h-screen`}>
+      <body className={`${inter.variable} ${jetbrainsMono.variable} bg-white text-black overflow-x-hidden min-h-screen`}>
         <Header />
         <main className="w-full">{children}</main>
       </body>

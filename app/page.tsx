@@ -53,7 +53,7 @@ const SECTIONS: Section[] = [
     description: (
       <div className="space-y-4">
         <p>
-          I’m studying the foundations that power modern AI: from deep learning theory to data-driven reasoning systems.
+          I'm studying the foundations that power modern AI: from deep learning theory to data-driven reasoning systems.
         </p>
         <ul className="list-disc pl-5 space-y-1 text-left">
           <li>
@@ -74,7 +74,7 @@ const SECTIONS: Section[] = [
     overlaySvg: (
       <svg
         viewBox="0 0 100 100"
-        className="w-48 h-48 text-neutral-400"
+        className="w-48 h-48 text-neutral-600"
         fill="none"
         stroke="currentColor"
         strokeWidth={1.2}
@@ -121,7 +121,7 @@ export default function HomePage() {
 
   return (
     <main ref={containerRef} className="w-full min-h-screen overflow-x-hidden relative">
-      {/* Animated Background */}
+      {/* Subtle Background Elements */}
       <motion.div 
         className="fixed inset-0 z-[-1] pointer-events-none"
         style={{ y: backgroundY, opacity }}
@@ -140,7 +140,7 @@ export default function HomePage() {
           const sectionY = useTransform(
             scrollYProgress,
             [i / SECTIONS.length, (i + 1) / SECTIONS.length],
-            ['0%', '-10%']
+            ['0%', '-5%']
           );
           
           return (
@@ -160,38 +160,8 @@ export default function HomePage() {
                 image={section.image}
                 align={section.align}
                 ctas={section.ctas}
+                overlaySvg={section.overlaySvg}
               />
-              
-              {/* Floating elements for visual interest */}
-              <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <motion.div
-                  className="absolute top-1/4 right-1/4 w-2 h-2 bg-teal-400/30 rounded-full blur-sm"
-                  animate={{
-                    y: [0, -20, 0],
-                    opacity: [0.3, 0.7, 0.3]
-                  }}
-                  transition={{
-                    duration: 4 + i,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: i * 0.5
-                  }}
-                />
-                <motion.div
-                  className="absolute bottom-1/3 left-1/4 w-1.5 h-1.5 bg-rose-400/30 rounded-full blur-sm"
-                  animate={{
-                    y: [0, 15, 0],
-                    x: [0, 10, 0],
-                    opacity: [0.2, 0.6, 0.2]
-                  }}
-                  transition={{
-                    duration: 5 + i,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: i * 0.7
-                  }}
-                />
-              </div>
             </motion.div>
           );
         })}

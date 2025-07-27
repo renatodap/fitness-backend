@@ -127,8 +127,7 @@ export default function HeroSection() {
                     }}
                 />
                 
-                {/* Black Overlay - covers only the video */}
-                <div className="absolute inset-0 bg-black/30 z-10" />
+
             </motion.div>
 
 
@@ -147,16 +146,16 @@ export default function HeroSection() {
                 {/* Main Headline */}
                 <motion.h1
                     variants={itemVariants}
-                    className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold leading-tight text-white mb-4 sm:mb-6"
+                    className="text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-heading font-bold leading-tight text-white mb-4 sm:mb-6"
                 >
-                    i.build.tools{' '}
+                    I build tools{' '}
                     <br className="hidden sm:block" />
                     <motion.span
                         className="gradient-text inline-block"
                         whileHover={{ scale: 1.05 }}
                         transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
-                        with.rhythm.and.logic;
+                        with rhythm and logic.
                     </motion.span>
                 </motion.h1>
 
@@ -189,7 +188,7 @@ export default function HeroSection() {
                         shimmer={true}
                         className="w-full sm:w-auto text-sm sm:text-base"
                     >
-                        view.projects
+                        View Projects
                     </Button>
                     <Button
                         href="/music"
@@ -198,7 +197,7 @@ export default function HeroSection() {
                         size="md"
                         className="w-full sm:w-auto text-sm sm:text-base"
                     >
-                        watch.performances
+                        Watch Performances
                     </Button>
                 </motion.div>
 
