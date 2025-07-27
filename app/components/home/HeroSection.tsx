@@ -120,7 +120,7 @@ export default function HeroSection() {
                         loop
                         playsInline
                         preload="metadata"
-                        src="/hero-video-mobile2.mp4"
+                        src="/hero-video-square2.mp4"
                         className="w-full h-full object-cover"
                         onLoadedData={handleVideoLoad}
                         onCanPlay={handleVideoLoad}
