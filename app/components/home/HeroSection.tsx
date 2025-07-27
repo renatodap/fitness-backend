@@ -86,10 +86,10 @@ export default function HeroSection() {
         >
             {/* Enhanced Video Background */}
             <motion.div
-                className="absolute inset-0 z-[-3] bg-black overflow-hidden"
+                className="absolute inset-0 z-[-3] overflow-hidden"
                 style={{ scale }}
             >
-                {/* Desktop Video with Overlay */}
+                {/* Desktop Video */}
                 <div className="absolute inset-0 w-full h-full hidden sm:block">
                     <video
                         ref={videoRef}
@@ -111,7 +111,7 @@ export default function HeroSection() {
 
                 </div>
 
-                {/* Mobile Video with Overlay */}
+                {/* Mobile Video */}
                 <div className="absolute inset-0 w-full h-full block sm:hidden">
                     <video
                         ref={mobileVideoRef}
@@ -207,20 +207,7 @@ export default function HeroSection() {
 
             </motion.div>
 
-            {/* Loading State */}
-            {!isLoaded && (
-                <motion.div
-                    className="absolute inset-0 bg-neutral-900 flex items-center justify-center z-20"
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.5 }}
-                >
-                    <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full"
-                    />
-                </motion.div>
-            )}
+
         </motion.section>
     );
 }

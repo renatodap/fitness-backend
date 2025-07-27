@@ -33,7 +33,7 @@ const SECTIONS: Section[] = [
     ],
     image: '/all-about-food.png',
     align: 'left',
-    bgClass: 'from-neutral-50 via-white to-teal-50/30',
+    bgClass: 'bg-white',
   },
   {
     id: 'liteclient',
@@ -45,7 +45,7 @@ const SECTIONS: Section[] = [
     ],
     image: '/acc-lite-client.png',
     align: 'right',
-    bgClass: 'from-teal-50/30 via-white to-rose-50/30',
+    bgClass: 'bg-neutral-50',
   },
   {
     id: 'ai',
@@ -70,24 +70,7 @@ const SECTIONS: Section[] = [
     ],
     image: '/ai-icon.svg',
     align: 'center',
-    bgClass: 'from-rose-50/30 via-white to-orange-50/30',
-    overlaySvg: (
-      <svg
-        viewBox="0 0 100 100"
-        className="w-48 h-48 text-neutral-600"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.2}
-      >
-        <circle cx="50" cy="50" r="45" />
-        <path d="M50 10 L50 90 M10 50 L90 50" />
-        <circle cx="50" cy="50" r="3" fill="currentColor" />
-        <circle cx="25" cy="25" r="2" fill="currentColor" />
-        <circle cx="75" cy="25" r="2" fill="currentColor" />
-        <circle cx="25" cy="75" r="2" fill="currentColor" />
-        <circle cx="75" cy="75" r="2" fill="currentColor" />
-      </svg>
-    ),
+    bgClass: 'bg-white',
   },
   {
     id: 'tennis',
@@ -96,7 +79,7 @@ const SECTIONS: Section[] = [
     ctas: [{ href: '/tennis', label: 'View Season Schedule', variant: 'solid' }],
     image: '/tennis.jpg',
     align: 'left',
-    bgClass: 'from-orange-50/30 via-white to-neutral-50',
+    bgClass: 'bg-neutral-50',
   },
   {
     id: 'music',
@@ -105,7 +88,7 @@ const SECTIONS: Section[] = [
     ctas: [{ href: '/music', label: 'Watch a Performance', variant: 'solid' }],
     image: '/live.jpg',
     align: 'right',
-    bgClass: 'from-neutral-50 to-white',
+    bgClass: 'bg-white',
   },
 ];
 
@@ -146,7 +129,7 @@ export default function HomePage() {
           return (
             <motion.div
               key={section.id}
-              className={`relative bg-gradient-to-br ${section.bgClass} transition-all duration-1000 ease-in-out`}
+              className={`relative ${section.bgClass}`}
               style={{ y: sectionY }}
             >
               {/* Section divider */}

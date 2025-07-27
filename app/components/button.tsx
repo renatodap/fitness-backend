@@ -164,12 +164,7 @@ export default function Button({
 
   const buttonContent = (
     <>
-      {/* Shimmer overlay */}
-      {shimmer && (
-        <div className="absolute inset-0 -top-px overflow-hidden rounded-xl">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
-        </div>
-      )}
+
       
       {/* Button content */}
       <span className="relative z-10 flex items-center gap-2">
