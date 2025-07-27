@@ -22,13 +22,22 @@ export default function HeroSection() {
         muted
         loop
         playsInline
+        preload="metadata"
         src="/hero-video-square.mp4"
         className="absolute inset-0 w-full h-full object-cover sm:hidden z-[-2]"
         poster="/fallback-image-mobile.png"
+        onLoadedMetadata={(e) => {
+          // Force play on mobile after metadata loads
+          const video = e.target as HTMLVideoElement;
+          video.play().catch(() => {
+            // Fallback if autoplay fails
+            console.log('Autoplay blocked, user interaction required');
+          });
+        }}
       />
 
       {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black/70 z-[-1]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/60 z-[-1]" />
 
       {/* Content */}
       <div className="z-10 max-w-2xl px-6">

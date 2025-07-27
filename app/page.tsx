@@ -18,21 +18,6 @@ export default function HomePage() {
       {/* ===== HERO  (edge‑to‑edge, no outer padding) ===== */}
       <Hero />
 
-      {/* ===== FLOATING BADGE ===== */}
-      <section className="relative z-10 -mt-12 sm:-mt-16">
-
-        {/* Floating AllAboutFood badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: 'easeOut' }}
-          className="absolute -top-8 sm:-top-12 left-6 sm:left-12 inline-flex items-center gap-2 px-5 py-3 backdrop-blur-md bg-white/70 rounded-full shadow-lg ring-1 ring-black/10"
-        >
-          <img src="/eggplant-icon.svg" alt="AllAboutFood" className="w-6 h-6" />
-          <span className="text-sm font-semibold text-neutral-800">AllAboutFood</span>
-        </motion.div>
-      </section>
-
       {/* ===== SECTIONS ===== */}
       <motion.section
         initial={{ opacity: 0, y: 60 }}
