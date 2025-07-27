@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 /* ===== CSS VARIABLES ===== */
 :root {
@@ -34,7 +34,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-heading: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+  --font-heading: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 /* ===== BASE STYLES ===== */
@@ -61,10 +61,9 @@ body {
 /* ===== TYPOGRAPHY ===== */
 .font-heading {
   font-family: var(--font-heading);
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-weight: 800;
+  letter-spacing: -0.025em;
   line-height: 1.1;
-  text-transform: lowercase;
 }
 
 .font-body {
