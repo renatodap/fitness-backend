@@ -23,7 +23,7 @@ export default function HeroSection() {
         loop
         playsInline
         preload="auto"
-        src="/hero-video-square.mp4"
+        src="/hero-video-square2.mp4"
         className="absolute inset-0 w-full h-full object-cover sm:hidden z-[-2]"
         poster="/fallback-image-mobile.png"
         onLoadedMetadata={(e) => {
