@@ -6,11 +6,12 @@ module.exports = {
   ],
   theme: {
     extend: {
-      screens: {
-        'xs': '475px',
+      fontFamily: {
+        heading: ['"Space Grotesk"', 'sans-serif'],
+        body: ['Inter', 'sans-serif'],
       },
     },
-  },
+  },  
   darkMode: 'class', // Force dark mode to only work if class is set
   plugins: [],
 }
