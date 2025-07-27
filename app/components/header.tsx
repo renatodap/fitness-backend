@@ -1,14 +1,34 @@
 // app/components/Header.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      // Hide header when scrolling down, show when scrolling up
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setIsVisible(false);
+      } else {
+        setIsVisible(true);
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
 
   return (
-    <header className="w-full flex justify-center py-4 sticky top-0 bg-transparent z-50">
+    <header className={`w-full flex justify-center py-4 sticky top-0 bg-transparent z-50 transition-transform duration-300 ease-in-out ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}>
       <nav className="max-w-5xl w-full flex flex-col lg:flex-row lg:justify-between items-center text-sm font-medium px-6">
         <div className="flex justify-between w-full lg:w-auto items-center">
           <Link href="/" className="font-semibold text-lg tracking-tight">Renato DAP</Link>

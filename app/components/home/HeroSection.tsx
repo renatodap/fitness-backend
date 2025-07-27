@@ -126,6 +126,9 @@ export default function HeroSection() {
                         video.play().catch(() => console.log('Mobile video autoplay blocked'));
                     }}
                 />
+                
+                {/* Black Overlay - covers only the video */}
+                <div className="absolute inset-0 bg-black/30 z-10" />
             </motion.div>
 
 
@@ -199,27 +202,7 @@ export default function HeroSection() {
                     </Button>
                 </motion.div>
 
-                {/* Scroll Indicator */}
-                <motion.div
-                    variants={itemVariants}
-                    className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
-                >
-                    <motion.div
-                        animate={{ y: [0, 10, 0] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                        className="flex flex-col items-center text-white/60 hover:text-white/80 transition-colors cursor-pointer"
-                        onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}
-                    >
-                        <span className="text-sm font-medium mb-2">Scroll to explore</span>
-                        <div className="w-6 h-10 border-2 border-white/40 rounded-full flex justify-center">
-                            <motion.div
-                                animate={{ y: [0, 12, 0] }}
-                                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                                className="w-1 h-3 bg-white/60 rounded-full mt-2"
-                            />
-                        </div>
-                    </motion.div>
-                </motion.div>
+
             </motion.div>
 
             {/* Loading State */}
