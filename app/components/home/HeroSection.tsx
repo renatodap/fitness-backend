@@ -16,7 +16,7 @@ export default function HeroSection() {
         muted
         loop
         playsInline
-        src="/hero-video.mp4"
+        src="/hero-video2.mp4"
         className="absolute inset-0 w-full h-full object-cover hidden sm:block z-[-2]"
         poster="/fallback-image.png"
       />
