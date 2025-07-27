@@ -33,7 +33,7 @@ const SECTIONS: Section[] = [
     ],
     image: '/all-about-food.png',
     align: 'left',
-    bgClass: 'bg-white',
+    bgClass: 'bg-white border-b border-neutral-100',
   },
   {
     id: 'liteclient',
@@ -45,7 +45,7 @@ const SECTIONS: Section[] = [
     ],
     image: '/acc-lite-client.png',
     align: 'right',
-    bgClass: 'bg-neutral-50',
+    bgClass: 'bg-neutral-25 border-b border-neutral-100',
   },
   {
     id: 'ai',
@@ -70,7 +70,7 @@ const SECTIONS: Section[] = [
     ],
     image: '/ai-icon.svg',
     align: 'center',
-    bgClass: 'bg-white',
+    bgClass: 'bg-white border-b border-neutral-100',
   },
   {
     id: 'tennis',
@@ -79,7 +79,7 @@ const SECTIONS: Section[] = [
     ctas: [{ href: '/tennis', label: 'View Season Schedule', variant: 'solid' }],
     image: '/tennis.jpg',
     align: 'left',
-    bgClass: 'bg-neutral-50',
+    bgClass: 'bg-neutral-25 border-b border-neutral-100',
   },
   {
     id: 'music',

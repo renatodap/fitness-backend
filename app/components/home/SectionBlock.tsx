@@ -164,7 +164,7 @@ export default function SectionBlock({
             <div className="relative group w-full max-w-lg">
               {image.endsWith('.svg') ? (
                 <motion.div 
-                  className="p-8 sm:p-12 bg-white rounded-2xl border border-neutral-200 shadow-2xl"
+                  className="p-8 sm:p-12 bg-white rounded-2xl border border-neutral-200 shadow-lg"
                   whileHover={{ scale: 1.02, borderColor: '#14b8a6' }}
                   transition={{ duration: 0.2 }}
                 >
@@ -177,13 +177,16 @@ export default function SectionBlock({
                   />
                 </motion.div>
               ) : (
-                <motion.img
-                  src={image}
-                  alt={title}
-                  className="rounded-xl shadow-2xl w-full h-auto border border-neutral-200"
-                  whileHover={{ scale: 1.02 }}
-                  transition={{ duration: 0.3 }}
-                />
+                <motion.div className="relative overflow-hidden rounded-xl shadow-lg border border-neutral-200">
+                  <Image
+                    src={image}
+                    alt={title}
+                    width={600}
+                    height={400}
+                    className="w-full h-auto object-cover"
+                    priority={false}
+                  />
+                </motion.div>
               )}
             </div>
           </motion.div>
