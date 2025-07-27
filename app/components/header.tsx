@@ -8,10 +8,10 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="w-full flex justify-center border-b border-gray-200 py-4 px-6 sticky top-0 bg-white z-50">
-      <nav className="max-w-5xl w-full flex flex-col sm:flex-row sm:justify-between items-center text-sm font-medium">
+    <header className="w-full flex justify-center border-b border-gray-200 py-4 sticky top-0 bg-white z-50">
+      <nav className="max-w-5xl w-full flex flex-col sm:flex-row sm:justify-between items-center text-sm font-medium pl-4 md:pl-0">
         <div className="flex justify-between w-full sm:w-auto items-center">
-          <Link href="/" className="font-semibold text-lg tracking-tight">Renato DAP</Link>
+          <Link href="/" className="font-semibold text-lg tracking-tight ml-4 md:ml-0">Renato DAP</Link>
           <button
             className="sm:hidden text-2xl"
             onClick={() => setMenuOpen(!menuOpen)}

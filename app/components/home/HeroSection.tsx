@@ -59,10 +59,10 @@ export default function HeroSection() {
           transition={{ duration: 0.6, ease: 'easeOut', delay: 0.4 }}
           className="flex flex-col sm:flex-row gap-4 justify-center"
         >
-          <Button href="/software" variant="solid">
+          <Button href="/software" variant="solid" color="white">
             View Projects
           </Button>
-          <Button href="/photo" variant="outline">
+          <Button href="/photo" variant="solid" color="white">
             Watch Performances
           </Button>
         </motion.div>

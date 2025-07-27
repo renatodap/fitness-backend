@@ -7,7 +7,7 @@ import Image from 'next/image';
 
 export default function AISection() {
   return (
-    <section className="bg-white py-16 px-4 sm:px-6 overflow-hidden text-center flex flex-col items-center">
+    <section className="bg-white py-16 overflow-hidden text-center flex flex-col items-center">
       {/* SVG or Icon */}
       <div className="mb-6">
         <Image

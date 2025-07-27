@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="light">
       <body className={inter.className + " bg-white text-black overflow-x-hidden"}>
         <Header />
-        <main className="w-full px-6 py-12">{children}</main>
+        <main className="w-full pb-12">{children}</main>
       </body>
     </html>
   );
