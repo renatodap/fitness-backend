@@ -118,7 +118,7 @@ export default function HomePage() {
       <Hero />
 
       {/* ===== SECTION SCROLL EXPERIENCE ===== */}
-      <div className="relative z-10">
+      <div className="relative z-10 bg-white">
         {SECTIONS.map((section, i) => {
           const sectionY = useTransform(
             scrollYProgress,
