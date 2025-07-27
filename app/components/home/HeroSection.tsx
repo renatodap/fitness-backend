@@ -147,27 +147,27 @@ export default function HeroSection() {
                 {/* Main Headline */}
                 <motion.h1
                     variants={itemVariants}
-                    className="text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-heading font-bold leading-tight sm:leading-[0.9] tracking-tight text-white mb-4 sm:mb-6"
+                    className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold leading-tight text-white mb-4 sm:mb-6"
                 >
-                    I build tools{' '}
+                    i.build.tools{' '}
                     <br className="hidden sm:block" />
                     <motion.span
                         className="gradient-text inline-block"
                         whileHover={{ scale: 1.05 }}
                         transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
-                        with rhythm and logic.
+                        with.rhythm.and.logic;
                     </motion.span>
                 </motion.h1>
 
                 {/* Subtitle */}
                 <motion.p
                     variants={itemVariants}
-                    className="text-base sm:text-lg md:text-xl lg:text-2xl text-neutral-200 mb-8 sm:mb-12 font-body max-w-2xl mx-auto leading-relaxed"
+                    className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-300 mb-8 sm:mb-12 font-body max-w-2xl mx-auto leading-relaxed px-4 sm:px-0"
                 >
                     I'm{' '}
                     <motion.span
-                        className="text-white font-semibold"
+                        className="text-white font-medium"
                         whileHover={{ color: "#2dd4bf" }}
                         transition={{ duration: 0.2 }}
                     >
@@ -179,7 +179,7 @@ export default function HeroSection() {
                 {/* CTA Buttons */}
                 <motion.div
                     variants={itemVariants}
-                    className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center w-full max-w-md sm:max-w-none mx-auto"
+                    className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center w-full max-w-sm sm:max-w-none mx-auto px-4 sm:px-0"
                 >
                     <Button
                         href="/software"
@@ -187,18 +187,18 @@ export default function HeroSection() {
                         color="gradient"
                         size="md"
                         shimmer={true}
-                        className="w-full sm:w-auto"
+                        className="w-full sm:w-auto text-sm sm:text-base"
                     >
-                        View Projects
+                        view.projects
                     </Button>
                     <Button
-                        href="/photo"
+                        href="/music"
                         variant="outline"
                         color="white"
                         size="md"
-                        className="w-full sm:w-auto"
+                        className="w-full sm:w-auto text-sm sm:text-base"
                     >
-                        Watch Performances
+                        watch.performances
                     </Button>
                 </motion.div>
 

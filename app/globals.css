@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Geist+Sans:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
 
 /* ===== CSS VARIABLES ===== */
 :root {
@@ -33,8 +33,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: 'Inter', 'Geist Sans', system-ui, -apple-system, sans-serif;
-  --font-heading: 'Geist Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
 }
 
 /* ===== BASE STYLES ===== */
@@ -61,15 +61,29 @@ body {
 /* ===== TYPOGRAPHY ===== */
 .font-heading {
   font-family: var(--font-heading);
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-transform: lowercase;
 }
 
 .font-body {
   font-family: var(--font-sans);
   font-weight: 400;
-  line-height: 1.7;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+}
+
+/* Mobile-first responsive typography */
+@media (max-width: 640px) {
+  .font-heading {
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+  
+  .font-body {
+    line-height: 1.5;
+  }
 }
 
 /* ===== PREMIUM ANIMATIONS ===== */

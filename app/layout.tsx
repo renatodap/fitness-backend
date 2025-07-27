@@ -1,9 +1,19 @@
 // app/layout.tsx
 import "./globals.css";
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import Header from "./components/header"; // 👈 import client component
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: '--font-inter',
+  display: 'swap'
+});
+
+const jetbrainsMono = JetBrains_Mono({ 
+  subsets: ["latin"],
+  variable: '--font-jetbrains-mono',
+  display: 'swap'
+});
 
 export const metadata = {
   title: "Renato DAP",
@@ -13,9 +23,9 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="light">
-      <body className={inter.className + " bg-black text-white overflow-x-hidden"}>
+      <body className={`${inter.variable} ${jetbrainsMono.variable} bg-black text-white overflow-x-hidden min-h-screen`}>
         <Header />
-        <main className="w-full pb-12">{children}</main>
+        <main className="w-full">{children}</main>
       </body>
     </html>
   );
