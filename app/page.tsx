@@ -11,7 +11,7 @@ type Align = "center" | "left" | "right";
 type Section = {
   id: string;
   title: string;
-  description: string;
+  description: string | React.ReactNode;
   ctas: Array<{ href: string; label: string; variant: 'solid' | 'outline' }>;
   // Or, if you prefer to import CTA type from SectionBlock:
   // import type { CTA } from './components/home/SectionBlock';
@@ -19,6 +19,7 @@ type Section = {
   image: string;
   align: Align;
   bgClass: string;
+  overlaySvg?: React.ReactNode;
 };
 
 const SECTIONS: Section[] = [
@@ -48,12 +49,45 @@ const SECTIONS: Section[] = [
   },
   {
     id: 'ai',
-    title: 'AI Coursework - Fall 2025',
-    description: 'I am diving deep into Machine Learning and AI Theory this fall. Real math, real models, real understanding - not just tools, but how they work.',
-    ctas: [{ href: '/ai-courses', label: 'See Course Plan', variant: 'solid' }],
+    title: 'AI Coursework – Fall 2025',
+    description: (
+      <div className="space-y-4">
+        <p>
+          I’m studying the foundations that power modern AI: from deep learning theory to data-driven reasoning systems.
+        </p>
+        <ul className="list-disc pl-5 space-y-1 text-left">
+          <li>
+            <strong>CSSE 313 – Artificial Intelligence</strong>: Symbolic reasoning, pattern recognizers, and beneficial AI system design.
+          </li>
+          <li>
+            <strong>CSSE/MA 416 – Deep Learning</strong>: CNNs, optimization, backpropagation, regularization, and transfer learning.
+          </li>
+        </ul>
+      </div>
+    ),
+    ctas: [
+      { href: '/ai-courses', label: 'See Course Plan', variant: 'solid' },
+    ],
     image: '/ai-icon.svg',
     align: 'center',
     bgClass: 'from-rose-50/30 via-white to-orange-50/30',
+    overlaySvg: (
+      <svg
+        viewBox="0 0 100 100"
+        className="w-48 h-48 text-neutral-400"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.2}
+      >
+        <circle cx="50" cy="50" r="45" />
+        <path d="M50 10 L50 90 M10 50 L90 50" />
+        <circle cx="50" cy="50" r="3" fill="currentColor" />
+        <circle cx="25" cy="25" r="2" fill="currentColor" />
+        <circle cx="75" cy="25" r="2" fill="currentColor" />
+        <circle cx="25" cy="75" r="2" fill="currentColor" />
+        <circle cx="75" cy="75" r="2" fill="currentColor" />
+      </svg>
+    ),
   },
   {
     id: 'tennis',
@@ -86,16 +120,16 @@ export default function HomePage() {
   const opacity = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [1, 0.8, 0.8, 1]);
 
   return (
-    <main ref={containerRef} className="w-screen overflow-x-hidden relative">
+    <main ref={containerRef} className="w-full min-h-screen overflow-x-hidden relative">
       {/* Animated Background */}
       <motion.div 
         className="fixed inset-0 z-[-1] pointer-events-none"
         style={{ y: backgroundY, opacity }}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-neutral-50 via-white to-teal-50/20" />
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-gradient-to-br from-teal-500/5 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 left-1/4 w-80 h-80 bg-gradient-to-br from-rose-500/5 to-transparent rounded-full blur-3xl" />
-        <div className="absolute top-3/4 right-1/3 w-64 h-64 bg-gradient-to-br from-orange-500/5 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-1/4 right-1/4 w-48 h-48 sm:w-80 sm:h-80 lg:w-96 lg:h-96 bg-gradient-to-br from-teal-500/5 to-transparent rounded-full blur-2xl sm:blur-3xl" />
+        <div className="absolute bottom-1/4 left-1/4 w-40 h-40 sm:w-64 sm:h-64 lg:w-80 lg:h-80 bg-gradient-to-br from-rose-500/5 to-transparent rounded-full blur-2xl sm:blur-3xl" />
+        <div className="absolute top-3/4 right-1/3 w-32 h-32 sm:w-48 sm:h-48 lg:w-64 lg:h-64 bg-gradient-to-br from-orange-500/5 to-transparent rounded-full blur-xl sm:blur-3xl" />
       </motion.div>
 
       {/* ===== HERO VIDEO SECTION ===== */}

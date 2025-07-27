@@ -12,9 +12,9 @@ export default function HeroSection() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   
   const { scrollY } = useScroll();
-  const y = useTransform(scrollY, [0, 800], [0, 400]);
-  const opacity = useTransform(scrollY, [0, 400], [1, 0]);
-  const scale = useTransform(scrollY, [0, 400], [1, 1.1]);
+  const y = useTransform(scrollY, [0, 1200], [0, 600]);
+  const opacity = useTransform(scrollY, [0, 800], [1, 0]);
+  const scale = useTransform(scrollY, [0, 800], [1, 1.1]);
   
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -81,7 +81,7 @@ export default function HeroSection() {
   return (
     <motion.section 
       ref={sectionRef}
-      className="relative w-full h-[100vh] min-h-[600px] overflow-hidden flex items-center justify-center text-center"
+      className="relative w-full h-[100vh] min-h-[500px] sm:min-h-[600px] overflow-hidden flex items-center justify-center text-center"
       style={{ y, opacity }}
     >
       {/* Enhanced Video Background */}
@@ -132,20 +132,20 @@ export default function HeroSection() {
 
       {/* Dynamic Gradient Overlays */}
       <div className="absolute inset-0 z-[-2]">
-        {/* Primary gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/30 to-black/70" />
+        {/* Primary gradient - more subtle */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/20 to-black/60" />
         
-        {/* Animated gradient accent */}
+        {/* Animated gradient accent - centered and subtle */}
         <motion.div 
-          className="absolute inset-0 bg-gradient-to-br from-teal-500/20 via-transparent to-rose-500/20"
+          className="absolute inset-0 bg-gradient-radial from-transparent via-teal-500/10 to-transparent"
           animate={{
             background: [
-              'linear-gradient(to bottom right, rgba(20, 184, 166, 0.2), transparent, rgba(251, 113, 133, 0.2))',
-              'linear-gradient(to bottom right, rgba(251, 113, 133, 0.2), transparent, rgba(251, 146, 60, 0.2))',
-              'linear-gradient(to bottom right, rgba(251, 146, 60, 0.2), transparent, rgba(20, 184, 166, 0.2))'
+              'radial-gradient(circle at center, transparent 30%, rgba(20, 184, 166, 0.1) 50%, transparent 70%)',
+              'radial-gradient(circle at center, transparent 30%, rgba(251, 113, 133, 0.08) 50%, transparent 70%)',
+              'radial-gradient(circle at center, transparent 30%, rgba(251, 146, 60, 0.08) 50%, transparent 70%)'
             ]
           }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
         />
         
         {/* Vignette effect */}
@@ -168,19 +168,19 @@ export default function HeroSection() {
 
       {/* Main Content */}
       <motion.div 
-        className="relative z-10 max-w-4xl px-6 sm:px-8"
+        className="relative z-10 max-w-4xl px-4 sm:px-6 lg:px-8"
         variants={containerVariants}
         initial="hidden"
         animate={isLoaded ? "visible" : "hidden"}
         style={{
-          x: useTransform(mouseX, [-1, 1], [-10, 10]),
-          y: useTransform(mouseY, [-1, 1], [-10, 10])
+          x: useTransform(mouseX, [-1, 1], [-5, 5]),
+          y: useTransform(mouseY, [-1, 1], [-5, 5])
         }}
       >
         {/* Main Headline */}
         <motion.h1
           variants={itemVariants}
-          className="text-5xl sm:text-6xl lg:text-7xl font-heading font-bold leading-[0.9] tracking-tight text-white mb-6"
+          className="text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-heading font-bold leading-tight sm:leading-[0.9] tracking-tight text-white mb-4 sm:mb-6"
         >
           I build tools{' '}
           <br className="hidden sm:block" />
@@ -196,7 +196,7 @@ export default function HeroSection() {
         {/* Subtitle */}
         <motion.p
           variants={itemVariants}
-          className="text-xl sm:text-2xl text-neutral-200 mb-12 font-body max-w-2xl mx-auto leading-relaxed"
+          className="text-base sm:text-lg md:text-xl lg:text-2xl text-neutral-200 mb-8 sm:mb-12 font-body max-w-2xl mx-auto leading-relaxed"
         >
           I'm{' '}
           <motion.span 
@@ -212,14 +212,15 @@ export default function HeroSection() {
         {/* CTA Buttons */}
         <motion.div
           variants={itemVariants}
-          className="flex flex-col sm:flex-row gap-6 justify-center items-center"
+          className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center w-full max-w-md sm:max-w-none mx-auto"
         >
           <Button 
             href="/software" 
             variant="solid" 
             color="gradient" 
-            size="lg"
+            size="md"
             shimmer={true}
+            className="w-full sm:w-auto"
           >
             View Projects
           </Button>
@@ -227,7 +228,8 @@ export default function HeroSection() {
             href="/photo" 
             variant="outline" 
             color="white" 
-            size="lg"
+            size="md"
+            className="w-full sm:w-auto"
           >
             Watch Performances
           </Button>

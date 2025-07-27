@@ -86,16 +86,16 @@ export default function Button({
   switch (color) {
     case "white":
       if (variant === "solid") {
-        colorStyles = "bg-white text-neutral-900 border border-neutral-200 shadow-lg";
-        hoverStyles = "hover:bg-neutral-50 hover:shadow-xl hover:border-neutral-300";
+        colorStyles = "bg-white text-neutral-900 border-2 border-neutral-300 shadow-xl font-semibold";
+        hoverStyles = "hover:bg-neutral-50 hover:shadow-2xl hover:border-neutral-400 hover:scale-105";
         focusStyles = "focus:ring-neutral-400";
       } else if (variant === "outline") {
-        colorStyles = "bg-transparent text-white border-2 border-white/80";
-        hoverStyles = "hover:bg-white hover:text-neutral-900 hover:border-white";
+        colorStyles = "bg-white/10 backdrop-blur-sm text-white border-2 border-white font-semibold shadow-lg";
+        hoverStyles = "hover:bg-white hover:text-neutral-900 hover:border-white hover:shadow-xl";
         focusStyles = "focus:ring-white";
       } else {
-        colorStyles = "bg-transparent text-white";
-        hoverStyles = "hover:bg-white/10";
+        colorStyles = "bg-white/20 backdrop-blur-sm text-white font-semibold";
+        hoverStyles = "hover:bg-white/30";
         focusStyles = "focus:ring-white";
       }
       break;

@@ -6,7 +6,9 @@
       "dom.iterable",
       "esnext"
     ],
-    "types":["react", "react-dom"],
+    "types": ["react", "react-dom"],
+    "jsx": "preserve",
+    "jsxImportSource": "react",
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -17,7 +19,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+
     "baseUrl": ".",
     "paths": {
       "@/*": [
