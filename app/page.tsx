@@ -1,6 +1,7 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { useRef } from 'react';
 import Hero from './components/home/HeroSection';
 import SectionBlock from './components/home/SectionBlock';
 import Footer from './components/home/footer';
@@ -24,90 +25,144 @@ const SECTIONS: Section[] = [
   {
     id: 'aaf',
     title: 'All About Food',
-    description:
-      'A full-stack AI-powered recipe engine that transforms images, PDFs, or text files into structured, searchable, voice-ready cooking instructions.',
+    description: 'A full-stack AI-powered recipe engine that transforms images, PDFs, or text files into structured, searchable, voice-ready cooking instructions.',
     ctas: [
       { href: '/projects/allaboutfood', label: 'See Case Study', variant: 'solid' },
       { href: 'https://github.com/renatodap/allaboutfood', label: 'View Code', variant: 'outline' },
     ],
     image: '/all-about-food.png',
     align: 'left',
-    bgClass: 'from-white to-[#fef6f9]',
+    bgClass: 'from-neutral-50 via-white to-teal-50/30',
   },
   {
     id: 'liteclient',
     title: 'Accumulate Lite Client',
-    description:
-      'A lightweight blockchain verification client, built to bridge AI and secure decentralization. Designed, architected, and documented from scratch.',
+    description: 'A lightweight blockchain verification client, built to bridge AI and secure decentralization. Designed, architected, and documented from scratch.',
     ctas: [
       { href: 'https://www.youtube.com/watch?v=your-liteclient-video', label: 'Watch the Video', variant: 'solid' },
       { href: 'https://github.com/renatodap/accumulate-liteclient', label: 'View Code', variant: 'outline' },
     ],
     image: '/acc-lite-client.png',
     align: 'right',
-    bgClass: 'from-[#fef6f9] to-[#f3f8fc]',
+    bgClass: 'from-teal-50/30 via-white to-rose-50/30',
   },
   {
     id: 'ai',
-    title: 'AI Coursework – Fall 2025',
-    description:
-      'I’m diving deep into Machine Learning and AI Theory this fall. Real math, real models, real understanding — not just tools, but how they work.',
+    title: 'AI Coursework - Fall 2025',
+    description: 'I am diving deep into Machine Learning and AI Theory this fall. Real math, real models, real understanding - not just tools, but how they work.',
     ctas: [{ href: '/ai-courses', label: 'See Course Plan', variant: 'solid' }],
     image: '/ai-icon.svg',
     align: 'center',
-    bgClass: 'from-[#f3f8fc] to-white',
+    bgClass: 'from-rose-50/30 via-white to-orange-50/30',
   },
   {
     id: 'tennis',
     title: 'Fall Tennis Season',
-    description:
-      'I compete in NCAA tennis while training 6 days a week. It’s how I stay sharp — physically, mentally, and emotionally.',
+    description: 'I compete in NCAA tennis while training 6 days a week. It is how I stay sharp - physically, mentally, and emotionally.',
     ctas: [{ href: '/tennis', label: 'View Season Schedule', variant: 'solid' }],
     image: '/tennis.jpg',
     align: 'left',
-    bgClass: 'from-white to-[#f4f7f5]',
+    bgClass: 'from-orange-50/30 via-white to-neutral-50',
   },
   {
     id: 'music',
     title: 'Live Music & Open Mic',
-    description:
-      'Performing live keeps me honest. Music gives me rhythm, presence, and the confidence to be fully seen — on stage or in front of a whiteboard.',
+    description: 'Performing live keeps me honest. Music gives me rhythm, presence, and the confidence to be fully seen - on stage or in front of a whiteboard.',
     ctas: [{ href: '/music', label: 'Watch a Performance', variant: 'solid' }],
     image: '/live.jpg',
     align: 'right',
-    bgClass: 'from-[#f4f7f5] to-[#fefefe]',
+    bgClass: 'from-neutral-50 to-white',
   },
 ];
 
 export default function HomePage() {
+  const containerRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ['start start', 'end end']
+  });
+
+  const backgroundY = useTransform(scrollYProgress, [0, 1], ['0%', '100%']);
+  const opacity = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [1, 0.8, 0.8, 1]);
+
   return (
-    <main className="w-screen overflow-x-hidden relative">
+    <main ref={containerRef} className="w-screen overflow-x-hidden relative">
+      {/* Animated Background */}
+      <motion.div 
+        className="fixed inset-0 z-[-1] pointer-events-none"
+        style={{ y: backgroundY, opacity }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-neutral-50 via-white to-teal-50/20" />
+        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-gradient-to-br from-teal-500/5 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 left-1/4 w-80 h-80 bg-gradient-to-br from-rose-500/5 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-3/4 right-1/3 w-64 h-64 bg-gradient-to-br from-orange-500/5 to-transparent rounded-full blur-3xl" />
+      </motion.div>
 
       {/* ===== HERO VIDEO SECTION ===== */}
       <Hero />
 
       {/* ===== SECTION SCROLL EXPERIENCE ===== */}
-      {SECTIONS.map((section, i) => (
-        <div
-          key={section.id}
-          className={`relative bg-gradient-to-b ${section.bgClass} transition-colors duration-1000 ease-in-out`}
-        >
-          <motion.section
-            initial={{ opacity: 0, y: 60 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: 'easeOut', delay: i * 0.05 }}
-            viewport={{ once: true }}
-          >
-            <SectionBlock
-              title={section.title}
-              description={section.description}
-              image={section.image}
-              align={section.align}
-              ctas={section.ctas}
-            />
-          </motion.section>
-        </div>
-      ))}
+      <div className="relative z-10">
+        {SECTIONS.map((section, i) => {
+          const sectionY = useTransform(
+            scrollYProgress,
+            [i / SECTIONS.length, (i + 1) / SECTIONS.length],
+            ['0%', '-10%']
+          );
+          
+          return (
+            <motion.div
+              key={section.id}
+              className={`relative bg-gradient-to-br ${section.bgClass} transition-all duration-1000 ease-in-out`}
+              style={{ y: sectionY }}
+            >
+              {/* Section divider */}
+              {i > 0 && (
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neutral-200 to-transparent" />
+              )}
+              
+              <SectionBlock
+                title={section.title}
+                description={section.description}
+                image={section.image}
+                align={section.align}
+                ctas={section.ctas}
+              />
+              
+              {/* Floating elements for visual interest */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <motion.div
+                  className="absolute top-1/4 right-1/4 w-2 h-2 bg-teal-400/30 rounded-full blur-sm"
+                  animate={{
+                    y: [0, -20, 0],
+                    opacity: [0.3, 0.7, 0.3]
+                  }}
+                  transition={{
+                    duration: 4 + i,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: i * 0.5
+                  }}
+                />
+                <motion.div
+                  className="absolute bottom-1/3 left-1/4 w-1.5 h-1.5 bg-rose-400/30 rounded-full blur-sm"
+                  animate={{
+                    y: [0, 15, 0],
+                    x: [0, 10, 0],
+                    opacity: [0.2, 0.6, 0.2]
+                  }}
+                  transition={{
+                    duration: 5 + i,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: i * 0.7
+                  }}
+                />
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
 
       <Footer />
     </main>
