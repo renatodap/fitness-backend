@@ -8,7 +8,7 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="w-full flex justify-center border-b border-gray-200 py-4 sticky top-0 bg-white z-50">
+    <header className="w-full flex justify-center py-4 sticky top-0 bg-transparent z-50">
       <nav className="max-w-5xl w-full flex flex-col lg:flex-row lg:justify-between items-center text-sm font-medium px-6">
         <div className="flex justify-between w-full lg:w-auto items-center">
           <Link href="/" className="font-semibold text-lg tracking-tight">Renato DAP</Link>
