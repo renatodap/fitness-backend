@@ -5,6 +5,7 @@
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef, useEffect, useState } from 'react';
 
+
 export function LegendaryHero() {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
@@ -27,6 +28,10 @@ export function LegendaryHero() {
     return () => clearTimeout(timer);
   }, [currentPhase]);
 
+
+
+
+
   const phases = [
     "I build systems that matter.",
     "I solve problems that scale.",
@@ -40,6 +45,8 @@ export function LegendaryHero() {
       style={{ y, opacity, scale }}
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
     >
+
+
       {/* Video Background */}
       <div className="absolute inset-0 z-[0] bg-black overflow-hidden">
         <video
@@ -57,101 +64,67 @@ export function LegendaryHero() {
         />
       </div>
       
-      {/* Floating particles */}
-      <div className="absolute inset-0 z-[1]">
-        
-        {/* Floating particles */}
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 bg-teal-400/40 rounded-full"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              y: [0, -100, 0],
-              opacity: [0, 1, 0],
-            }}
-            transition={{
-              duration: 3 + Math.random() * 2,
-              repeat: Infinity,
-              delay: Math.random() * 2,
-            }}
-          />
-        ))}
-      </div>
 
-      <div className="relative z-10 text-center space-y-12 px-6 sm:px-10 max-w-4xl mx-auto">
-        {/* Main title with staggered reveal */}
+
+      <div className="relative z-10 text-center space-y-16 px-6 sm:px-10 max-w-5xl mx-auto">
+        {/* Main title */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 0.5 }}
-          className="space-y-4"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          className="space-y-6"
         >
-          <motion.h1
-            className="text-6xl sm:text-8xl font-heading font-black text-white leading-none tracking-tighter"
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 1 }}
-          >
+          <h1 className="text-6xl sm:text-8xl font-heading font-black text-white leading-none tracking-tighter">
             SOFTWARE
-          </motion.h1>
-          <motion.h1
-            className="text-6xl sm:text-8xl font-heading font-black bg-gradient-to-r from-teal-400 via-rose-400 to-orange-400 bg-clip-text text-transparent leading-none tracking-tighter"
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 1.3 }}
-          >
+          </h1>
+          <h2 className="text-6xl sm:text-8xl font-heading font-black bg-gradient-to-r from-teal-400 via-rose-400 to-orange-400 bg-clip-text text-transparent leading-none tracking-tighter">
             THAT THINKS
-          </motion.h1>
+          </h2>
         </motion.div>
 
-        {/* Dynamic subtitle that changes */}
+        {/* Clean subtitle */}
         <motion.div
-          className="h-16 flex items-center justify-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 2 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
         >
-          <motion.p
-            key={currentPhase}
-            className="text-xl sm:text-2xl text-white font-body"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.8 }}
-          >
-            {phases[currentPhase]}
-          </motion.p>
+          <p className="text-2xl sm:text-3xl text-white/80 font-body font-light leading-relaxed">
+            Building intelligent systems that solve real problems
+          </p>
         </motion.div>
 
-        {/* What I'm Building Now - Reimagined */}
+        {/* What I'm Building Now - Clean Version */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1, delay: 3 }}
-          className="relative"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.9, ease: [0.22, 1, 0.36, 1] }}
+          className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 sm:p-10 text-left max-w-3xl mx-auto"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-teal-200/30 to-rose-200/30 rounded-2xl blur-xl" />
-          <div className="relative bg-white border border-neutral-200 rounded-2xl p-8 shadow-lg">
-            <motion.div
-              className="flex items-center space-x-3 mb-4"
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
-              <h2 className="text-lg font-heading font-bold text-black">CURRENTLY BUILDING</h2>
-            </motion.div>
-            <p className="text-neutral-700 font-body leading-relaxed">
-              Deep-diving into AST-based tooling to build a linter that enforces SOLID principles. 
-              Also architecting an AI-enabled system design guide that will revolutionize how students learn software architecture.
+          <div className="space-y-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <h3 className="text-xl font-heading font-semibold text-white">
+                Currently Building
+              </h3>
+            </div>
+            <p className="text-lg text-white/90 leading-relaxed font-light">
+              <span className="text-teal-400 font-medium">Accumulate Lite Client</span> — 
+              A next-generation blockchain protocol enabling instant, secure transactions 
+              with zero-knowledge proofs.
             </p>
+            <div className="flex flex-wrap gap-2">
+              <span className="px-3 py-1 bg-white/10 text-white/70 rounded-full text-sm">
+                Blockchain
+              </span>
+              <span className="px-3 py-1 bg-white/10 text-white/70 rounded-full text-sm">
+                Zero-Knowledge
+              </span>
+              <span className="px-3 py-1 bg-white/10 text-white/70 rounded-full text-sm">
+                Go
+              </span>
+            </div>
           </div>
         </motion.div>
-
-
       </div>
     </motion.section>
   );

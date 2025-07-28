@@ -25,27 +25,40 @@ export default function SoftwarePage() {
       ))}
 
       {/* Final Call to Action */}
-      <section className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-50 via-white to-neutral-100">
-        <div className="text-center space-y-8 px-6 sm:px-10">
-          <h2 className="text-4xl sm:text-6xl font-heading font-black text-neutral-900">
-            Ready to build something legendary?
-          </h2>
-          <p className="text-xl text-neutral-600 font-body max-w-2xl mx-auto">
-            These projects represent my journey in software engineering. Each one taught me something new about building systems that scale, solve real problems, and make an impact.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4 pt-8">
+      <section className="min-h-screen flex items-center justify-center bg-white border-t border-neutral-100">
+        <div className="text-center space-y-12 px-6 sm:px-10 max-w-4xl mx-auto">
+          <div className="space-y-6">
+            <h2 className="text-5xl sm:text-6xl font-heading font-black text-neutral-900 leading-tight">
+              Let's build something
+              <br />
+              <span className="bg-gradient-to-r from-teal-600 to-rose-600 bg-clip-text text-transparent">
+                extraordinary
+              </span>
+            </h2>
+            <p className="text-xl text-neutral-500 font-body font-light leading-relaxed max-w-2xl mx-auto">
+              Every project tells a story of problem-solving, innovation, and growth. 
+              Ready to see what we can create together?
+            </p>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row justify-center gap-4 pt-8">
             <a 
               href="/professional" 
-              className="px-8 py-4 bg-teal-500 text-white font-heading font-bold rounded-full hover:bg-teal-600 transition-colors"
+              className="px-8 py-4 bg-neutral-900 text-white font-heading font-medium rounded-lg hover:bg-neutral-800 transition-all duration-200 hover:scale-105"
             >
               View My Experience
             </a>
             <a 
               href="mailto:your-email@example.com" 
-              className="px-8 py-4 border border-neutral-300 text-neutral-700 font-heading font-bold rounded-full hover:bg-neutral-100 transition-colors"
+              className="px-8 py-4 border border-neutral-200 text-neutral-700 font-heading font-medium rounded-lg hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200"
             >
-              Let's Connect
+              Get In Touch
             </a>
+          </div>
+          
+          {/* Subtle decorative element */}
+          <div className="pt-16">
+            <div className="w-24 h-px bg-gradient-to-r from-transparent via-neutral-300 to-transparent mx-auto"></div>
           </div>
         </div>
       </section>

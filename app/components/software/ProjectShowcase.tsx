@@ -29,10 +29,8 @@ export function ProjectShowcase({ project, index }: ProjectShowcaseProps) {
     <motion.section
       ref={ref}
       style={{ opacity, scale }}
-      className="min-h-screen flex items-center justify-center py-20 px-6 sm:px-10 relative overflow-hidden"
+      className="min-h-screen flex items-center justify-center py-20 px-6 sm:px-10 relative overflow-hidden bg-white"
     >
-      {/* Background gradient based on project type */}
-      <div className={`absolute inset-0 -z-10 ${getProjectGradient(project.iconType)}`} />
       
       <div className="max-w-7xl mx-auto w-full">
         <div className={`grid grid-cols-1 lg:grid-cols-2 gap-16 items-center ${isEven ? '' : 'lg:grid-flow-col-dense'}`}>
@@ -49,12 +47,12 @@ export function ProjectShowcase({ project, index }: ProjectShowcaseProps) {
                 transition={{ duration: 0.8, delay: 0.2 }}
                 className="flex items-center space-x-4"
               >
-                <span className="text-6xl font-heading font-black text-neutral-200">
+                <span className="text-5xl font-heading font-black text-neutral-100">
                   {String(index + 1).padStart(2, '0')}
                 </span>
                 <div className="flex space-x-2">
-                  {project.tags.map(tag => (
-                    <span key={tag} className="px-3 py-1 text-xs font-medium bg-white border border-neutral-300 rounded-full text-neutral-800 shadow-sm">
+                  {project.tags.slice(0, 2).map(tag => (
+                    <span key={tag} className="px-3 py-1 text-xs font-medium bg-neutral-100 rounded-full text-neutral-700">
                       {tag}
                     </span>
                   ))}
@@ -65,7 +63,7 @@ export function ProjectShowcase({ project, index }: ProjectShowcaseProps) {
                 initial={{ opacity: 0, x: isEven ? -50 : 50 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.3 }}
-                className="text-4xl sm:text-5xl font-heading font-black text-black leading-tight"
+                className="text-4xl sm:text-5xl font-heading font-black text-neutral-900 leading-tight"
               >
                 {project.title}
               </motion.h2>
@@ -74,7 +72,7 @@ export function ProjectShowcase({ project, index }: ProjectShowcaseProps) {
                 initial={{ opacity: 0, x: isEven ? -50 : 50 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
-                className="text-lg text-neutral-800 font-body leading-relaxed"
+                className="text-lg text-neutral-600 font-body leading-relaxed max-w-lg"
               >
                 {project.description}
               </motion.p>
@@ -86,18 +84,13 @@ export function ProjectShowcase({ project, index }: ProjectShowcaseProps) {
                 className="flex flex-wrap gap-3 pt-4"
               >
                 {project.links?.page && (
-                  <Button href={project.links.page} variant="solid" className="bg-teal-500 text-white hover:bg-teal-600">
-                    Deep Dive
+                  <Button href={project.links.page} variant="solid" className="bg-neutral-900 text-white hover:bg-neutral-800 transition-colors">
+                    View Project
                   </Button>
                 )}
                 {project.links?.github && (
-                  <Button href={project.links.github} variant="outline" className="border-neutral-300 text-neutral-700 hover:bg-neutral-100">
-                    View Code
-                  </Button>
-                )}
-                {project.links?.video && (
-                  <Button href={project.links.video} variant="outline" className="border-neutral-300 text-neutral-700 hover:bg-neutral-100">
-                    Watch Demo
+                  <Button href={project.links.github} variant="outline" className="border-neutral-200 text-neutral-600 hover:bg-neutral-50 transition-colors">
+                    Code
                   </Button>
                 )}
               </motion.div>
@@ -113,7 +106,7 @@ export function ProjectShowcase({ project, index }: ProjectShowcaseProps) {
               initial={{ opacity: 0, scale: 0.8 }}
               whileInView={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1, delay: 0.3 }}
-              className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl"
+              className="relative aspect-video rounded-xl overflow-hidden shadow-lg border border-neutral-100"
             >
               {project.media[0].type === 'video' ? (
                 <iframe
@@ -131,10 +124,7 @@ export function ProjectShowcase({ project, index }: ProjectShowcaseProps) {
                 />
               )}
               
-              {/* Floating project-specific elements */}
-              <div className="absolute inset-0 pointer-events-none">
-                {renderProjectElements(project.iconType)}
-              </div>
+
             </motion.div>
           </motion.div>
         </div>
