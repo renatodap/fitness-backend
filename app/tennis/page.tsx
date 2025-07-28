@@ -4,15 +4,28 @@ import Button from "../components/button";
 
 export default function Tennis() {
   return (
-    <div className="space-y-32">
+    <div className="space-y-32 bg-white text-black">
       {/* Hero Section */}
-      <section className="relative flex flex-col items-center text-center pt-8 pb-16">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <h1 className="text-5xl font-bold tracking-tight">Tennis</h1>
-          <p className="text-xl text-neutral-600 max-w-2xl mx-auto leading-relaxed">
-            A tennis journey culminating in team leadership. From competitive play 
-            to captaining the Rose-Hulman Men's Tennis Team.
-          </p>
+      <section className="relative flex flex-col items-center justify-center min-h-screen px-4 sm:px-6">
+        <div className="absolute inset-0 bg-gradient-to-br from-teal-100/20 via-white to-rose-100/20" />
+        <div className="relative max-w-6xl mx-auto text-center space-y-12">
+          <div className="space-y-6">
+            <h1 className="font-heading text-6xl sm:text-8xl font-bold tracking-tight">
+              Tennis
+            </h1>
+            <p className="font-body text-xl sm:text-2xl text-neutral-700 max-w-3xl mx-auto leading-relaxed">
+              A tennis journey culminating in team leadership. From competitive play 
+              to captaining the Rose-Hulman Men's Tennis Team in 2025-26.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-8">
+            <Button href="#captain" variant="solid">
+              Team Captain
+            </Button>
+            <Button href="#journey" variant="outline">
+              Tennis Journey
+            </Button>
+          </div>
         </div>
       </section>
 

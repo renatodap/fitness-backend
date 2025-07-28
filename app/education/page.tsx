@@ -6,13 +6,26 @@ export default function Education() {
   return (
     <div className="space-y-32">
       {/* Hero Section */}
-      <section className="relative flex flex-col items-center text-center pt-8 pb-16">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <h1 className="text-5xl font-bold tracking-tight">Education</h1>
-          <p className="text-xl text-neutral-600 max-w-2xl mx-auto leading-relaxed">
-            Formal education in computer science, building a foundation in 
-            algorithms, systems, and computational thinking.
-          </p>
+      <section className="relative flex flex-col items-center justify-center min-h-screen px-4 sm:px-6">
+        <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 via-transparent to-rose-500/5" />
+        <div className="relative max-w-6xl mx-auto text-center space-y-12">
+          <div className="space-y-6">
+            <h1 className="font-heading text-6xl sm:text-8xl font-bold tracking-tight">
+              Education
+            </h1>
+            <p className="font-body text-xl sm:text-2xl text-neutral-600 max-w-3xl mx-auto leading-relaxed">
+              Formal education in computer science at Rose-Hulman, building a foundation in 
+              algorithms, systems, and computational thinking while exploring AI and self-directed learning.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-8">
+            <Button href="#rose-hulman" variant="solid">
+              Rose-Hulman
+            </Button>
+            <Button href="#self-learning" variant="outline">
+              Self-Directed Learning
+            </Button>
+          </div>
         </div>
       </section>
 

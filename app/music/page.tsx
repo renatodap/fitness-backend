@@ -4,15 +4,28 @@ import Button from "../components/button";
 
 export default function Music() {
   return (
-    <div className="space-y-32">
+    <div className="space-y-32 bg-white text-black">
       {/* Hero Section */}
-      <section className="relative flex flex-col items-center text-center pt-8 pb-16">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <h1 className="text-5xl font-bold tracking-tight">Music</h1>
-          <p className="text-xl text-neutral-600 max-w-2xl mx-auto leading-relaxed">
-            Creating original music and covers across multiple instruments. 
-            From bedroom recordings to live performances, exploring rhythm and melody.
-          </p>
+      <section className="relative flex flex-col items-center justify-center min-h-screen px-4 sm:px-6">
+        <div className="absolute inset-0 bg-gradient-to-br from-teal-100/20 via-white to-rose-100/20" />
+        <div className="relative max-w-6xl mx-auto text-center space-y-12">
+          <div className="space-y-6">
+            <h1 className="font-heading text-6xl sm:text-8xl font-bold tracking-tight">
+              Music
+            </h1>
+            <p className="font-body text-xl sm:text-2xl text-neutral-700 max-w-3xl mx-auto leading-relaxed">
+              Creating original music and covers across multiple instruments. 
+              From bedroom recordings to live performances, exploring rhythm and melody.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-8">
+            <Button href="#streaming" variant="solid">
+              Listen Now
+            </Button>
+            <Button href="#performances" variant="outline">
+              Live Performances
+            </Button>
+          </div>
         </div>
       </section>
 

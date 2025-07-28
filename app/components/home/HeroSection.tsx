@@ -81,12 +81,12 @@ export default function HeroSection() {
     return (
         <motion.section
             ref={sectionRef}
-            className="relative w-full h-[100vh] min-h-[500px] sm:min-h-[600px] overflow-hidden flex items-center justify-center text-center"
+            className="relative z-10 w-full h-[100vh] min-h-[500px] sm:min-h-[600px] overflow-hidden flex items-center justify-center text-center"
             style={{ y, opacity }}
         >
             {/* Enhanced Video Background */}
             <motion.div
-                className="absolute inset-0 z-[-3] overflow-hidden"
+                className="absolute inset-0 z-[0] bg-black overflow-hidden"
                 style={{ scale }}
             >
                 {/* Desktop Video */}

@@ -4,175 +4,107 @@ import Button from "../components/button";
 
 export default function Professional() {
   return (
-    <div className="space-y-32">
+    <div className="space-y-32 bg-white text-black">
       {/* Hero Section */}
-      <section className="relative flex flex-col items-center text-center pt-8 pb-16">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <h1 className="text-5xl font-bold tracking-tight">Professional</h1>
-          <p className="text-xl text-neutral-600 max-w-2xl mx-auto leading-relaxed">
-            Building at the intersection of technology and innovation. 
-            From blockchain infrastructure to full-stack development.
-          </p>
+      <section className="relative flex flex-col items-center justify-center min-h-screen px-4 sm:px-6">
+        <div className="absolute inset-0 bg-gradient-to-br from-teal-100/20 via-white to-rose-100/20" />
+        <div className="relative max-w-6xl mx-auto text-center space-y-12">
+          <div className="space-y-6">
+            <h1 className="font-heading text-6xl sm:text-8xl font-bold tracking-tight">
+              Professional
+            </h1>
+            <p className="font-body text-xl sm:text-2xl text-neutral-700 max-w-3xl mx-auto leading-relaxed">
+              Crafting scalable solutions at the intersection of technology and innovation. From distributed systems to user experiences that matter.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-8">
+            <Button href="#resume" variant="solid">
+              View Resume
+            </Button>
+            <Button href="#experience" variant="outline">
+              Explore Journey
+            </Button>
+          </div>
         </div>
       </section>
 
-      {/* Current Role Section */}
-      <section className="relative bg-gradient-to-b from-teal-50 to-white py-20 px-4 sm:px-6">
+      {/* Resume Section */}
+      <section id="resume" className="relative py-20 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center space-y-6 mb-16">
-            <h2 className="text-3xl font-bold tracking-tight">Current Focus</h2>
-            <p className="text-neutral-600 text-lg max-w-2xl mx-auto">
-              What I'm building and contributing to right now
+            <h2 className="font-heading text-4xl font-bold tracking-tight">Resume & Experience</h2>
+            <p className="font-body text-neutral-600 text-lg max-w-2xl mx-auto">
+              A comprehensive overview of my professional journey and technical expertise
             </p>
           </div>
-          
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+
+          <div className="grid lg:grid-cols-2 gap-12">
+            {/* Resume Download */}
+            <div className="bg-white rounded-2xl p-8 border border-neutral-200 shadow">
+              <div className="space-y-6">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
+                    <svg className="w-6 h-6 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-heading text-xl font-semibold">Download Resume</h3>
+                    <p className="text-neutral-500 text-sm">Latest version • Updated January 2025</p>
+                  </div>
+                </div>
+                <p className="text-neutral-700 leading-relaxed">
+                  Get the complete overview of my technical skills, work experience, and educational background in a clean, professional format.
+                </p>
+                <Button href="/resume.pdf" variant="solid" className="w-full">
+                  Download PDF Resume
+                </Button>
+              </div>
+            </div>
+
+            {/* Quick Stats */}
             <div className="space-y-6">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <h3 className="text-2xl font-semibold">Software Engineer</h3>
-                  <p className="text-teal-600 font-medium">[Company Name]</p>
-                  <p className="text-neutral-500">[Duration] • [Location]</p>
-                </div>
-                <div className="text-right">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-teal-100 text-teal-800">
-                    Current
-                  </span>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <p className="text-neutral-700 leading-relaxed">
-                  [Brief description of current role and key responsibilities]
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">Technology Stack</span>
-                  <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">Key Skills</span>
-                  <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">Domain Expertise</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Experience Timeline */}
-      <section className="py-20 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center space-y-6 mb-16">
-            <h2 className="text-3xl font-bold tracking-tight">Experience</h2>
-            <p className="text-neutral-600 text-lg max-w-2xl mx-auto">
-              A timeline of professional growth and contributions
-            </p>
-          </div>
-
-          <div className="space-y-12">
-            {/* Experience Item 1 */}
-            <div className="relative pl-8 border-l-2 border-gray-200">
-              <div className="absolute w-4 h-4 bg-teal-500 rounded-full -left-2 top-0"></div>
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h3 className="text-xl font-semibold">[Position Title]</h3>
-                    <p className="text-teal-600 font-medium">[Company Name]</p>
+              <div className="bg-white rounded-2xl p-6 border border-neutral-200 shadow">
+                <h4 className="font-heading text-lg font-semibold mb-4">Quick Overview</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <div className="font-heading text-2xl font-bold text-teal-600">4+</div>
+                    <div className="text-neutral-500 text-sm">Years Experience</div>
                   </div>
-                  <p className="text-neutral-500 text-sm">[Duration]</p>
-                </div>
-                <p className="text-neutral-700 leading-relaxed">
-                  [Description of role, key achievements, and impact]
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Skill 1</span>
-                  <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Skill 2</span>
-                  <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Skill 3</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Experience Item 2 */}
-            <div className="relative pl-8 border-l-2 border-gray-200">
-              <div className="absolute w-4 h-4 bg-gray-400 rounded-full -left-2 top-0"></div>
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h3 className="text-xl font-semibold">[Previous Position]</h3>
-                    <p className="text-teal-600 font-medium">[Previous Company]</p>
+                  <div className="text-center">
+                    <div className="font-heading text-2xl font-bold text-teal-600">15+</div>
+                    <div className="text-neutral-500 text-sm">Projects Built</div>
                   </div>
-                  <p className="text-neutral-500 text-sm">[Duration]</p>
-                </div>
-                <p className="text-neutral-700 leading-relaxed">
-                  [Description of previous role and key contributions]
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Technology</span>
-                  <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Achievement</span>
+                  <div className="text-center">
+                    <div className="font-heading text-2xl font-bold text-teal-600">8+</div>
+                    <div className="text-neutral-500 text-sm">Technologies</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-heading text-2xl font-bold text-teal-600">2026</div>
+                    <div className="text-neutral-500 text-sm">Graduation</div>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {/* Add more experience items as needed */}
-          </div>
-        </div>
-      </section>
-
-      {/* Skills & Expertise */}
-      <section className="relative bg-black text-white py-20 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center space-y-6 mb-16">
-            <h2 className="text-3xl font-bold tracking-tight">Core Expertise</h2>
-            <p className="text-gray-300 text-lg max-w-2xl mx-auto">
-              Technical skills and domain knowledge developed through hands-on experience
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-teal-400">Development</h3>
-              <ul className="space-y-2 text-gray-300">
-                <li>[Programming Language 1]</li>
-                <li>[Programming Language 2]</li>
-                <li>[Framework/Technology]</li>
-                <li>[Development Practice]</li>
-              </ul>
-            </div>
-            
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-teal-400">Infrastructure</h3>
-              <ul className="space-y-2 text-gray-300">
-                <li>[Cloud Platform]</li>
-                <li>[DevOps Tool]</li>
-                <li>[Database Technology]</li>
-                <li>[System Architecture]</li>
-              </ul>
-            </div>
-            
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-teal-400">Specialization</h3>
-              <ul className="space-y-2 text-gray-300">
-                <li>[Domain Expertise 1]</li>
-                <li>[Domain Expertise 2]</li>
-                <li>[Industry Knowledge]</li>
-                <li>[Specialized Skill]</li>
-              </ul>
             </div>
           </div>
         </div>
       </section>
 
       {/* Call to Action */}
-      <section className="py-20 px-4 sm:px-6 text-center">
-        <div className="max-w-3xl mx-auto space-y-8">
-          <h2 className="text-3xl font-bold tracking-tight">Let's Build Something</h2>
-          <p className="text-xl text-neutral-600 leading-relaxed">
-            Interested in collaborating or learning more about my work? 
-            Let's connect and explore opportunities.
+      <section className="relative py-20 px-4 sm:px-6">
+        <div className="absolute inset-0 bg-gradient-to-br from-teal-100/20 via-white to-rose-100/20"></div>
+        <div className="relative max-w-4xl mx-auto text-center space-y-8">
+          <h2 className="font-heading text-4xl font-bold tracking-tight">Let's Build Something Amazing</h2>
+          <p className="font-body text-xl text-neutral-700 leading-relaxed max-w-2xl mx-auto">
+            Ready to collaborate on your next project? I'm always excited to work on challenging problems
+            and create solutions that make a real impact.
           </p>
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-4">
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-6 pt-8">
             <Button href="/software" variant="solid">
-              View Projects
+              View My Projects
             </Button>
             <Button href="mailto:contact@renatodap.com" variant="outline">
-              Get in Touch
+              Get In Touch
             </Button>
           </div>
         </div>

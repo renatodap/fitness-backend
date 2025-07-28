@@ -3,11 +3,13 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -26,6 +28,17 @@ export default function Header() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
+
+  const navItems = [
+    { href: "/about", label: "About" },
+    { href: "/professional", label: "Professional" },
+    { href: "/software", label: "Software" },
+    { href: "/education", label: "Education" },
+    { href: "/music", label: "Music" },
+    { href: "/photo", label: "Photo" },
+    { href: "/tennis", label: "Tennis" },
+    { href: "/personal", label: "Personal" }
+  ];
 
   return (
     <header className={`w-full flex justify-center py-4 sticky top-0 bg-white/90 backdrop-blur-md border-b border-neutral-200/50 z-50 transition-all duration-300 ease-in-out ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}>
@@ -47,14 +60,20 @@ export default function Header() {
           </button>
         </div>
 
-        <div className={`${menuOpen ? "flex" : "hidden"} lg:flex flex-col lg:flex-row lg:space-x-8 w-full lg:w-auto mt-4 lg:mt-0 space-y-2 lg:space-y-0 text-center lg:text-left bg-white/95 lg:bg-transparent rounded-lg lg:rounded-none p-4 lg:p-0 border border-neutral-200 lg:border-none`}>
-          <Link href="/about" className="font-body text-neutral-600 hover:text-black transition-colors duration-200 py-2 lg:py-0">About</Link>
-          <Link href="/software" className="font-body text-neutral-600 hover:text-black transition-colors duration-200 py-2 lg:py-0">Software</Link>
-          <Link href="/music" className="font-body text-neutral-600 hover:text-black transition-colors duration-200 py-2 lg:py-0">Music</Link>
-          <Link href="/photo" className="font-body text-neutral-600 hover:text-black transition-colors duration-200 py-2 lg:py-0">Photo</Link>
-          <Link href="/tennis" className="font-body text-neutral-600 hover:text-black transition-colors duration-200 py-2 lg:py-0">Tennis</Link>
-          <Link href="/education" className="font-body text-neutral-600 hover:text-black transition-colors duration-200 py-2 lg:py-0">Education</Link>
-          <Link href="/professional" className="font-body text-neutral-600 hover:text-black transition-colors duration-200 py-2 lg:py-0">Professional</Link>
+        <div className={`${menuOpen ? "flex" : "hidden"} lg:flex flex-col lg:flex-row lg:space-x-8 w-full lg:w-auto mt-4 lg:mt-0 space-y-2 lg:space-y-0 text-center lg:text-left bg-black/95 lg:bg-transparent rounded-lg lg:rounded-none p-4 lg:p-0 border border-neutral-800 lg:border-none`}>
+          {navItems.map((item) => (
+            <Link 
+              key={item.href}
+              href={item.href} 
+              className={`font-body transition-colors duration-200 py-2 lg:py-0 ${
+                pathname === item.href 
+                  ? 'text-teal-400' 
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
         </div>
       </nav>
     </header>
