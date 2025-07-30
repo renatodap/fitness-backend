@@ -51,36 +51,60 @@ const themeConfig = {
 // Minimal floating particles component
 const FloatingParticles = ({ theme, count = 8 }: { theme: keyof typeof themeConfig; count?: number }) => {
   const config = themeConfig[theme];
+  const [isClient, setIsClient] = useState(false);
+  const [particles, setParticles] = useState<Array<{id: number, initialX: number, initialY: number, animateX: number, animateY: number, duration: number, delay: number, left: number, top: number}>>([]);
+  
+  useEffect(() => {
+    setIsClient(true);
+    if (typeof window !== 'undefined') {
+      const particleData = Array.from({ length: count }, (_, i) => ({
+        id: i,
+        initialX: Math.random() * window.innerWidth,
+        initialY: Math.random() * window.innerHeight,
+        animateX: Math.random() * window.innerWidth,
+        animateY: Math.random() * window.innerHeight,
+        duration: Math.random() * 20 + 15,
+        delay: Math.random() * 5,
+        left: Math.random() * 100,
+        top: Math.random() * 100
+      }));
+      setParticles(particleData);
+    }
+  }, [count]);
+  
+  if (!isClient) {
+    return <div className="absolute inset-0 pointer-events-none overflow-hidden" />;
+  }
   
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {Array.from({ length: count }).map((_, i) => (
+      {particles.map((particle) => (
         <motion.div
-          key={i}
+          key={particle.id}
           className={`absolute w-1 h-1 rounded-full ${
             config.particles === 'teal' ? 'bg-teal-400/20' :
             config.particles === 'rose' ? 'bg-rose-400/20' :
             'bg-orange-400/20'
           }`}
           initial={{
-            x: Math.random() * window.innerWidth,
-            y: Math.random() * window.innerHeight,
+            x: particle.initialX,
+            y: particle.initialY,
             opacity: 0
           }}
           animate={{
-            x: Math.random() * window.innerWidth,
-            y: Math.random() * window.innerHeight,
+            x: particle.animateX,
+            y: particle.animateY,
             opacity: [0, 0.6, 0],
           }}
           transition={{
-            duration: Math.random() * 20 + 15,
+            duration: particle.duration,
             repeat: Infinity,
             ease: "linear",
-            delay: Math.random() * 5
+            delay: particle.delay
           }}
           style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
+            left: `${particle.left}%`,
+            top: `${particle.top}%`,
           }}
         />
       ))}
