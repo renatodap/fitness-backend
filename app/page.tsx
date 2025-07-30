@@ -170,82 +170,188 @@ export default function HomePage() {
       {/* ===== HERO VIDEO SECTION ===== */}
       <Hero />
 
-      {/* ===== SECTION SCROLL EXPERIENCE ===== */}
-      <div className="relative z-10 bg-white">
-        {SECTIONS.map((section, i) => {
-          const sectionY = useTransform(
-            scrollYProgress,
-            [i / SECTIONS.length, (i + 1) / SECTIONS.length],
-            ['0%', '-5%']
-          );
-          
-          return (
-            <motion.div
-              key={section.id}
-              className={`relative ${section.bgClass}`}
-              style={{ y: sectionY }}
-            >
-              {/* Section divider */}
-              {i > 0 && (
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neutral-200 to-transparent" />
-              )}
-              
-              <SectionBlock
-                title={section.title}
-                description={section.description}
-                image={section.image}
-                align={section.align}
-                ctas={section.ctas}
-                overlaySvg={section.overlaySvg}
-              />
-            </motion.div>
-          );
-        })}
-      </div>
+      {/* ===== FEATURED SECTIONS ===== */}
+      <section className="py-32 lg:py-40 px-4 sm:px-6 lg:px-8 bg-white relative overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <CinematicSection className="text-center mb-24">
+            <ParallaxText>
+              <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-neutral-900 mb-8">
+                Recent
+                <br />
+                <span className="bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400 bg-clip-text text-transparent">
+                  Work
+                </span>
+              </h2>
+            </ParallaxText>
+          </CinematicSection>
 
-      {/* ===== PERSONAL INTRO SECTION ===== */}
-      <section className="py-20 sm:py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-teal-50 border-t border-teal-100">
-        <div className="max-w-5xl mx-auto text-center space-y-8">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-neutral-900">Software Engineer & Creative Mind</h2>
-          <p className="text-lg sm:text-xl lg:text-2xl text-neutral-700 max-w-4xl mx-auto leading-relaxed">
-            I'm a Computer Science student at Rose-Hulman, focused on building software tools
-            that solve real problems, producing music and video that tell meaningful stories,
-            and leading as captain of the men's varsity tennis team. I work across code, creativity,
-            and competition—always looking to make things that matter.
-          </p>
+          <div className="space-y-32">
+            {SECTIONS.map((section, index) => (
+              <CinematicSection key={section.id} delay={index * 0.2}>
+                <motion.div
+                  className={`flex flex-col lg:flex-row items-center gap-16 ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}
+                  initial={{ opacity: 0, x: index % 2 === 0 ? -80 : 80 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 1.4, ease: 'easeOut' }}
+                  viewport={{ once: true, margin: '-100px' }}
+                >
+                  <div className="lg:w-1/2">
+                    <FloatingCard index={index}>
+                      <div className="relative aspect-video bg-gradient-to-br from-neutral-50 to-orange-50 rounded-3xl overflow-hidden border border-orange-100 shadow-2xl group">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          {section.image.endsWith('.svg') ? (
+                            <div className="text-orange-300 text-8xl opacity-30 group-hover:opacity-50 transition-opacity duration-500">📱</div>
+                          ) : (
+                            <Image
+                              src={section.image}
+                              alt={section.title}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform duration-700"
+                            />
+                          )}
+                        </div>
+                        <div className="absolute top-6 left-6 right-6">
+                          <div className="flex items-center justify-between">
+                            <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                              {section.id === 'aaf' ? 'AI/ML' : section.id === 'liteclient' ? 'Blockchain' : section.id === 'ai' ? 'Coursework' : section.id === 'tennis' ? 'Athletics' : 'Music'}
+                            </span>
+                            <span className="bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
+                              {section.id === 'aaf' ? 'Fall 2025' : section.id === 'liteclient' ? 'Summer 2025' : section.id === 'ai' ? 'Fall 2025' : section.id === 'tennis' ? 'Fall 2025' : 'Ongoing'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </FloatingCard>
+                  </div>
+                  
+                  <div className="lg:w-1/2 space-y-8">
+                    <div>
+                      <div className="inline-flex items-center px-4 py-2 bg-orange-100 text-orange-800 text-sm font-semibold rounded-full mb-6 border border-orange-200">
+                        {section.id === 'aaf' ? 'AI/ML' : section.id === 'liteclient' ? 'Blockchain' : section.id === 'ai' ? 'Coursework' : section.id === 'tennis' ? 'Athletics' : 'Music'}
+                      </div>
+                      <h3 className="text-4xl sm:text-5xl font-bold text-neutral-900 mb-6">{section.title}</h3>
+                    </div>
+                    
+                    <div className="text-lg text-neutral-600 leading-relaxed mb-8">
+                      {section.description}
+                    </div>
+                    
+                    <div className="flex gap-4">
+                      {section.ctas.map((cta, ctaIndex) => (
+                        <motion.a
+                          key={ctaIndex}
+                          href={cta.href}
+                          target={cta.href.startsWith('http') ? '_blank' : undefined}
+                          rel={cta.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                          className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-colors ${
+                            cta.variant === 'solid'
+                              ? 'bg-neutral-900 text-white hover:bg-neutral-800'
+                              : 'border border-neutral-300 text-neutral-700 hover:border-orange-300 hover:bg-orange-50'
+                          }`}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <span className="mr-2">{cta.variant === 'solid' ? '🚀' : '🔗'}</span>
+                          {cta.label}
+                        </motion.a>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              </CinematicSection>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ===== CONNECT SECTION ===== */}
-      <section className="py-20 sm:py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-white text-center">
-        <div className="max-w-4xl mx-auto space-y-12">
-          <div className="space-y-6">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-neutral-900">Let's Connect</h2>
-            <p className="text-lg sm:text-xl lg:text-2xl text-neutral-600 leading-relaxed max-w-3xl mx-auto">
+      {/* ===== PERSONAL INTRO SECTION ===== */}
+      <section className="py-32 lg:py-40 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-orange-50 relative overflow-hidden">
+        <div className="max-w-4xl mx-auto text-center">
+          <CinematicSection>
+            <ParallaxText>
+              <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-neutral-900 mb-8">
+                Software Engineer &
+                <br />
+                <span className="bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400 bg-clip-text text-transparent">
+                  Creative Mind
+                </span>
+              </h2>
+            </ParallaxText>
+            <p className="text-xl sm:text-2xl text-neutral-600 leading-relaxed max-w-3xl mx-auto">
+              I'm a Computer Science student at Rose-Hulman, focused on building software tools
+              that solve real problems. I balance technical precision with creative expression through music
+              and competition—always looking to make things that matter.
+            </p>
+          </CinematicSection>
+        </div>
+      </section>
+
+      {/* ===== FINALE: THE INVITATION ===== */}
+      <section className="py-32 lg:py-40 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-orange-25 to-orange-50 text-center">
+        <div className="max-w-4xl mx-auto">
+          <CinematicSection>
+            <ParallaxText>
+              <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-neutral-900 mb-8">
+                Let's
+                <br />
+                <span className="bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400 bg-clip-text text-transparent">
+                  Connect
+                </span>
+              </h2>
+            </ParallaxText>
+            <p className="text-xl sm:text-2xl text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-12">
               Interested in collaborating, discussing ideas, or just saying hello? I'd love to hear from you.
             </p>
-          </div>
-          
-          <div className="flex flex-row justify-center items-center gap-8 pt-4">
-            <a href="https://linkedin.com/in/renatodap" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="group">
-              <svg className="w-8 h-8 text-neutral-600 group-hover:text-teal-600 transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.761 0 5-2.239 5-5v-14c0-2.761-2.239-5-5-5zm-11 19h-3v-10h3v10zm-1.5-11.268c-.966 0-1.75-.784-1.75-1.75s.784-1.75 1.75-1.75 1.75.784 1.75 1.75-.784 1.75-1.75 1.75zm13.5 11.268h-3v-5.604c0-1.337-.025-3.063-1.868-3.063-1.869 0-2.156 1.459-2.156 2.967v5.7h-3v-10h2.881v1.367h.041c.401-.761 1.381-1.563 2.841-1.563 3.041 0 3.602 2.002 3.602 4.604v5.592z" /></svg>
-            </a>
-            <a href="https://open.spotify.com/artist/3VZ8V9XhQ9oZb5XnZ9g8yB" target="_blank" rel="noopener noreferrer" aria-label="Spotify" className="group">
-              <svg className="w-8 h-8 text-neutral-600 group-hover:text-teal-600 transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.371 0 0 5.371 0 12s5.371 12 12 12 12-5.371 12-12S18.629 0 12 0zm5.363 17.463c-.221.364-.691.482-1.055.262-2.891-1.764-6.543-2.16-10.824-1.18-.418.096-.844-.162-.94-.576-.096-.418.162-.844.576-.94 4.663-1.08 8.727-.641 11.947 1.262.364.22.482.69.262 1.055zm1.504-2.67c-.276.447-.854.59-1.301.314-3.309-2.04-8.362-2.635-12.284-1.44-.51.158-1.055-.117-1.213-.627-.158-.51.117-1.055.627-1.213 4.406-1.361 9.927-.709 13.722 1.578.447.276.59.854.314 1.301zm.146-2.835C15.06 9.684 8.924 9.5 5.934 10.384c-.623.182-1.283-.159-1.464-.783-.181-.624.159-1.283.783-1.464 3.417-.99 10.184-.785 14.047 2.016.527.389.642 1.135.254 1.662-.389.527-1.135.643-1.662.254z" /></svg>
-            </a>
-            <a href="https://www.youtube.com/@RenatoDAP" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="group">
-              <svg className="w-8 h-8 text-neutral-600 group-hover:text-teal-600 transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a2.994 2.994 0 0 0-2.112-2.117C19.257 3.5 12 3.5 12 3.5s-7.257 0-9.386.569A2.994 2.994 0 0 0 .502 6.186C0 8.313 0 12 0 12s0 3.687.502 5.814a2.994 2.994 0 0 0 2.112 2.117C4.743 20.5 12 20.5 12 20.5s7.257 0 9.386-.569a2.994 2.994 0 0 0 2.112-2.117C24 15.687 24 12 24 12s0-3.687-.502-5.814zM9.75 15.5v-7l6.5 3.5-6.5 3.5z" /></svg>
-            </a>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-6 pt-8">
-            <a href="/professional" className="inline-flex items-center justify-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg text-white bg-neutral-900 hover:bg-neutral-800 transition-colors duration-200 shadow-sm hover:shadow-md">
-              Professional Experience
-            </a>
-            <a href="mailto:renatodaprado@gmail.com" className="inline-flex items-center justify-center px-8 py-4 border border-neutral-300 text-lg font-medium rounded-lg text-neutral-900 bg-white hover:bg-neutral-50 hover:border-neutral-400 transition-colors duration-200 shadow-sm hover:shadow-md">
-              Get in Touch
-            </a>
-          </div>
+            
+            <div className="flex flex-row justify-center items-center gap-8 mb-12">
+              <motion.a 
+                href="https://linkedin.com/in/renatodap" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                aria-label="LinkedIn" 
+                className="group"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <svg className="w-8 h-8 text-neutral-600 group-hover:text-orange-600 transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.761 0 5-2.239 5-5v-14c0-2.761-2.239-5-5-5zm-11 19h-3v-10h3v10zm-1.5-11.268c-.966 0-1.75-.784-1.75-1.75s.784-1.75 1.75-1.75 1.75.784 1.75 1.75-.784 1.75-1.75 1.75zm13.5 11.268h-3v-5.604c0-1.337-.025-3.063-1.868-3.063-1.869 0-2.156 1.459-2.156 2.967v5.7h-3v-10h2.881v1.367h.041c.401-.761 1.381-1.563 2.841-1.563 3.041 0 3.602 2.002 3.602 4.604v5.592z" /></svg>
+              </motion.a>
+              <motion.a 
+                href="https://open.spotify.com/artist/3VZ8V9XhQ9oZb5XnZ9g8yB" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                aria-label="Spotify" 
+                className="group"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <svg className="w-8 h-8 text-neutral-600 group-hover:text-orange-600 transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.371 0 0 5.371 0 12s5.371 12 12 12 12-5.371 12-12S18.629 0 12 0zm5.363 17.463c-.221.364-.691.482-1.055.262-2.891-1.764-6.543-2.16-10.824-1.18-.418.096-.844-.162-.94-.576-.096-.418.162-.844.576-.94 4.663-1.08 8.727-.641 11.947 1.262.364.22.482.69.262 1.055zm1.504-2.67c-.276.447-.854.59-1.301.314-3.309-2.04-8.362-2.635-12.284-1.44-.51.158-1.055-.117-1.213-.627-.158-.51.117-1.055.627-1.213 4.406-1.361 9.927-.709 13.722 1.578.447.276.59.854.314 1.301zm.146-2.835C15.06 9.684 8.924 9.5 5.934 10.384c-.623.182-1.283-.159-1.464-.783-.181-.624.159-1.283.783-1.464 3.417-.99 10.184-.785 14.047 2.016.527.389.642 1.135.254 1.662-.389.527-1.135.643-1.662.254z" /></svg>
+              </motion.a>
+              <motion.a 
+                href="https://www.youtube.com/@RenatoDAP" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                aria-label="YouTube" 
+                className="group"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <svg className="w-8 h-8 text-neutral-600 group-hover:text-orange-600 transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a2.994 2.994 0 0 0-2.112-2.117C19.257 3.5 12 3.5 12 3.5s-7.257 0-9.386.569A2.994 2.994 0 0 0 .502 6.186C0 8.313 0 12 0 12s0 3.687.502 5.814a2.994 2.994 0 0 0 2.112 2.117C4.743 20.5 12 20.5 12 20.5s7.257 0 9.386-.569a2.994 2.994 0 0 0 2.112-2.117C24 15.687 24 12 24 12s0-3.687-.502-5.814zM9.75 15.5v-7l6.5 3.5-6.5 3.5z" /></svg>
+              </motion.a>
+            </div>
+            
+            <div className="flex justify-center">
+              <motion.a 
+                href="mailto:renatodaprado@gmail.com" 
+                className="inline-flex items-center justify-center px-12 py-6 border border-orange-300 text-lg font-semibold rounded-xl text-neutral-900 bg-white hover:bg-orange-50 hover:border-orange-400 transition-all duration-300 shadow-lg hover:shadow-xl"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <span className="mr-3">✉️</span>
+                Get in Touch
+              </motion.a>
+            </div>
+          </CinematicSection>
         </div>
       </section>
 
