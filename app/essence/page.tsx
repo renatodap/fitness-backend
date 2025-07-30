@@ -11,8 +11,8 @@ export default function Essence() {
         theme="essence"
         title="What Shapes the Systems"
         subtitle="Behind every line of code and creative decision lies a foundation built through discipline, education, and values. This is what grounds both the logic and the rhythm."
-        videoSrc="/tennis-video.mp4"
-        mobileVideoSrc="/tennis-video-mobile.mp4"
+        videoSrc="/essence.mp4"
+        mobileVideoSrc="/essence.mp4"
         buttons={[
           { href: "#discipline", label: "See the Foundation", variant: "solid" },
           { href: "#philosophy", label: "Read Philosophy", variant: "outline" }
