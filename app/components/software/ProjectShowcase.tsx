@@ -4,7 +4,7 @@
 
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef } from 'react';
-import { Project } from '@/app/software/projects';
+import { Project } from '@/app/engineer/projects';
 import Button from '../button';
 
 interface ProjectShowcaseProps {
