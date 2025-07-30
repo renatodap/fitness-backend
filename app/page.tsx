@@ -146,32 +146,14 @@ const SECTIONS: Section[] = [
 ];
 
 export default function HomePage() {
-  const containerRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ['start start', 'end end']
-  });
-
-  const backgroundY = useTransform(scrollYProgress, [0, 1], ['0%', '100%']);
-  const opacity = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [1, 0.8, 0.8, 1]);
-
   return (
-    <main ref={containerRef} className="w-full min-h-screen overflow-x-hidden relative">
-      {/* Subtle Background Elements */}
-      <motion.div 
-        className="fixed inset-0 z-[-1] pointer-events-none"
-        style={{ y: backgroundY, opacity }}
-      >
-        <div className="absolute top-1/4 right-1/4 w-48 h-48 sm:w-80 sm:h-80 lg:w-96 lg:h-96 bg-gradient-to-br from-teal-500/5 to-transparent rounded-full blur-2xl sm:blur-3xl" />
-        <div className="absolute bottom-1/4 left-1/4 w-40 h-40 sm:w-64 sm:h-64 lg:w-80 lg:h-80 bg-gradient-to-br from-rose-500/5 to-transparent rounded-full blur-2xl sm:blur-3xl" />
-        <div className="absolute top-3/4 right-1/3 w-32 h-32 sm:w-48 sm:h-48 lg:w-64 lg:h-64 bg-gradient-to-br from-orange-500/5 to-transparent rounded-full blur-xl sm:blur-3xl" />
-      </motion.div>
+    <main className="relative w-full bg-white text-black overflow-x-hidden">
 
       {/* ===== HERO VIDEO SECTION ===== */}
       <Hero />
 
       {/* ===== FEATURED SECTIONS ===== */}
-      <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-orange-25">
+      <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
           <CinematicSection className="text-center mb-16">
             <ParallaxText>
