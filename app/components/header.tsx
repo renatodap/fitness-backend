@@ -50,8 +50,8 @@ export default function Header() {
   return (
     <header className={`w-full flex justify-center py-4 sticky top-0 bg-white/90 backdrop-blur-md border-b border-neutral-200/50 z-50 transition-all duration-300 ease-in-out ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}>
       <nav className="max-w-6xl w-full flex flex-col lg:flex-row lg:justify-between items-center text-sm font-medium px-4 sm:px-6">
-        <div className="flex justify-between w-full lg:w-auto items-center">
-          <Link href="/" className="font-heading text-lg sm:text-xl font-bold text-black hover:text-teal-600 transition-colors duration-200">
+        <div className="flex justify-between w-full lg:w-auto items-center h-12">
+          <Link href="/" className="font-heading text-lg sm:text-xl font-bold text-black hover:text-teal-600 transition-colors duration-200 flex items-center h-full">
             Renato DAP
           </Link>
           <button
@@ -75,6 +75,7 @@ export default function Header() {
               className={`font-body transition-colors duration-200 py-2 lg:py-0 ${
                 getAccentColor(item.accent, pathname === item.href)
               }`}
+              onClick={() => setMenuOpen(false)}
             >
               {item.label}
             </Link>

@@ -6,6 +6,7 @@ import UniversalHero from '@/app/components/shared/UniversalHero';
 import { projects } from './projects';
 import { motion, useInView, useScroll, useTransform } from 'framer-motion';
 import { useRef } from 'react';
+import Image from 'next/image';
 
 // === THE ENGINEERING PHILOSOPHY ===
 
@@ -134,7 +135,18 @@ export default function EngineerPage() {
                       <div className="relative aspect-video bg-gradient-to-br from-teal-50 to-neutral-50 rounded-3xl overflow-hidden border border-teal-100 shadow-2xl group">
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="text-teal-300 text-8xl opacity-30 group-hover:opacity-50 transition-opacity duration-500"></div>
+                          {project.media && project.media[0] ? (
+                            <Image
+                              src={project.media[0].src}
+                              alt={project.media[0].alt}
+                              fill
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                              className="object-cover group-hover:scale-105 transition-transform duration-700"
+                              priority={index < 2}
+                            />
+                          ) : (
+                            <div className="text-teal-300 text-8xl opacity-30 group-hover:opacity-50 transition-opacity duration-500">⚡</div>
+                          )}
                         </div>
                         <div className="absolute top-6 left-6 right-6">
                           <div className="flex items-center justify-between">

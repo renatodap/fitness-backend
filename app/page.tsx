@@ -171,11 +171,11 @@ export default function HomePage() {
       <Hero />
 
       {/* ===== FEATURED SECTIONS ===== */}
-      <section className="py-32 lg:py-40 px-4 sm:px-6 lg:px-8 bg-white relative overflow-hidden">
-        <div className="max-w-7xl mx-auto">
-          <CinematicSection className="text-center mb-20">
+      <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-orange-25">
+        <div className="max-w-6xl mx-auto">
+          <CinematicSection className="text-center mb-16">
             <ParallaxText>
-              <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-neutral-900 mb-8">
+              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-neutral-900 mb-6">
                 Recent
                 <br />
                 <span className="bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400 bg-clip-text text-transparent">
@@ -185,15 +185,15 @@ export default function HomePage() {
             </ParallaxText>
           </CinematicSection>
 
-          <div className="space-y-28">
+          <div className="space-y-20">
             {SECTIONS.map((section, index) => (
-              <CinematicSection key={section.id} delay={index * 0.2}>
+              <CinematicSection key={section.id} delay={index * 0.1}>
                 <motion.div
-                  className={`flex flex-col lg:flex-row items-center gap-14 ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}
-                  initial={{ opacity: 0, x: index % 2 === 0 ? -80 : 80 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 1.4, ease: 'easeOut' }}
-                  viewport={{ once: true, margin: '-100px' }}
+                  className={`flex flex-col lg:flex-row items-center gap-12 ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
+                  viewport={{ once: true, margin: '-50px' }}
                 >
                   <div className="lg:w-1/2">
                     <FloatingCard index={index}>
@@ -207,7 +207,9 @@ export default function HomePage() {
                               src={section.image}
                               alt={section.title}
                               fill
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                               className="object-cover group-hover:scale-105 transition-transform duration-700"
+                              priority={index < 2}
                             />
                           )}
                         </div>
@@ -266,11 +268,11 @@ export default function HomePage() {
       </section>
 
       {/* ===== FINALE: THE INVITATION ===== */}
-      <section className="py-32 lg:py-40 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-orange-25 to-orange-50 text-center">
-        <div className="max-w-4xl mx-auto">
+      <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-orange-25 to-orange-50 text-center">
+        <div className="max-w-3xl mx-auto">
           <CinematicSection>
             <ParallaxText>
-              <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-neutral-900 mb-8">
+              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-neutral-900 mb-6">
                 Let's
                 <br />
                 <span className="bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400 bg-clip-text text-transparent">
