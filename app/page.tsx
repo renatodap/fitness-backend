@@ -3,7 +3,7 @@
 import { motion, useScroll, useTransform, useInView } from 'framer-motion';
 import { useRef } from 'react';
 import Hero from './components/home/HeroSection';
-import Footer from './components/home/footer';
+
 import Image from 'next/image';
 
 // === CINEMATIC COMPONENTS ===
@@ -173,7 +173,7 @@ export default function HomePage() {
       {/* ===== FEATURED SECTIONS ===== */}
       <section className="py-32 lg:py-40 px-4 sm:px-6 lg:px-8 bg-white relative overflow-hidden">
         <div className="max-w-7xl mx-auto">
-          <CinematicSection className="text-center mb-24">
+          <CinematicSection className="text-center mb-20">
             <ParallaxText>
               <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-neutral-900 mb-8">
                 Recent
@@ -185,11 +185,11 @@ export default function HomePage() {
             </ParallaxText>
           </CinematicSection>
 
-          <div className="space-y-32">
+          <div className="space-y-28">
             {SECTIONS.map((section, index) => (
               <CinematicSection key={section.id} delay={index * 0.2}>
                 <motion.div
-                  className={`flex flex-col lg:flex-row items-center gap-16 ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}
+                  className={`flex flex-col lg:flex-row items-center gap-14 ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}
                   initial={{ opacity: 0, x: index % 2 === 0 ? -80 : 80 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   transition={{ duration: 1.4, ease: 'easeOut' }}
@@ -201,7 +201,7 @@ export default function HomePage() {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
                         <div className="absolute inset-0 flex items-center justify-center">
                           {section.image.endsWith('.svg') ? (
-                            <div className="text-orange-300 text-8xl opacity-30 group-hover:opacity-50 transition-opacity duration-500">📱</div>
+                            <div className="text-orange-300 text-8xl opacity-30 group-hover:opacity-50 transition-opacity duration-500">⚡</div>
                           ) : (
                             <Image
                               src={section.image}
@@ -230,21 +230,21 @@ export default function HomePage() {
                       <div className="inline-flex items-center px-4 py-2 bg-orange-100 text-orange-800 text-sm font-semibold rounded-full mb-6 border border-orange-200">
                         {section.id === 'aaf' ? 'AI/ML' : section.id === 'liteclient' ? 'Blockchain' : section.id === 'ai' ? 'Coursework' : section.id === 'tennis' ? 'Athletics' : 'Music'}
                       </div>
-                      <h3 className="text-4xl sm:text-5xl font-bold text-neutral-900 mb-6">{section.title}</h3>
+                      <h3 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-5">{section.title}</h3>
                     </div>
                     
-                    <div className="text-lg text-neutral-600 leading-relaxed mb-8">
+                    <div className="text-base text-neutral-600 leading-relaxed mb-7">
                       {section.description}
                     </div>
                     
-                    <div className="flex gap-4">
+                    <div className="flex gap-3">
                       {section.ctas.map((cta, ctaIndex) => (
                         <motion.a
                           key={ctaIndex}
                           href={cta.href}
                           target={cta.href.startsWith('http') ? '_blank' : undefined}
                           rel={cta.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                          className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-colors ${
+                          className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-colors ${
                             cta.variant === 'solid'
                               ? 'bg-neutral-900 text-white hover:bg-neutral-800'
                               : 'border border-neutral-300 text-neutral-700 hover:border-orange-300 hover:bg-orange-50'
@@ -252,7 +252,7 @@ export default function HomePage() {
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                         >
-                          <span className="mr-2">{cta.variant === 'solid' ? '🚀' : '🔗'}</span>
+                          <span className="mr-2">{cta.variant === 'solid' ? '' : ''}</span>
                           {cta.label}
                         </motion.a>
                       ))}
@@ -262,28 +262,6 @@ export default function HomePage() {
               </CinematicSection>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ===== PERSONAL INTRO SECTION ===== */}
-      <section className="py-32 lg:py-40 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-orange-50 relative overflow-hidden">
-        <div className="max-w-4xl mx-auto text-center">
-          <CinematicSection>
-            <ParallaxText>
-              <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-neutral-900 mb-8">
-                Software Engineer &
-                <br />
-                <span className="bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400 bg-clip-text text-transparent">
-                  Creative Mind
-                </span>
-              </h2>
-            </ParallaxText>
-            <p className="text-xl sm:text-2xl text-neutral-600 leading-relaxed max-w-3xl mx-auto">
-              I'm a Computer Science student at Rose-Hulman, focused on building software tools
-              that solve real problems. I balance technical precision with creative expression through music
-              and competition—always looking to make things that matter.
-            </p>
-          </CinematicSection>
         </div>
       </section>
 
@@ -300,11 +278,11 @@ export default function HomePage() {
                 </span>
               </h2>
             </ParallaxText>
-            <p className="text-xl sm:text-2xl text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-12">
+            <p className="text-lg sm:text-xl text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-10">
               Interested in collaborating, discussing ideas, or just saying hello? I'd love to hear from you.
             </p>
             
-            <div className="flex flex-row justify-center items-center gap-8 mb-12">
+            <div className="flex flex-row justify-center items-center gap-6 mb-10">
               <motion.a 
                 href="https://linkedin.com/in/renatodap" 
                 target="_blank" 
@@ -314,7 +292,7 @@ export default function HomePage() {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <svg className="w-8 h-8 text-neutral-600 group-hover:text-orange-600 transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.761 0 5-2.239 5-5v-14c0-2.761-2.239-5-5-5zm-11 19h-3v-10h3v10zm-1.5-11.268c-.966 0-1.75-.784-1.75-1.75s.784-1.75 1.75-1.75 1.75.784 1.75 1.75-.784 1.75-1.75 1.75zm13.5 11.268h-3v-5.604c0-1.337-.025-3.063-1.868-3.063-1.869 0-2.156 1.459-2.156 2.967v5.7h-3v-10h2.881v1.367h.041c.401-.761 1.381-1.563 2.841-1.563 3.041 0 3.602 2.002 3.602 4.604v5.592z" /></svg>
+                <svg className="w-7 h-7 text-neutral-600 group-hover:text-orange-600 transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.761 0 5-2.239 5-5v-14c0-2.761-2.239-5-5-5zm-11 19h-3v-10h3v10zm-1.5-11.268c-.966 0-1.75-.784-1.75-1.75s.784-1.75 1.75-1.75 1.75.784 1.75 1.75-.784 1.75-1.75 1.75zm13.5 11.268h-3v-5.604c0-1.337-.025-3.063-1.868-3.063-1.869 0-2.156 1.459-2.156 2.967v5.7h-3v-10h2.881v1.367h.041c.401-.761 1.381-1.563 2.841-1.563 3.041 0 3.602 2.002 3.602 4.604v5.592z" /></svg>
               </motion.a>
               <motion.a 
                 href="https://open.spotify.com/artist/3VZ8V9XhQ9oZb5XnZ9g8yB" 
@@ -325,7 +303,7 @@ export default function HomePage() {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <svg className="w-8 h-8 text-neutral-600 group-hover:text-orange-600 transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.371 0 0 5.371 0 12s5.371 12 12 12 12-5.371 12-12S18.629 0 12 0zm5.363 17.463c-.221.364-.691.482-1.055.262-2.891-1.764-6.543-2.16-10.824-1.18-.418.096-.844-.162-.94-.576-.096-.418.162-.844.576-.94 4.663-1.08 8.727-.641 11.947 1.262.364.22.482.69.262 1.055zm1.504-2.67c-.276.447-.854.59-1.301.314-3.309-2.04-8.362-2.635-12.284-1.44-.51.158-1.055-.117-1.213-.627-.158-.51.117-1.055.627-1.213 4.406-1.361 9.927-.709 13.722 1.578.447.276.59.854.314 1.301zm.146-2.835C15.06 9.684 8.924 9.5 5.934 10.384c-.623.182-1.283-.159-1.464-.783-.181-.624.159-1.283.783-1.464 3.417-.99 10.184-.785 14.047 2.016.527.389.642 1.135.254 1.662-.389.527-1.135.643-1.662.254z" /></svg>
+                <svg className="w-7 h-7 text-neutral-600 group-hover:text-orange-600 transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.371 0 0 5.371 0 12s5.371 12 12 12 12-5.371 12-12S18.629 0 12 0zm5.363 17.463c-.221.364-.691.482-1.055.262-2.891-1.764-6.543-2.16-10.824-1.18-.418.096-.844-.162-.94-.576-.096-.418.162-.844.576-.94 4.663-1.08 8.727-.641 11.947 1.262.364.22.482.69.262 1.055zm1.504-2.67c-.276.447-.854.59-1.301.314-3.309-2.04-8.362-2.635-12.284-1.44-.51.158-1.055-.117-1.213-.627-.158-.51.117-1.055.627-1.213 4.406-1.361 9.927-.709 13.722 1.578.447.276.59.854.314 1.301zm.146-2.835C15.06 9.684 8.924 9.5 5.934 10.384c-.623.182-1.283-.159-1.464-.783-.181-.624.159-1.283.783-1.464 3.417-.99 10.184-.785 14.047 2.016.527.389.642 1.135.254 1.662-.389.527-1.135.643-1.662.254z" /></svg>
               </motion.a>
               <motion.a 
                 href="https://www.youtube.com/@RenatoDAP" 
@@ -336,18 +314,18 @@ export default function HomePage() {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <svg className="w-8 h-8 text-neutral-600 group-hover:text-orange-600 transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a2.994 2.994 0 0 0-2.112-2.117C19.257 3.5 12 3.5 12 3.5s-7.257 0-9.386.569A2.994 2.994 0 0 0 .502 6.186C0 8.313 0 12 0 12s0 3.687.502 5.814a2.994 2.994 0 0 0 2.112 2.117C4.743 20.5 12 20.5 12 20.5s7.257 0 9.386-.569a2.994 2.994 0 0 0 2.112-2.117C24 15.687 24 12 24 12s0-3.687-.502-5.814zM9.75 15.5v-7l6.5 3.5-6.5 3.5z" /></svg>
+                <svg className="w-7 h-7 text-neutral-600 group-hover:text-orange-600 transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a2.994 2.994 0 0 0-2.112-2.117C19.257 3.5 12 3.5 12 3.5s-7.257 0-9.386.569A2.994 2.994 0 0 0 .502 6.186C0 8.313 0 12 0 12s0 3.687.502 5.814a2.994 2.994 0 0 0 2.112 2.117C4.743 20.5 12 20.5 12 20.5s7.257 0 9.386-.569a2.994 2.994 0 0 0 2.112-2.117C24 15.687 24 12 24 12s0-3.687-.502-5.814zM9.75 15.5v-7l6.5 3.5-6.5 3.5z" /></svg>
               </motion.a>
             </div>
             
             <div className="flex justify-center">
               <motion.a 
                 href="mailto:renatodaprado@gmail.com" 
-                className="inline-flex items-center justify-center px-12 py-6 border border-orange-300 text-lg font-semibold rounded-xl text-neutral-900 bg-white hover:bg-orange-50 hover:border-orange-400 transition-all duration-300 shadow-lg hover:shadow-xl"
+                className="inline-flex items-center justify-center px-10 py-5 border border-orange-300 text-base font-semibold rounded-xl text-neutral-900 bg-white hover:bg-orange-50 hover:border-orange-400 transition-all duration-300 shadow-lg hover:shadow-xl"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <span className="mr-3">✉️</span>
+                <span className="mr-3"></span>
                 Get in Touch
               </motion.a>
             </div>
@@ -355,7 +333,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <Footer />
+
     </main>
   );
 }

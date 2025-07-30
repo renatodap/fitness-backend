@@ -107,7 +107,7 @@ export default function EngineerPage() {
       {/* === ACT I: FEATURED PROJECTS === */}
       <section className="py-32 lg:py-40 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-teal-25">
         <div className="max-w-7xl mx-auto">
-          <CinematicSection className="text-center mb-24">
+          <CinematicSection className="text-center mb-20">
             <ParallaxText>
               <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-neutral-900 mb-8">
                 Featured
@@ -119,11 +119,11 @@ export default function EngineerPage() {
             </ParallaxText>
           </CinematicSection>
 
-          <div className="space-y-32">
+          <div className="space-y-28">
             {projects.map((project, index) => (
               <CinematicSection key={project.id} delay={index * 0.2}>
                 <motion.div
-                  className={`flex flex-col lg:flex-row items-center gap-16 ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}
+                  className={`flex flex-col lg:flex-row items-center gap-14 ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}
                   initial={{ opacity: 0, x: index % 2 === 0 ? -80 : 80 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   transition={{ duration: 1.4, ease: 'easeOut' }}
@@ -134,7 +134,7 @@ export default function EngineerPage() {
                       <div className="relative aspect-video bg-gradient-to-br from-teal-50 to-neutral-50 rounded-3xl overflow-hidden border border-teal-100 shadow-2xl group">
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="text-teal-300 text-8xl opacity-30 group-hover:opacity-50 transition-opacity duration-500">⚡</div>
+                          <div className="text-teal-300 text-8xl opacity-30 group-hover:opacity-50 transition-opacity duration-500"></div>
                         </div>
                         <div className="absolute top-6 left-6 right-6">
                           <div className="flex items-center justify-between">
@@ -163,12 +163,12 @@ export default function EngineerPage() {
                               <div className="flex gap-2">
                                 {project.links?.github && (
                                   <div className="w-8 h-8 bg-neutral-100 rounded-full flex items-center justify-center">
-                                    <span className="text-xs">🔗</span>
+                                    <span className="text-xs"></span>
                                   </div>
                                 )}
                                 {project.links?.live && (
                                   <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
-                                    <span className="text-xs">🚀</span>
+                                    <span className="text-xs"></span>
                                   </div>
                                 )}
                               </div>
@@ -184,10 +184,10 @@ export default function EngineerPage() {
                       <div className="inline-flex items-center px-4 py-2 bg-teal-100 text-teal-800 text-sm font-semibold rounded-full mb-6 border border-teal-200">
                         {project.category}
                       </div>
-                      <h3 className="text-4xl sm:text-5xl font-bold text-neutral-900 mb-6">{project.title}</h3>
+                      <h3 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-5">{project.title}</h3>
                     </div>
                     
-                    <p className="text-lg text-neutral-600 leading-relaxed mb-8">
+                    <p className="text-base text-neutral-600 leading-relaxed mb-7">
                       {project.description}
                     </p>
                     
@@ -202,7 +202,7 @@ export default function EngineerPage() {
                       </div>
                     </div>
                     
-                    <div className="flex gap-4">
+                    <div className="flex gap-3">
                       {project.links?.github && (
                         <motion.a
                           href={project.links.github}
@@ -251,7 +251,7 @@ export default function EngineerPage() {
                 </span>
               </h2>
             </ParallaxText>
-            <p className="text-xl sm:text-2xl text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-12">
+            <p className="text-lg sm:text-xl text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-10">
               If something here resonates with you — a project, an approach, a shared curiosity — 
               I'd love to hear your thoughts. The best ideas emerge from conversation.
             </p>
@@ -259,11 +259,11 @@ export default function EngineerPage() {
             <div className="flex justify-center">
               <motion.a 
                 href="mailto:renatodaprado@gmail.com" 
-                className="inline-flex items-center justify-center px-12 py-6 border border-teal-300 text-lg font-semibold rounded-xl text-neutral-900 bg-white hover:bg-teal-50 hover:border-teal-400 transition-all duration-300 shadow-lg hover:shadow-xl"
+                className="inline-flex items-center justify-center px-10 py-5 border border-teal-300 text-base font-semibold rounded-xl text-neutral-900 bg-white hover:bg-teal-50 hover:border-teal-400 transition-all duration-300 shadow-lg hover:shadow-xl"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <span className="mr-3">✉️</span>
+                <span className="mr-3"></span>
                 Reach Out
               </motion.a>
             </div>

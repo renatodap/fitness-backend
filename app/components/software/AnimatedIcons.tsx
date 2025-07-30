@@ -3,7 +3,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Project } from '@/app/software/projects';
+import { Project } from '@/app/engineer/projects';
 
 interface AnimatedIconsProps {
   iconType: Project['iconType'];
