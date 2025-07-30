@@ -20,20 +20,20 @@ export default function Essence() {
       />
 
       {/* Tennis - Discipline & Rhythm */}
-      <section className="py-16 px-4 sm:px-6 bg-orange-50 border-t border-orange-100">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center space-y-4 mb-12">
-            <h2 className="text-4xl font-bold tracking-tight">Discipline & Rhythm</h2>
-            <p className="text-neutral-600 text-lg max-w-2xl mx-auto">
+      <section className="py-12 px-4 sm:px-6 bg-orange-50 border-t border-orange-100">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center space-y-3 mb-10">
+            <h2 className="text-3xl font-bold tracking-tight">Discipline & Rhythm</h2>
+            <p className="text-neutral-600 text-base max-w-xl mx-auto">
               Tennis taught me that excellence isn't about talent—it's about showing up every day with intention
             </p>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-2xl font-semibold">Rose-Hulman Men's Tennis Captain</h3>
-                <p className="text-lg text-neutral-700 leading-relaxed">
+              <div className="space-y-3">
+                <h3 className="text-xl font-semibold">Rose-Hulman Men's Tennis Captain</h3>
+                <p className="text-base text-neutral-700 leading-relaxed">
                   Leading a team isn't about being the best player—it's about creating an environment 
                   where everyone can perform at their peak. The same principles that guide my code: 
                   clear communication, consistent execution, and always improving the system.

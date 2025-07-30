@@ -3,6 +3,7 @@
 import UniversalHero from '@/app/components/shared/UniversalHero';
 import { motion, useInView, useScroll, useTransform } from 'framer-motion';
 import { useRef, useEffect, useState } from 'react';
+import Image from 'next/image';
 
 // === CINEMATIC DATA STRUCTURES ===
 
@@ -210,11 +211,11 @@ export default function CreatorPage() {
       />
 
       {/* === ACT I: THE LANGUAGES I SPEAK === */}
-      <section className="py-32 lg:py-40 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <CinematicSection className="text-center mb-24">
+      <section className="py-12 sm:py-18 lg:py-24 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <CinematicSection className="text-center mb-16 sm:mb-20">
             <ParallaxText>
-              <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-neutral-900 mb-8">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold tracking-tight text-neutral-900 mb-5">
                 Six Languages,
                 <br />
                 <span className="bg-gradient-to-r from-rose-600 via-rose-500 to-rose-400 bg-clip-text text-transparent">
@@ -222,29 +223,32 @@ export default function CreatorPage() {
                 </span>
               </h2>
             </ParallaxText>
-            <p className="text-xl sm:text-2xl text-neutral-600 max-w-4xl mx-auto leading-relaxed">
+            <p className="text-base sm:text-lg lg:text-xl text-neutral-600 max-w-2xl mx-auto leading-relaxed">
               Each instrument taught me a different way to think, to feel, to express what words cannot capture.
             </p>
           </CinematicSection>
 
-          <div className="space-y-32">
+          <div className="space-y-16 sm:space-y-20 lg:space-y-24">
             {instrumentJourney.map((instrument, index) => (
-              <CinematicSection key={instrument.name} delay={index * 0.2}>
+              <CinematicSection key={instrument.name} delay={index * 0.1}>
                 <motion.div
-                  className={`flex flex-col lg:flex-row items-center gap-16 ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}
-                  initial={{ opacity: 0, x: index % 2 === 0 ? -80 : 80 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 1.4, ease: 'easeOut' }}
-                  viewport={{ once: true, margin: '-100px' }}
+                  className={`flex flex-col lg:flex-row items-center gap-8 sm:gap-12 lg:gap-16 ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
+                  viewport={{ once: true, margin: '-50px' }}
                 >
-                  <div className="lg:w-1/2">
-                    <div className="relative aspect-[4/3] bg-gradient-to-br from-rose-50 to-neutral-50 rounded-3xl overflow-hidden border border-rose-100 shadow-2xl group">
+                  <div className="w-full lg:w-1/2">
+                    <div className="relative aspect-[4/3] bg-gradient-to-br from-rose-50 to-neutral-50 rounded-2xl lg:rounded-3xl overflow-hidden border border-rose-100 shadow-xl group hover:shadow-2xl transition-shadow duration-500">
                       {instrument.image ? (
                         <>
-                          <img 
+                          <Image 
                             src={instrument.image} 
                             alt={`${instrument.name} - ${instrument.essence}`}
-                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            className="object-cover group-hover:scale-105 transition-transform duration-700"
+                            priority={index < 2}
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500"></div>
                         </>
@@ -261,20 +265,20 @@ export default function CreatorPage() {
                     </div>
                   </div>
                   
-                  <div className="lg:w-1/2 space-y-8">
+                  <div className="w-full lg:w-1/2 space-y-5 lg:space-y-6">
                     <div>
-                      <div className="inline-flex items-center px-4 py-2 bg-rose-100 text-rose-800 text-sm font-semibold rounded-full mb-6 border border-rose-200">
+                      <div className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 bg-rose-100 text-rose-800 text-xs sm:text-sm font-semibold rounded-full mb-3 sm:mb-4 border border-rose-200 hover:bg-rose-200 transition-colors duration-300">
                         {instrument.essence}
                       </div>
-                      <h3 className="text-4xl sm:text-5xl font-bold text-neutral-900 mb-6">{instrument.name}</h3>
+                      <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-neutral-900 mb-3 sm:mb-4">{instrument.name}</h3>
                     </div>
                     
-                    <p className="text-lg text-neutral-600 leading-relaxed mb-8">
+                    <p className="text-base text-neutral-600 leading-relaxed mb-6">
                       {instrument.story}
                     </p>
                     
-                    <blockquote className="border-l-4 border-rose-300 pl-8 py-4 bg-rose-50/50 rounded-r-2xl">
-                      <p className="italic text-neutral-700 text-lg font-medium">
+                    <blockquote className="border-l-4 border-rose-300 pl-6 py-3 bg-rose-50/50 rounded-r-2xl">
+                      <p className="italic text-neutral-700 text-sm font-medium">
                         "{instrument.philosophy}"
                       </p>
                     </blockquote>
@@ -285,7 +289,6 @@ export default function CreatorPage() {
           </div>
         </div>
       </section>
-
       {/* === ACT II: ORIGINAL CREATIONS === */}
       <section className="py-32 lg:py-40 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-rose-25">
         <div className="max-w-7xl mx-auto">

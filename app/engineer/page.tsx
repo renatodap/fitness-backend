@@ -105,11 +105,11 @@ export default function EngineerPage() {
       />
 
       {/* === ACT I: FEATURED PROJECTS === */}
-      <section className="py-32 lg:py-40 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-teal-25">
-        <div className="max-w-7xl mx-auto">
-          <CinematicSection className="text-center mb-20">
+      <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-teal-25">
+        <div className="max-w-6xl mx-auto">
+          <CinematicSection className="text-center mb-16">
             <ParallaxText>
-              <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-neutral-900 mb-8">
+              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-neutral-900 mb-6">
                 Featured
                 <br />
                 <span className="bg-gradient-to-r from-teal-600 via-teal-500 to-teal-400 bg-clip-text text-transparent">
@@ -239,11 +239,11 @@ export default function EngineerPage() {
       </section>
 
       {/* === FINALE: THE INVITATION === */}
-      <section className="py-32 lg:py-40 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-teal-25 to-teal-50 text-center">
-        <div className="max-w-4xl mx-auto">
+      <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-teal-25 to-teal-50 text-center">
+        <div className="max-w-3xl mx-auto">
           <CinematicSection>
             <ParallaxText>
-              <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-neutral-900 mb-8">
+              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-neutral-900 mb-6">
                 Let's
                 <br />
                 <span className="bg-gradient-to-r from-teal-600 via-teal-500 to-teal-400 bg-clip-text text-transparent">
@@ -251,7 +251,7 @@ export default function EngineerPage() {
                 </span>
               </h2>
             </ParallaxText>
-            <p className="text-lg sm:text-xl text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-10">
+            <p className="text-base sm:text-lg text-neutral-600 leading-relaxed max-w-2xl mx-auto mb-8">
               If something here resonates with you — a project, an approach, a shared curiosity — 
               I'd love to hear your thoughts. The best ideas emerge from conversation.
             </p>
@@ -259,11 +259,11 @@ export default function EngineerPage() {
             <div className="flex justify-center">
               <motion.a 
                 href="mailto:renatodaprado@gmail.com" 
-                className="inline-flex items-center justify-center px-10 py-5 border border-teal-300 text-base font-semibold rounded-xl text-neutral-900 bg-white hover:bg-teal-50 hover:border-teal-400 transition-all duration-300 shadow-lg hover:shadow-xl"
+                className="inline-flex items-center justify-center px-8 py-4 border border-teal-300 text-sm font-semibold rounded-xl text-neutral-900 bg-white hover:bg-teal-50 hover:border-teal-400 transition-all duration-300 shadow-lg hover:shadow-xl"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <span className="mr-3"></span>
+                <span className="mr-2"></span>
                 Reach Out
               </motion.a>
             </div>
