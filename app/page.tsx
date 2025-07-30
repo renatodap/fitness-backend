@@ -185,24 +185,22 @@ export default function HomePage() {
             </ParallaxText>
           </CinematicSection>
 
-          <div className="space-y-20">
+          <div className="space-y-28">
             {SECTIONS.map((section, index) => (
-              <CinematicSection key={section.id} delay={index * 0.1}>
+              <CinematicSection key={section.id} delay={index * 0.2}>
                 <motion.div
-                  className={`flex flex-col lg:flex-row items-center gap-12 ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}
-                  initial={{ opacity: 0, y: 40 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
-                  viewport={{ once: true, margin: '-50px' }}
+                  className={`flex flex-col lg:flex-row items-center gap-14 ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}
+                  initial={{ opacity: 0, x: index % 2 === 0 ? -80 : 80 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 1.4, ease: 'easeOut' }}
+                  viewport={{ once: true, margin: '-100px' }}
                 >
                   <div className="lg:w-1/2">
                     <FloatingCard index={index}>
-                      <div className="relative aspect-video bg-gradient-to-br from-neutral-50 to-orange-50 rounded-3xl overflow-hidden border border-orange-100 shadow-2xl group">
+                      <div className="relative aspect-video bg-gradient-to-br from-orange-50 to-neutral-50 rounded-3xl overflow-hidden border border-orange-100 shadow-2xl group">
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          {section.image.endsWith('.svg') ? (
-                            <div className="text-orange-300 text-8xl opacity-30 group-hover:opacity-50 transition-opacity duration-500">⚡</div>
-                          ) : (
+                          {section.image ? (
                             <Image
                               src={section.image}
                               alt={section.title}
@@ -211,52 +209,60 @@ export default function HomePage() {
                               className="object-cover group-hover:scale-105 transition-transform duration-700"
                               priority={index < 2}
                             />
+                          ) : (
+                            <div className="text-orange-300 text-8xl opacity-30 group-hover:opacity-50 transition-opacity duration-500">🏠</div>
                           )}
                         </div>
                         <div className="absolute top-6 left-6 right-6">
                           <div className="flex items-center justify-between">
-                            <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                              {section.id === 'aaf' ? 'AI/ML' : section.id === 'liteclient' ? 'Blockchain' : section.id === 'ai' ? 'Coursework' : section.id === 'tennis' ? 'Athletics' : 'Music'}
+                            <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-medium">
+                              Featured
                             </span>
                             <span className="bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
-                              {section.id === 'aaf' ? 'Fall 2025' : section.id === 'liteclient' ? 'Summer 2025' : section.id === 'ai' ? 'Fall 2025' : section.id === 'tennis' ? 'Fall 2025' : 'Ongoing'}
+                              2024-2025
                             </span>
+                          </div>
+                        </div>
+                        <div className="absolute bottom-6 left-6 right-6">
+                          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 border border-white/20 shadow-lg">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-semibold text-neutral-800">{section.title}</p>
+                                <p className="text-xs text-neutral-600">Featured Project</p>
+                              </div>
+                              <div className="flex gap-2">
+                                {section.ctas.map((cta, ctaIndex) => (
+                                  <div key={ctaIndex} className="w-8 h-8 bg-neutral-100 rounded-full flex items-center justify-center">
+                                    <span className="text-xs">🔗</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </FloatingCard>
                   </div>
                   
-                  <div className="lg:w-1/2 space-y-8">
-                    <div>
-                      <div className="inline-flex items-center px-4 py-2 bg-orange-100 text-orange-800 text-sm font-semibold rounded-full mb-6 border border-orange-200">
-                        {section.id === 'aaf' ? 'AI/ML' : section.id === 'liteclient' ? 'Blockchain' : section.id === 'ai' ? 'Coursework' : section.id === 'tennis' ? 'Athletics' : 'Music'}
-                      </div>
-                      <h3 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-5">{section.title}</h3>
+                  <div className="lg:w-1/2 space-y-6">
+                    <div className="space-y-4">
+                      <h3 className="text-3xl font-bold text-neutral-900">{section.title}</h3>
+                      <div className="text-neutral-600 leading-relaxed text-lg">{section.description}</div>
                     </div>
                     
-                    <div className="text-base text-neutral-600 leading-relaxed mb-7">
-                      {section.description}
-                    </div>
-                    
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3">
                       {section.ctas.map((cta, ctaIndex) => (
-                        <motion.a
+                        <a
                           key={ctaIndex}
                           href={cta.href}
-                          target={cta.href.startsWith('http') ? '_blank' : undefined}
-                          rel={cta.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                          className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-colors ${
+                          className={`px-6 py-3 rounded-2xl font-medium transition-all duration-300 ${
                             cta.variant === 'solid'
-                              ? 'bg-neutral-900 text-white hover:bg-neutral-800'
-                              : 'border border-neutral-300 text-neutral-700 hover:border-orange-300 hover:bg-orange-50'
+                              ? 'bg-orange-600 text-white hover:bg-orange-700 hover:shadow-lg'
+                              : 'border-2 border-orange-300 text-orange-700 hover:border-orange-600 hover:text-orange-800'
                           }`}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
                         >
-                          <span className="mr-2">{cta.variant === 'solid' ? '' : ''}</span>
                           {cta.label}
-                        </motion.a>
+                        </a>
                       ))}
                     </div>
                   </div>
