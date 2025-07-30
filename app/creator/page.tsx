@@ -2,38 +2,50 @@
 
 import UniversalHero from '@/app/components/shared/UniversalHero';
 import { motion, useInView, useScroll, useTransform } from 'framer-motion';
-import { useRef } from 'react';
+import { useRef, useEffect, useState } from 'react';
 
 // === CINEMATIC DATA STRUCTURES ===
 
 const instrumentJourney = [
   {
-    name: "Violin", essence: "First Voice", years: "15 years",
-    story: "Where it all began. At seven, I held this wooden box and discovered I could make it sing. Every scratch, every screech, every breakthrough taught me that beauty lives on the other side of struggle.",
-    philosophy: "The violin taught me that music is not about perfection—it's about truth."
-  },
-  {
-    name: "Guitar", essence: "The Storyteller", years: "12 years", 
+    name: "Guitar", essence: "The Storyteller", years: "13 years", 
+    image: "/guitar.jpg",
     story: "Six strings became my diary. From bedroom recordings to campfire circles, the guitar taught me that every song is a conversation waiting to happen.",
     philosophy: "In every chord progression lives a story. In every melody lives a memory."
   },
   {
-    name: "Piano", essence: "The Architect", years: "10 years",
+    name: "Piano", essence: "The Architect", years: "5 years",
+    image: "/piano.jpg",
     story: "88 keys unlocked the mathematics of music. Here I learned that harmony isn't just sound—it's the art of making different voices sing together.",
     philosophy: "The piano showed me that complexity and simplicity can dance together beautifully."
   },
   {
-    name: "Drums", essence: "The Heartbeat", years: "8 years",
+    name: "Drums", essence: "The Heartbeat", years: "4 years",
+    image: "/drums.JPG",
     story: "Behind the kit, I discovered that rhythm isn't just about keeping time—it's about creating the space where magic happens.",
     philosophy: "Every song needs a pulse. Every story needs a rhythm."
   },
   {
-    name: "Bass", essence: "The Foundation", years: "6 years",
+    name: "Bass", essence: "The Foundation", years: "4 years",
+    image: "/bass.jpg",
     story: "Four strings that hold everything together. The bass taught me that sometimes the most important voice is the one you feel rather than hear.",
     philosophy: "True power comes from knowing when not to play."
   },
   {
-    name: "Ukulele", essence: "Pure Joy", years: "4 years",
+    name: "Singing", essence: "The Human Voice", years: "6 months (still learning!)",
+    image: "/singing.jpg",
+    story: "The most vulnerable instrument of all—your own voice. Every note is a risk, every breath a choice to be heard.",
+    philosophy: "The voice carries not just melody, but the soul behind it."
+  },
+  {
+    name: "Harmonica", essence: "The Wanderer", years: "5 years",
+    image: null, // No harmonica image available
+    story: "Pocket-sized magic. The harmonica taught me that the most powerful music can come from the smallest spaces, carried wherever life takes you.",
+    philosophy: "Sometimes the best instrument is the one you can take anywhere."
+  },
+  {
+    name: "Ukulele", essence: "Pure Joy", years: "1 year",
+    image: null, // No ukulele image available
     story: "Four strings of sunshine. When music gets too serious, the ukulele reminds me why I started—for the simple, infectious joy of making sound.",
     philosophy: "Sometimes the smallest instruments carry the biggest smiles."
   }
@@ -158,11 +170,25 @@ function CinematicSection({ children, className = '', delay = 0 }: { children: R
 
 function ParallaxText({ children, offset = 50 }: { children: React.ReactNode; offset?: number }) {
   const ref = useRef(null);
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ['start end', 'end start']
   });
   const y = useTransform(scrollYProgress, [0, 1], [offset, -offset]);
+  
+  if (!isClient) {
+    return (
+      <div ref={ref}>
+        {children}
+      </div>
+    );
+  }
   
   return (
     <motion.div ref={ref} style={{ y }}>
@@ -179,8 +205,8 @@ export default function CreatorPage() {
         theme="creator"
         title="Stories in Rhythm"
         subtitle="Where music meets motion, where code meets creativity, where every frame tells a truth."
-        videoSrc="/guitar.mp4"
-        mobileVideoSrc="/guitar.mp4"
+        videoSrc="/creator.mp4"
+        mobileVideoSrc="/creator.mp4"
       />
 
       {/* === ACT I: THE LANGUAGES I SPEAK === */}
@@ -213,9 +239,20 @@ export default function CreatorPage() {
                 >
                   <div className="lg:w-1/2">
                     <div className="relative aspect-[4/3] bg-gradient-to-br from-rose-50 to-neutral-50 rounded-3xl overflow-hidden border border-rose-100 shadow-2xl group">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="text-rose-300 text-9xl opacity-30 group-hover:opacity-50 transition-opacity duration-500">♪</div>
-                      </div>
+                      {instrument.image ? (
+                        <>
+                          <img 
+                            src={instrument.image} 
+                            alt={`${instrument.name} - ${instrument.essence}`}
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500"></div>
+                        </>
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="text-rose-300 text-9xl opacity-30 group-hover:opacity-50 transition-opacity duration-500">♪</div>
+                        </div>
+                      )}
                       <div className="absolute bottom-6 left-6 right-6">
                         <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 border border-white/20 shadow-lg">
                           <p className="text-sm text-neutral-600 font-medium">{instrument.years} of stories</p>
