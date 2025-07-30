@@ -40,7 +40,7 @@ export const projects: Project[] = [
     media: [
       {
         type: 'image',
-        src: '/images/all-about-food-ai.png',
+        src: '/all-about-food.PNG',
         alt: 'All About Food AI interface showing recipe recommendations',
       },
     ],
@@ -63,7 +63,7 @@ export const projects: Project[] = [
     media: [
       {
         type: 'image',
-        src: '/images/accumulate-lite-client.png',
+        src: '/acc-lite-client.png',
         alt: 'Accumulate Lite Client interface screenshot',
       },
     ],
@@ -88,7 +88,7 @@ export const projects: Project[] = [
     media: [
       {
         type: 'image',
-        src: '/images/personal-website.png',
+        src: '/dap.png',
         alt: 'Personal website homepage with hero section and project showcase',
       },
     ],
@@ -111,7 +111,7 @@ export const projects: Project[] = [
     media: [
       {
         type: 'image',
-        src: '/images/digital-media-library.png',
+        src: '/dap.png',
         alt: 'Digital Media Library interface with search and tagging features',
       },
     ],
@@ -134,7 +134,7 @@ export const projects: Project[] = [
     media: [
       {
         type: 'image',
-        src: '/images/game-tracker.png',
+        src: '/dap.png',
         alt: 'Game Tracker web application showing game library and ratings',
       },
     ],
@@ -158,7 +158,7 @@ export const projects: Project[] = [
     media: [
       {
         type: 'image',
-        src: '/images/java-linter.png',
+        src: '/dap.png',
         alt: 'Java Design Linter detecting code violations and suggestions',
       },
     ],

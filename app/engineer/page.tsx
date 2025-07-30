@@ -130,12 +130,11 @@ export default function EngineerPage() {
                   transition={{ duration: 1.4, ease: 'easeOut' }}
                   viewport={{ once: true, margin: '-100px' }}
                 >
-                  <div className="lg:w-1/2">
+                  <div className="w-full lg:w-1/2">
                     <FloatingCard index={index}>
                       <div className="relative aspect-video bg-gradient-to-br from-teal-50 to-neutral-50 rounded-3xl overflow-hidden border border-teal-100 shadow-2xl group">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          {project.media && project.media[0] ? (
+                        {project.media && project.media[0] ? (
+                          <>
                             <Image
                               src={project.media[0].src}
                               alt={project.media[0].alt}
@@ -144,10 +143,13 @@ export default function EngineerPage() {
                               className="object-cover group-hover:scale-105 transition-transform duration-700"
                               priority={index < 2}
                             />
-                          ) : (
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500"></div>
+                          </>
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
                             <div className="text-teal-300 text-8xl opacity-30 group-hover:opacity-50 transition-opacity duration-500">⚡</div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                         <div className="absolute top-6 left-6 right-6">
                           <div className="flex items-center justify-between">
                             <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -191,7 +193,7 @@ export default function EngineerPage() {
                     </FloatingCard>
                   </div>
                   
-                  <div className="lg:w-1/2 space-y-8">
+                  <div className="w-full lg:w-1/2 space-y-8">
                     <div>
                       <div className="inline-flex items-center px-4 py-2 bg-teal-100 text-teal-800 text-sm font-semibold rounded-full mb-6 border border-teal-200">
                         {project.category}

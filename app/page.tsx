@@ -195,12 +195,11 @@ export default function HomePage() {
                   transition={{ duration: 1.4, ease: 'easeOut' }}
                   viewport={{ once: true, margin: '-100px' }}
                 >
-                  <div className="lg:w-1/2">
+                  <div className="w-full lg:w-1/2">
                     <FloatingCard index={index}>
                       <div className="relative aspect-video bg-gradient-to-br from-orange-50 to-neutral-50 rounded-3xl overflow-hidden border border-orange-100 shadow-2xl group">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          {section.image ? (
+                        {section.image ? (
+                          <>
                             <Image
                               src={section.image}
                               alt={section.title}
@@ -209,10 +208,13 @@ export default function HomePage() {
                               className="object-cover group-hover:scale-105 transition-transform duration-700"
                               priority={index < 2}
                             />
-                          ) : (
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500"></div>
+                          </>
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
                             <div className="text-orange-300 text-8xl opacity-30 group-hover:opacity-50 transition-opacity duration-500">🏠</div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                         <div className="absolute top-6 left-6 right-6">
                           <div className="flex items-center justify-between">
                             <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-medium">
@@ -244,7 +246,7 @@ export default function HomePage() {
                     </FloatingCard>
                   </div>
                   
-                  <div className="lg:w-1/2 space-y-6">
+                  <div className="w-full lg:w-1/2 space-y-6">
                     <div className="space-y-4">
                       <h3 className="text-3xl font-bold text-neutral-900">{section.title}</h3>
                       <div className="text-neutral-600 leading-relaxed text-lg">{section.description}</div>
