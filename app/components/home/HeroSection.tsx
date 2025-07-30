@@ -86,7 +86,7 @@ export default function HeroSection() {
         >
             {/* Enhanced Video Background */}
             <motion.div
-                className="absolute inset-0 z-[0] bg-black overflow-hidden"
+                className="absolute inset-0 z-[0] overflow-hidden"
                 style={{ scale }}
             >
                 {/* Desktop Video */}
