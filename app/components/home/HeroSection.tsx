@@ -150,7 +150,7 @@ export default function HeroSection() {
                     variants={itemVariants}
                     className="text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-heading font-bold leading-tight text-white mb-4 sm:mb-6"
                 >
-                    I build tools{' '}
+                    I create systems{' '}
                     <br className="hidden sm:block" />
                     <motion.span
                         className="gradient-text inline-block"
@@ -174,35 +174,10 @@ export default function HeroSection() {
                     >
                         Renato DAP
                     </motion.span>
-                    {' '}— I work at the intersection of creative energy and technical depth.
+                    {' '}— an engineer and creator focused on building what matters.
                 </motion.p>
 
-                {/* CTA Buttons */}
-                <motion.div
-                    variants={itemVariants}
-                    className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center w-full max-w-sm sm:max-w-none mx-auto px-4 sm:px-0"
-                >
-                    <Button
-                        href="/software"
-                        variant="solid"
-                        color="gradient"
-                        size="md"
-                        shimmer={true}
-                        textColor="white"
-                        className="w-full sm:w-auto text-sm sm:text-base"
-                    >
-                        View Projects
-                    </Button>
-                    <Button
-                        href="/music"
-                        variant="outline"
-                        color="white"
-                        size="md"
-                        className="w-full sm:w-auto text-sm sm:text-base"
-                    >
-                        Watch Performances
-                    </Button>
-                </motion.div>
+
 
 
             </motion.div>

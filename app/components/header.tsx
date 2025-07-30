@@ -30,15 +30,22 @@ export default function Header() {
   }, [lastScrollY]);
 
   const navItems = [
-    { href: "/about", label: "About" },
-    { href: "/professional", label: "Professional" },
-    { href: "/software", label: "Software" },
-    { href: "/education", label: "Education" },
-    { href: "/music", label: "Music" },
-    { href: "/photo", label: "Photo" },
-    { href: "/tennis", label: "Tennis" },
-    { href: "/personal", label: "Personal" }
+    { href: "/engineer", label: "Engineer", accent: "teal" },
+    { href: "/creator", label: "Creator", accent: "rose" },
+    { href: "/essence", label: "Essence", accent: "orange" }
   ];
+
+  const getAccentColor = (accent: string, isActive: boolean) => {
+    if (isActive) {
+      switch (accent) {
+        case 'teal': return 'text-teal-500';
+        case 'rose': return 'text-rose-500';
+        case 'orange': return 'text-orange-500';
+        default: return 'text-teal-500';
+      }
+    }
+    return 'text-neutral-600 hover:text-neutral-900';
+  };
 
   return (
     <header className={`w-full flex justify-center py-4 sticky top-0 bg-white/90 backdrop-blur-md border-b border-neutral-200/50 z-50 transition-all duration-300 ease-in-out ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}>
@@ -60,15 +67,13 @@ export default function Header() {
           </button>
         </div>
 
-        <div className={`${menuOpen ? "flex" : "hidden"} lg:flex flex-col lg:flex-row lg:space-x-8 w-full lg:w-auto mt-4 lg:mt-0 space-y-2 lg:space-y-0 text-center lg:text-left bg-black/95 lg:bg-transparent rounded-lg lg:rounded-none p-4 lg:p-0 border border-neutral-800 lg:border-none`}>
+        <div className={`${menuOpen ? "flex" : "hidden"} lg:flex flex-col lg:flex-row lg:space-x-8 w-full lg:w-auto mt-4 lg:mt-0 space-y-2 lg:space-y-0 text-center lg:text-left bg-white/95 lg:bg-transparent rounded-lg lg:rounded-none p-4 lg:p-0 border border-neutral-200 lg:border-none`}>
           {navItems.map((item) => (
             <Link 
               key={item.href}
               href={item.href} 
               className={`font-body transition-colors duration-200 py-2 lg:py-0 ${
-                pathname === item.href 
-                  ? 'text-teal-400' 
-                  : 'text-neutral-400 hover:text-white'
+                getAccentColor(item.accent, pathname === item.href)
               }`}
             >
               {item.label}
