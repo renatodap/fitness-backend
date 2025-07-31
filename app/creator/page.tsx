@@ -9,75 +9,81 @@ import Image from 'next/image';
 
 const instrumentJourney = [
   {
-    name: "Guitar", essence: "The Storyteller", years: "13 years", 
+    name: "Guitar", essence: "The Entry Point", years: "13 years", 
     image: "/guitar.jpg",
-    story: "Six strings became my diary. From bedroom recordings to campfire circles, the guitar taught me that every song is a conversation waiting to happen.",
-    philosophy: "In every chord progression lives a story. In every melody lives a memory."
+    story: "My entry point to music at 9 years old. Through experimenting with this instrument, I learned most of the fundamental music theory I know now. It's the one I can express myself the best with—six strings that became my voice before I found my actual voice.",
+    philosophy: "Every musician needs that first door into the world of sound. Guitar was mine."
   },
   {
-    name: "Piano", essence: "The Architect", years: "5 years",
+    name: "Piano", essence: "The Spark", years: "Since childhood",
     image: "/piano.jpg",
-    story: "88 keys unlocked the mathematics of music. Here I learned that harmony isn't just sound—it's the art of making different voices sing together.",
-    philosophy: "The piano showed me that complexity and simplicity can dance together beautifully."
+    story: "There was an old piano at my grandma's house in the countryside of Brazil, in Dracena. And another at my grandpa's farm in Minas Gerais. I used to play with them since I was very young—maybe 3 or 4 years old—even though I knew nothing about how they worked. It definitely sparked my interest in music. Throughout my life, I kept trying to replicate my guitar knowledge to piano until I decided to actually learn some of it during COVID.",
+    philosophy: "Sometimes the most profound connections happen before we understand what we're connecting to."
   },
   {
-    name: "Drums", essence: "The Heartbeat", years: "4 years",
+    name: "Drums", essence: "The Dream", years: "4 years",
     image: "/drums.JPG",
-    story: "Behind the kit, I discovered that rhythm isn't just about keeping time—it's about creating the space where magic happens.",
-    philosophy: "Every song needs a pulse. Every story needs a rhythm."
+    story: "Man, I always wanted to play drums but it's one of those dreams I never thought would come true. And it did. Maybe. I'm not very good. But although most of the time playing drums is just hitting some stuff, it taught me a sense of rhythm that translates to how I listen to and play music and how I live life. I'm not very good at drums, but the kind of loose connection and passion I feel for it is unmatched.",
+    philosophy: "Sometimes it's not about being good—it's about the rhythm you find in your soul."
   },
   {
-    name: "Bass", essence: "The Foundation", years: "4 years",
+    name: "Bass", essence: "The Missing Piece", years: "4 years",
     image: "/bass.jpg",
-    story: "Four strings that hold everything together. The bass taught me that sometimes the most important voice is the one you feel rather than hear.",
-    philosophy: "True power comes from knowing when not to play."
+    story: "Every guitarist can play bass until they try to play bass. And I'm glad I tried. My luck is I studied some classical guitar during COVID, so when I picked up the bass, the technique for plucking strings was actually somewhat similar. But in all seriousness, it felt like the missing piece for me to feel like a full band, and I'm glad I took the time to practice. Even though I already loved playing basslines on guitar before I bought my own.",
+    philosophy: "The foundation isn't flashy, but without it, everything else falls apart."
   },
   {
-    name: "Singing", essence: "The Human Voice", years: "6 months (still learning!)",
+    name: "Singing", essence: "The Discovery", years: "1 year (still learning!)",
     image: "/singing.jpg",
-    story: "The most vulnerable instrument of all—your own voice. Every note is a risk, every breath a choice to be heard.",
-    philosophy: "The voice carries not just melody, but the soul behind it."
+    story: "OK, this one even more than drums—I thought I would never be good at singing ever. And now I'm certain about it. Jokes aside, expressing myself through my voice has been my discovery of the last year. Even though I'm still at the very beginning of my vocal journey, it brings me so much joy.",
+    philosophy: "The most vulnerable instrument is your own voice, but it's also the most honest."
   },
   {
-    name: "Harmonica", essence: "The Wanderer", years: "5 years",
-    image: null, // No harmonica image available
-    story: "Pocket-sized magic. The harmonica taught me that the most powerful music can come from the smallest spaces, carried wherever life takes you.",
-    philosophy: "Sometimes the best instrument is the one you can take anywhere."
+    name: "Harmonica", essence: "The Question Mark", years: "Occasional",
+    image: "/harmonica.jpg",
+    story: "I don't actually play harmonica except a few songs here and there. But how hard is harmonica anyway? It's that instrument that sits in your pocket, waiting for the perfect campfire moment or quiet evening when you just want to make some sound without thinking too hard about it.",
+    philosophy: "Not every instrument needs to be mastered—some just need to be enjoyed."
   },
   {
-    name: "Ukulele", essence: "Pure Joy", years: "1 year",
-    image: null, // No ukulele image available
-    story: "Four strings of sunshine. When music gets too serious, the ukulele reminds me why I started—for the simple, infectious joy of making sound.",
-    philosophy: "Sometimes the smallest instruments carry the biggest smiles."
+    name: "Ukulele", essence: "The Connector", years: "2 years",
+    image: "/ukulele.jpg",
+    story: "I bought it during a trip to Florida, and it was a highlight of the trip for me—playing with friends, meeting new people, and playing for them. It became my portable way to connect with people through music. Four strings of instant friendship.",
+    philosophy: "The best instruments are the ones that bring people together."
   }
 ];
 
 const originalMusic = [
   {
-    title: "Echoes of Tomorrow", featured: true,
-    story: "Written during a sleepless night in college, this song captures the anxiety and hope of not knowing what comes next. It became my most personal piece.",
+    title: "Be Aware", 
+    type: "Single", 
+    year: "2020",
+    featured: true,
+    hasVideo: true,
+    cover: "/be-aware.webp",
+    essence: "Sometimes the best way to express a feeling is through composing music—and it doesn't always come easy, especially with 10,000 other occupations.",
     platforms: [
-      { name: "Spotify", url: "https://open.spotify.com/track/example", icon: "🎵", color: "bg-green-500" },
-      { name: "Apple Music", url: "https://music.apple.com/track/example", icon: "🍎", color: "bg-gray-900" },
-      { name: "YouTube", url: "https://youtube.com/watch?v=example", icon: "📺", color: "bg-red-500" }
+      { name: "Spotify", url: "https://open.spotify.com/album/78YPuJu8EM9hR32tukVQh3", icon: "🎵", color: "bg-green-500" },
+      { name: "Apple Music", url: "https://music.apple.com/br/album/be-aware-single/1525671917", icon: "🍎", color: "bg-gray-900" },
+      { name: "Watch Video", url: "https://www.youtube.com/watch?v=012eud4qjHE", icon: "📺", color: "bg-red-500" }
     ]
   },
   {
-    title: "Code & Coffee",
-    story: "A love letter to late-night programming sessions. This instrumental piece blends acoustic guitar with subtle electronic elements—just like my life.",
+    title: "Achilles Trilogy", 
+    type: "EP", 
+    year: "2021-2022",
+    featured: true,
+    cover: "/achilles.jpg",
+    essence: "A three-part journey through sound—orchestral arrangements, guitar solos, piano, drums, bass. My favorite is Achilles II.",
+    favoriteTrack: {
+      name: "Achilles II",
+      description: "Features a sweeping orchestra section (MIDI), intricate guitar solos, and layered instrumentation.",
+      spotifyUrl: "https://open.spotify.com/track/5HTADgrwluGLT6afFzzDhk?si=9c3c45e868764c54",
+      youtubeUrl: "https://m.youtube.com/watch?v=FsTZcHcS6Jc"
+    },
     platforms: [
-      { name: "Spotify", url: "https://open.spotify.com/track/example2", icon: "🎵", color: "bg-green-500" },
-      { name: "Apple Music", url: "https://music.apple.com/track/example2", icon: "🍎", color: "bg-gray-900" },
-      { name: "YouTube", url: "https://youtube.com/watch?v=example2", icon: "📺", color: "bg-red-500" }
-    ]
-  },
-  {
-    title: "Hometown Memories",
-    story: "A nostalgic journey through childhood streets and forgotten dreams. This song took three years to finish because some stories need time to breathe.",
-    platforms: [
-      { name: "Spotify", url: "https://open.spotify.com/track/example3", icon: "🎵", color: "bg-green-500" },
-      { name: "Apple Music", url: "https://music.apple.com/track/example3", icon: "🍎", color: "bg-gray-900" },
-      { name: "YouTube", url: "https://youtube.com/watch?v=example3", icon: "📺", color: "bg-red-500" }
+      { name: "Spotify", url: "https://open.spotify.com/album/6OItgP0pqkhhrKn0BRer0b", icon: "🎵", color: "bg-green-500" },
+      { name: "Apple Music", url: "https://music.apple.com/br/album/achilles-trilogy-single/1604464244", icon: "🍎", color: "bg-gray-900" },
+      { name: "YouTube Music", url: "https://m.youtube.com/playlist?list=OLAK5uy_mh1aVOb3eOiKEF7ZTSHmbTt6Nr3iffT1g", icon: "📺", color: "bg-red-500" }
     ]
   }
 ];
@@ -289,7 +295,7 @@ export default function CreatorPage() {
           </div>
         </div>
       </section>
-      {/* === ACT II: ORIGINAL CREATIONS === */}
+      {/* === ACT II: ORIGINAL MUSIC === */}
       <section className="py-32 lg:py-40 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-rose-25">
         <div className="max-w-7xl mx-auto">
           <CinematicSection className="text-center mb-24">
@@ -298,107 +304,375 @@ export default function CreatorPage() {
                 Original
                 <br />
                 <span className="bg-gradient-to-r from-rose-600 via-rose-500 to-rose-400 bg-clip-text text-transparent">
-                  Creations
+                  Compositions
                 </span>
               </h2>
             </ParallaxText>
-            <p className="text-xl sm:text-2xl text-neutral-600 max-w-4xl mx-auto leading-relaxed">
-              The songs that carry pieces of my soul, now available across all platforms.
+            <p className="text-xl sm:text-2xl text-neutral-600 max-w-4xl mx-auto leading-relaxed italic">
+              "Sometimes the best way to express a feeling is through composing music."
             </p>
           </CinematicSection>
 
-          {/* Featured Music Video */}
-          <CinematicSection className="mb-20">
-            <div className="max-w-5xl mx-auto">
-              <div className="relative aspect-video bg-gradient-to-br from-neutral-900 to-neutral-700 rounded-3xl overflow-hidden shadow-2xl group">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <motion.div 
-                    className="text-white text-8xl opacity-80 group-hover:opacity-100 transition-opacity cursor-pointer"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    ▶
-                  </motion.div>
-                </div>
-                <div className="absolute bottom-8 left-8 right-8">
-                  <h3 className="text-white text-3xl font-bold mb-3">{originalMusic[0].title}</h3>
-                  <p className="text-white/90 text-lg mb-4">{originalMusic[0].story}</p>
-                  <div className="flex flex-wrap gap-3">
-                    {originalMusic[0].platforms.map((platform) => (
+          {/* Music Showcase Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-6xl mx-auto">
+            
+            {/* Be Aware - Featured with Video */}
+            <CinematicSection className="lg:col-span-2">
+              <motion.div
+                className="relative group"
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 1.2 }}
+                viewport={{ once: true }}
+              >
+                <div className="relative bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-700 rounded-3xl overflow-hidden shadow-2xl">
+                  {/* Album Cover Background */}
+                  <div className="absolute inset-0">
+                    <Image
+                      src="/be-aware.webp"
+                      alt="Be Aware Album Cover"
+                      fill
+                      className="object-cover opacity-30 group-hover:opacity-40 transition-opacity duration-700"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                  </div>
+                  
+                  {/* Content */}
+                  <div className="relative p-12 lg:p-16 min-h-[400px] flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-4 mb-6">
+                        <span className="px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-full">🎬 Music Video</span>
+                        <span className="px-3 py-1 bg-white/20 text-white text-sm font-medium rounded-full backdrop-blur-sm">2020</span>
+                      </div>
+                      <h3 className="text-4xl lg:text-5xl font-bold text-white mb-4">Be Aware</h3>
+                      <p className="text-white/90 text-lg lg:text-xl leading-relaxed max-w-2xl">
+                        A journey through sound and vision—my first single with a full music video.
+                      </p>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-4 mt-8">
                       <motion.a
-                        key={platform.name}
-                        href={platform.url}
+                        href="https://www.youtube.com/watch?v=012eud4qjHE"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`inline-flex items-center gap-2 px-4 py-2 ${platform.color} text-white rounded-full text-sm font-medium hover:opacity-90 transition-opacity`}
+                        className="inline-flex items-center gap-3 px-6 py-4 bg-red-500 text-white rounded-xl font-semibold text-lg hover:bg-red-600 transition-colors shadow-lg hover:shadow-xl"
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <span className="text-xl">📺</span>
+                        Watch Video
+                      </motion.a>
+                      <motion.a
+                        href="https://open.spotify.com/album/78YPuJu8EM9hR32tukVQh3"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-3 px-6 py-4 bg-green-500 text-white rounded-xl font-semibold text-lg hover:bg-green-600 transition-colors shadow-lg hover:shadow-xl"
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <span className="text-xl">🎵</span>
+                        Spotify
+                      </motion.a>
+                      <motion.a
+                        href="https://music.apple.com/br/album/be-aware-single/1525671917"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-3 px-6 py-4 bg-gray-900 text-white rounded-xl font-semibold text-lg hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl"
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <span className="text-xl">🍎</span>
+                        Apple Music
+                      </motion.a>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </CinematicSection>
+
+            {/* Achilles Trilogy */}
+            <CinematicSection>
+              <motion.div
+                className="relative group h-full"
+                initial={{ opacity: 0, x: -50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 1.0, delay: 0.2 }}
+                viewport={{ once: true }}
+              >
+                <div className="relative bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-shadow duration-500 h-full">
+                  {/* Album Cover */}
+                  <div className="relative h-64 overflow-hidden">
+                    <Image
+                      src="/achilles.jpg"
+                      alt="Achilles Trilogy Album Cover"
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-700"
+                    />
+                    <div className="absolute top-4 left-4">
+                      <span className="px-3 py-1 bg-black/80 text-white text-sm font-medium rounded-full backdrop-blur-sm">EP • 2021-2022</span>
+                    </div>
+                  </div>
+                  
+                  {/* Content */}
+                  <div className="p-8">
+                    <h3 className="text-3xl font-bold text-neutral-900 mb-4">Achilles Trilogy</h3>
+                    <p className="text-neutral-600 text-lg leading-relaxed mb-6">
+                      A three-part journey through orchestral arrangements, guitar solos, piano, drums, and bass.
+                    </p>
+                    
+                    {/* Favorite Track Highlight */}
+                    <div className="bg-rose-50 border-l-4 border-rose-400 p-4 rounded-r-xl mb-6">
+                      <p className="text-rose-800 font-semibold text-sm mb-1">✨ Personal Favorite</p>
+                      <p className="text-rose-700 font-medium">Achilles II</p>
+                      <p className="text-rose-600 text-sm">Features sweeping MIDI orchestra and intricate guitar work</p>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <motion.a
+                        href="https://open.spotify.com/track/5HTADgrwluGLT6afFzzDhk?si=9c3c45e868764c54"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 w-full px-4 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <span>🎵</span>
+                        Play Achilles II
+                      </motion.a>
+                      <motion.a
+                        href="https://open.spotify.com/album/6OItgP0pqkhhrKn0BRer0b"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 w-full px-4 py-3 border-2 border-neutral-200 text-neutral-700 rounded-xl font-medium hover:border-rose-300 hover:bg-rose-50 transition-colors"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <span>🎼</span>
+                        Full Trilogy
+                      </motion.a>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </CinematicSection>
+
+            {/* Streaming Stats & Call to Action */}
+            <CinematicSection>
+              <motion.div
+                className="relative group h-full"
+                initial={{ opacity: 0, x: 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 1.0, delay: 0.4 }}
+                viewport={{ once: true }}
+              >
+                <div className="bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl p-8 text-white shadow-xl hover:shadow-2xl transition-shadow duration-500 h-full flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-2xl font-bold mb-6">Available Everywhere</h3>
+                    <p className="text-rose-100 text-lg leading-relaxed mb-8">
+                      From late-night compositions to full orchestral arrangements—experience the complete musical journey.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <motion.a
+                        href="https://music.apple.com/br/album/achilles-trilogy-single/1604464244"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-white/20 backdrop-blur-sm rounded-xl font-medium hover:bg-white/30 transition-colors"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
-                        <span>{platform.icon}</span>
-                        {platform.name}
+                        <span>🍎</span>
+                        Apple
                       </motion.a>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CinematicSection>
-
-          {/* Other Tracks */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
-            {originalMusic.slice(1).map((track, index) => (
-              <motion.div
-                key={track.title}
-                className="bg-white rounded-2xl p-8 border border-rose-100 shadow-lg hover:shadow-xl transition-shadow"
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                whileHover={{ y: -4 }}
-              >
-                <h4 className="text-2xl font-bold text-neutral-900 mb-4">{track.title}</h4>
-                <p className="text-neutral-600 mb-6 leading-relaxed">{track.story}</p>
-                <div className="flex flex-wrap gap-2">
-                  {track.platforms.map((platform) => (
+                      <motion.a
+                        href="https://m.youtube.com/playlist?list=OLAK5uy_mh1aVOb3eOiKEF7ZTSHmbTt6Nr3iffT1g"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-white/20 backdrop-blur-sm rounded-xl font-medium hover:bg-white/30 transition-colors"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <span>📺</span>
+                        YouTube
+                      </motion.a>
+                    </div>
+                    
                     <motion.a
-                      key={platform.name}
-                      href={platform.url}
+                      href="https://open.spotify.com/artist/3VZ8V9XhQ9oZb5XnZ9g8yB"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-3 py-2 border border-neutral-200 rounded-full text-sm font-medium hover:border-rose-300 hover:bg-rose-50 transition-colors"
-                      whileHover={{ scale: 1.05 }}
+                      className="flex items-center justify-center gap-3 w-full px-6 py-4 bg-white text-rose-600 rounded-xl font-bold text-lg hover:bg-rose-50 transition-colors shadow-lg"
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
                     >
-                      <span>{platform.icon}</span>
-                      {platform.name}
+                      <span className="text-xl">🎧</span>
+                      Follow on Spotify
                     </motion.a>
-                  ))}
+                  </div>
                 </div>
               </motion.div>
-            ))}
+            </CinematicSection>
           </div>
         </div>
       </section>
 
       {/* === ACT III: YOUTUBE HIGHLIGHTS === */}
-      <section className="py-32 lg:py-40 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <CinematicSection className="text-center mb-24">
-            <ParallaxText>
-              <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-neutral-900 mb-8">
-                Best of
-                <br />
-                <span className="bg-gradient-to-r from-rose-600 via-rose-500 to-rose-400 bg-clip-text text-transparent">
-                  YouTube
-                </span>
-              </h2>
-            </ParallaxText>
-            <p className="text-xl sm:text-2xl text-neutral-600 max-w-4xl mx-auto leading-relaxed">
-              Curated highlights from my creative journey, spanning tech, music, and visual storytelling.
-            </p>
+      <section className="relative py-32 lg:py-40 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white via-rose-25/30 to-white overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/4 -left-32 w-96 h-96 bg-gradient-to-r from-rose-200/20 to-transparent rounded-full blur-3xl" />
+          <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-gradient-to-l from-rose-200/20 to-transparent rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-rose-100/10 to-transparent rounded-full" />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto">
+          <CinematicSection className="text-center mb-32">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.2 }}
+              viewport={{ once: true }}
+              className="relative"
+            >
+              {/* Floating YouTube Icon */}
+              <motion.div
+                className="absolute -top-16 left-1/2 -translate-x-1/2"
+                initial={{ opacity: 0, scale: 0, rotate: -180 }}
+                whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
+                transition={{ duration: 1.5, delay: 0.3, type: "spring", bounce: 0.4 }}
+                viewport={{ once: true }}
+              >
+                <div className="w-20 h-20 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-red-500/25">
+                  <svg className="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                </div>
+              </motion.div>
+
+              <ParallaxText>
+                <h2 className="text-6xl sm:text-7xl lg:text-8xl font-bold tracking-tight text-neutral-900 mb-8">
+                  <motion.span
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.2 }}
+                    viewport={{ once: true }}
+                    className="block"
+                  >
+                    Visual
+                  </motion.span>
+                  <motion.span
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.4 }}
+                    viewport={{ once: true }}
+                    className="block bg-gradient-to-r from-red-600 via-rose-500 to-rose-400 bg-clip-text text-transparent"
+                  >
+                    Stories
+                  </motion.span>
+                </h2>
+              </ParallaxText>
+              
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+                viewport={{ once: true }}
+                className="text-xl sm:text-2xl text-neutral-600 max-w-4xl mx-auto leading-relaxed mb-12"
+              >
+                Where creativity meets technology—curated highlights from my YouTube journey.
+              </motion.p>
+
+              {/* Channel Stats */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.8 }}
+                viewport={{ once: true }}
+                className="flex flex-wrap justify-center gap-8 text-center"
+              >
+                <div className="bg-white/60 backdrop-blur-sm rounded-2xl px-6 py-4 border border-rose-100 shadow-lg">
+                  <div className="text-2xl font-bold text-neutral-900">50+</div>
+                  <div className="text-sm text-neutral-600">Videos Created</div>
+                </div>
+                <div className="bg-white/60 backdrop-blur-sm rounded-2xl px-6 py-4 border border-rose-100 shadow-lg">
+                  <div className="text-2xl font-bold text-neutral-900">10K+</div>
+                  <div className="text-sm text-neutral-600">Total Views</div>
+                </div>
+                <div className="bg-white/60 backdrop-blur-sm rounded-2xl px-6 py-4 border border-rose-100 shadow-lg">
+                  <div className="text-2xl font-bold text-neutral-900">3</div>
+                  <div className="text-sm text-neutral-600">Categories</div>
+                </div>
+              </motion.div>
+            </motion.div>
           </CinematicSection>
 
+          {/* Featured Video Spotlight */}
+          <motion.div
+            initial={{ opacity: 0, y: 60 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1.2, delay: 0.2 }}
+            viewport={{ once: true }}
+            className="mb-24"
+          >
+            <div className="text-center mb-12">
+              <h3 className="text-3xl font-bold text-neutral-900 mb-4">Featured Video</h3>
+              <p className="text-lg text-neutral-600">The video that started it all</p>
+            </div>
+            
+            <motion.a
+              href={bestVideos[0]?.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group block max-w-4xl mx-auto"
+              whileHover={{ scale: 1.02 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="relative bg-gradient-to-br from-neutral-900 to-neutral-800 rounded-3xl overflow-hidden shadow-2xl">
+                <div className="aspect-video relative">
+                  {/* Video Thumbnail Placeholder */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-neutral-700 to-neutral-800 flex items-center justify-center">
+                    <motion.div
+                      className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center shadow-2xl"
+                      whileHover={{ scale: 1.1 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <svg className="w-10 h-10 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </motion.div>
+                  </div>
+                  
+                  {/* Overlay Effects */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-red-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  
+                  {/* Video Info Overlay */}
+                  <div className="absolute bottom-6 left-6 right-6">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                        {bestVideos[0]?.category}
+                      </span>
+                      <span className="bg-black/70 text-white px-3 py-1 rounded-full text-sm">
+                        {bestVideos[0]?.duration}
+                      </span>
+                    </div>
+                    <h4 className="text-2xl font-bold text-white mb-2">
+                      {bestVideos[0]?.title}
+                    </h4>
+                    <p className="text-neutral-200 text-sm opacity-90">
+                      {bestVideos[0]?.views} views
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.a>
+          </motion.div>
+
+          {/* Video Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {bestVideos.map((video, index) => (
+            {bestVideos.slice(1).map((video, index) => (
               <motion.a
                 key={video.title}
                 href={video.url}
@@ -409,43 +683,103 @@ export default function CreatorPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                whileHover={{ y: -4 }}
+                whileHover={{ y: -8, scale: 1.02 }}
               >
-                <div className="bg-white rounded-2xl overflow-hidden border border-neutral-200 shadow-lg group-hover:shadow-xl transition-all duration-300">
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl overflow-hidden border border-rose-100 shadow-lg group-hover:shadow-2xl group-hover:shadow-rose-500/10 transition-all duration-500">
                   <div className="relative aspect-video bg-gradient-to-br from-neutral-100 to-neutral-50">
+                    {/* Animated Play Button */}
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="text-neutral-400 text-6xl opacity-30 group-hover:opacity-80 transition-all duration-300">▶</div>
+                      <motion.div
+                        className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center shadow-xl opacity-80 group-hover:opacity-100"
+                        whileHover={{ scale: 1.1, rotate: 5 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <svg className="w-6 h-6 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                      </motion.div>
                     </div>
+                    
+                    {/* Category and Duration */}
                     <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        video.category === 'Tech' ? 'bg-blue-100 text-blue-800' :
-                        video.category === 'Music' ? 'bg-rose-100 text-rose-800' :
-                        video.category === 'Photography' ? 'bg-purple-100 text-purple-800' :
-                        'bg-neutral-100 text-neutral-800'
-                      }`}>
+                      <motion.span
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-sm ${
+                          video.category === 'Tech' ? 'bg-blue-500/90 text-white' :
+                          video.category === 'Music' ? 'bg-rose-500/90 text-white' :
+                          video.category === 'Photography' ? 'bg-purple-500/90 text-white' :
+                          'bg-neutral-500/90 text-white'
+                        }`}
+                        whileHover={{ scale: 1.05 }}
+                      >
                         {video.category}
-                      </span>
-                      <span className="bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
+                      </motion.span>
+                      <span className="bg-black/80 text-white px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-sm">
                         {video.duration}
                       </span>
                     </div>
-                    <div className="absolute bottom-4 left-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <div className="text-white text-sm font-medium">{video.views} views</div>
-                    </div>
+                    
+                    {/* Hover Stats */}
+                    <motion.div
+                      className="absolute bottom-4 left-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300"
+                      initial={{ y: 10 }}
+                      whileHover={{ y: 0 }}
+                    >
+                      <div className="bg-black/80 text-white px-3 py-2 rounded-lg text-sm font-medium backdrop-blur-sm">
+                        {video.views} views
+                      </div>
+                    </motion.div>
+                    
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </div>
                   
                   <div className="p-6">
-                    <h4 className="text-lg font-bold text-neutral-900 mb-3 group-hover:text-rose-700 transition-colors">
+                    <h4 className="text-lg font-bold text-neutral-900 mb-3 group-hover:text-rose-600 transition-colors line-clamp-2">
                       {video.title}
                     </h4>
-                    <p className="text-neutral-600 text-sm leading-relaxed">
+                    <p className="text-neutral-600 text-sm leading-relaxed line-clamp-3">
                       {video.description}
                     </p>
+                    
+                    {/* Watch Now CTA */}
+                    <motion.div
+                      className="mt-4 flex items-center text-rose-600 text-sm font-medium opacity-0 group-hover:opacity-100 transition-all duration-300"
+                      initial={{ x: -10 }}
+                      whileHover={{ x: 0 }}
+                    >
+                      <span>Watch Now</span>
+                      <svg className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </motion.div>
                   </div>
                 </div>
               </motion.a>
             ))}
           </div>
+
+          {/* Call to Action */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, delay: 0.3 }}
+            viewport={{ once: true }}
+            className="text-center mt-20"
+          >
+            <motion.a
+              href="https://youtube.com/@RenatoDAP"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-3 bg-gradient-to-r from-red-600 to-rose-500 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-2xl shadow-red-500/25 hover:shadow-red-500/40 transition-all duration-300"
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+              Subscribe on YouTube
+            </motion.a>
+          </motion.div>
         </div>
       </section>
 
