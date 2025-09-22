@@ -20,12 +20,12 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Wagner Coach Garmin Backend")
 
-# Configure CORS with explicit settings
+# Configure CORS - MUST be before any routes
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow all origins
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
     max_age=3600,
@@ -208,4 +208,5 @@ async def get_activity_details(activity_id: str, credentials: GarminCredentials)
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    print(f"Starting server on port {port}")
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
