@@ -29,10 +29,11 @@ export default function Header() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
 
-  const navItems = [
-    { href: "/engineer", label: "Engineer", accent: "teal" },
-    { href: "/creator", label: "Creator", accent: "rose" },
-    { href: "/essence", label: "Essence", accent: "orange" }
+  // Career Fair Version: Navigation items hidden
+  const navItems: { href: string, label: string, accent: string }[] = [
+    // { href: "/engineer", label: "Engineer", accent: "teal" },
+    // { href: "/creator", label: "Creator", accent: "rose" },
+    // { href: "/essence", label: "Essence", accent: "orange" }
   ];
 
   const getAccentColor = (accent: string, isActive: boolean) => {
@@ -54,20 +55,23 @@ export default function Header() {
           <Link href="/" className="font-heading text-lg sm:text-xl font-bold text-black hover:text-teal-600 transition-colors duration-200 flex items-center h-full">
             Renato DAP
           </Link>
-          <button
-            className="lg:hidden text-black hover:text-teal-600 transition-colors duration-200 p-2"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Toggle menu"
-          >
+          {navItems.length > 0 && (
+            <button
+              className="lg:hidden text-black hover:text-teal-600 transition-colors duration-200 p-2"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Toggle menu"
+            >
             <div className="w-6 h-6 flex flex-col justify-center items-center">
               <span className={`block w-5 h-0.5 bg-current transition-all duration-200 ${menuOpen ? 'rotate-45 translate-y-1' : ''}`} />
               <span className={`block w-5 h-0.5 bg-current mt-1 transition-all duration-200 ${menuOpen ? 'opacity-0' : ''}`} />
               <span className={`block w-5 h-0.5 bg-current mt-1 transition-all duration-200 ${menuOpen ? '-rotate-45 -translate-y-1' : ''}`} />
             </div>
           </button>
+          )}
         </div>
 
-        <div className={`${menuOpen ? "flex" : "hidden"} lg:flex flex-col lg:flex-row lg:space-x-8 w-full lg:w-auto mt-4 lg:mt-0 space-y-2 lg:space-y-0 text-center lg:text-left bg-white/95 lg:bg-transparent rounded-lg lg:rounded-none p-4 lg:p-0 border border-neutral-200 lg:border-none`}>
+        {navItems.length > 0 && (
+          <div className={`${menuOpen ? "flex" : "hidden"} lg:flex flex-col lg:flex-row lg:space-x-8 w-full lg:w-auto mt-4 lg:mt-0 space-y-2 lg:space-y-0 text-center lg:text-left bg-white/95 lg:bg-transparent rounded-lg lg:rounded-none p-4 lg:p-0 border border-neutral-200 lg:border-none`}>
           {navItems.map((item) => (
             <Link 
               key={item.href}
@@ -81,6 +85,7 @@ export default function Header() {
             </Link>
           ))}
         </div>
+        )}
       </nav>
     </header>
   );
