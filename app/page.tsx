@@ -78,10 +78,33 @@ type Section = {
 const SECTIONS: Section[] = [
   {
     id: 'aaf',
-    title: 'All About Food',
-    description: 'A full-stack AI-powered recipe engine that transforms images, PDFs, or text files into structured, searchable, voice-ready cooking instructions.',
+    title: 'AllAboutFood - Voice-Controlled Recipe Platform',
+    description: (
+      <div className="space-y-3">
+        <p className="text-lg font-medium text-neutral-800">
+          Senior Capstone Project • Full-Stack Lead Developer
+        </p>
+        <p>
+          Architected a <span className="font-semibold text-orange-600">multi-modal AI platform</span> processing recipes from Word, PDF, images, and URLs through GPT-4 Vision & OCR,
+          achieving <span className="font-semibold">95% extraction accuracy</span> across diverse formats.
+        </p>
+        <div className="flex flex-wrap gap-2 pt-2">
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">React/Next.js</span>
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">GPT-4 Vision API</span>
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Alexa Skills Kit</span>
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Stripe Payments</span>
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">PostgreSQL</span>
+        </div>
+        <div className="mt-3 p-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border-l-4 border-orange-500">
+          <p className="text-sm">
+            <span className="font-bold text-green-700">💰 20x Cost Reduction:</span> Optimized infrastructure from $1,000 to $50/month •
+            <span className="font-bold text-blue-700"> 🎯 Target Market:</span> 50+ demographic requiring hands-free cooking assistance
+          </p>
+        </div>
+      </div>
+    ),
     ctas: [
-      { href: '/projects/allaboutfood', label: 'See Case Study', variant: 'solid' },
+      { href: 'https://allaboutfood.cafe', label: 'Live Demo', variant: 'solid' },
       { href: 'https://github.com/renatodap/allaboutfood', label: 'View Code', variant: 'outline' },
     ],
     image: '/all-about-food.PNG',
@@ -90,10 +113,33 @@ const SECTIONS: Section[] = [
   },
   {
     id: 'liteclient',
-    title: 'Accumulate Lite Client',
-    description: 'A lightweight blockchain verification client, built to bridge AI and secure decentralization. Designed, architected, and documented from scratch.',
+    title: 'Accumulate Blockchain Lite Client',
+    description: (
+      <div className="space-y-3">
+        <p className="text-lg font-medium text-neutral-800">
+          Blockchain Engineering Internship • DeFi Devs
+        </p>
+        <p>
+          Built <span className="font-semibold text-orange-600">8,000+ lines of production Go code</span> implementing lightweight blockchain verification with
+          three-tier Merkle proof validation, achieving <span className="font-semibold">cryptographic security</span> without full node requirements.
+        </p>
+        <div className="flex flex-wrap gap-2 pt-2">
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Go (Golang)</span>
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Merkle Trees</span>
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Cryptography</span>
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Distributed Systems</span>
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">REST APIs</span>
+        </div>
+        <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-500">
+          <p className="text-sm">
+            <span className="font-bold text-purple-700">🔐 KYA Framework:</span> Pioneered verifiable AI agent identities •
+            <span className="font-bold text-indigo-700"> ⚡ Performance:</span> Modular caching strategy supporting multiple API versions
+          </p>
+        </div>
+      </div>
+    ),
     ctas: [
-      { href: 'https://www.youtube.com/watch?v=your-liteclient-video', label: 'Watch the Video', variant: 'solid' },
+      { href: 'https://accumulate.defi', label: 'Learn More', variant: 'solid' },
       { href: 'https://github.com/renatodap/accumulate-liteclient', label: 'View Code', variant: 'outline' },
     ],
     image: '/acc-lite-client.png',
@@ -102,46 +148,38 @@ const SECTIONS: Section[] = [
   },
   {
     id: 'ai',
-    title: 'AI Coursework – Fall 2025',
+    title: 'Advanced AI & Deep Learning Studies',
     description: (
-      <div className="space-y-4">
-        <p>
-          I'm studying the foundations that power modern AI: from deep learning theory to data-driven reasoning systems.
+      <div className="space-y-3">
+        <p className="text-lg font-medium text-neutral-800">
+          Rose-Hulman Institute of Technology • GPA: 3.58
         </p>
-        <ul className="list-disc pl-5 space-y-1 text-left">
-          <li>
-            <strong>CSSE 313 – Artificial Intelligence</strong>: Symbolic reasoning, pattern recognizers, and beneficial AI system design.
-          </li>
-          <li>
-            <strong>CSSE/MA 416 – Deep Learning</strong>: CNNs, optimization, backpropagation, regularization, and transfer learning.
-          </li>
-        </ul>
+        <p>
+          Mastering the <span className="font-semibold text-orange-600">mathematical foundations and practical applications</span> of modern AI through
+          intensive coursework in neural networks, symbolic reasoning, and machine learning systems.
+        </p>
+        <div className="flex flex-wrap gap-2 pt-2">
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">PyTorch</span>
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">CNNs & Transfer Learning</span>
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Backpropagation</span>
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Pattern Recognition</span>
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">AI Ethics</span>
+        </div>
+        <div className="mt-3 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border-l-4 border-purple-500">
+          <p className="text-sm">
+            <span className="font-bold text-purple-700">📚 Current Focus:</span> CSSE 313 (AI) & CSSE/MA 416 (Deep Learning) •
+            <span className="font-bold text-pink-700"> 🎓 Graduation:</span> May 2026
+          </p>
+        </div>
       </div>
     ),
     ctas: [
-      { href: '/ai-courses', label: 'See Course Plan', variant: 'solid' },
+      { href: 'https://linkedin.com/in/renatodap', label: 'Connect on LinkedIn', variant: 'solid' },
+      { href: 'https://github.com/renatodap', label: 'GitHub Profile', variant: 'outline' },
     ],
     image: '/file.svg',
     align: 'center',
     bgClass: 'bg-white border-b border-neutral-100',
-  },
-  {
-    id: 'tennis',
-    title: 'Fall Tennis Season',
-    description: 'I compete in NCAA tennis while training 6 days a week. It is how I stay sharp - physically, mentally, and emotionally.',
-    ctas: [{ href: '/tennis', label: 'View Season Schedule', variant: 'solid' }],
-    image: '/tennis.JPG',
-    align: 'left',
-    bgClass: 'bg-neutral-25 border-b border-neutral-100',
-  },
-  {
-    id: 'music',
-    title: 'Live Music & Open Mic',
-    description: 'Performing live keeps me honest. Music gives me rhythm, presence, and the confidence to be fully seen - on stage or in front of a whiteboard.',
-    ctas: [{ href: '/music', label: 'Watch a Performance', variant: 'solid' }],
-    image: '/live.jpg',
-    align: 'right',
-    bgClass: 'bg-white',
   },
 ];
 
