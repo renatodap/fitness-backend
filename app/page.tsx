@@ -78,36 +78,37 @@ type Section = {
 const SECTIONS: Section[] = [
   {
     id: 'aaf',
-    title: 'AllAboutFood - Voice-Controlled Recipe Platform',
+    title: 'AllAboutFood - Voice-Controlled Culinary AI Assistant',
     description: (
       <div className="space-y-3">
         <p className="text-lg font-medium text-neutral-800">
-          Senior Capstone Project • Full-Stack Lead Developer
+          Senior Capstone Project (Sep 2025 - May 2026) • Full-Stack Lead Developer
         </p>
         <p>
-          Architected a <span className="font-semibold text-orange-600">multi-modal AI platform</span> processing recipes from Word, PDF, images, and URLs through GPT-4 Vision & OCR,
-          achieving <span className="font-semibold">95% extraction accuracy</span> across diverse formats.
+          Leading development of a <span className="font-semibold text-orange-600">hands-free culinary platform</span> that processes recipes from
+          any format (Word, PDF, images, URLs) using GPT-4 Vision & OCR. Achieved <span className="font-semibold">95% extraction accuracy</span>
+          while reducing cloud costs by 20x through strategic optimization.
         </p>
         <div className="flex flex-wrap gap-2 pt-2">
           <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">React/Next.js</span>
           <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">GPT-4 Vision API</span>
-          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Alexa Skills Kit</span>
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Voice Interfaces</span>
           <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Stripe Payments</span>
           <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">PostgreSQL</span>
         </div>
         <div className="mt-3 p-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border-l-4 border-orange-500">
           <p className="text-sm">
-            <span className="font-bold text-green-700">💰 20x Cost Reduction:</span> Optimized infrastructure from $1,000 to $50/month •
-            <span className="font-bold text-blue-700"> 🎯 Target Market:</span> 50+ demographic requiring hands-free cooking assistance
+            <span className="font-bold text-green-700">💰 Infrastructure:</span> $1,000 → $50/month (20x reduction) •
+            <span className="font-bold text-blue-700"> 🎯 Impact:</span> 500-1000 concurrent users • 3-sec voice response
           </p>
         </div>
       </div>
     ),
     ctas: [
-      { href: 'https://allaboutfood.cafe', label: 'Live Demo', variant: 'solid' },
+      { href: 'https://allaboutfood.cafe', label: '🌐 Live Platform', variant: 'solid' },
       { href: 'https://github.com/renatodap/allaboutfood', label: 'View Code', variant: 'outline' },
     ],
-    image: '/all-about-food.PNG',
+    image: 'phone-mockup', // Special case for custom component
     align: 'left',
     bgClass: 'bg-white border-b border-neutral-100',
   },
@@ -117,70 +118,146 @@ const SECTIONS: Section[] = [
     description: (
       <div className="space-y-3">
         <p className="text-lg font-medium text-neutral-800">
-          Blockchain Engineering Internship • DeFi Devs / Genialt.ai
+          Blockchain Engineering Internship (Jun - Aug 2025) • DeFi Devs / Genialt.ai
         </p>
         <p>
-          Architected <span className="font-semibold text-orange-600">cryptographic identity system for AI agents</span> enabling verifiable provenance
-          through Accumulate Digital Identifiers (ADIs). Built <span className="font-semibold">8,000+ lines of Go</span> implementing
-          lightweight blockchain verification for edge AI deployment.
+          Designed and built <span className="font-semibold text-orange-600">cryptographic identity system for AI agents</span> enabling
+          verifiable provenance on-chain. Implemented <span className="font-semibold">8,000+ lines of production Go</span> creating
+          a lightweight client that gives any AI its own blockchain-backed identity.
         </p>
         <div className="flex flex-wrap gap-2 pt-2">
-          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Go (Golang)</span>
-          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Merkle Trees</span>
-          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">AI Supply Chain</span>
-          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Edge Computing</span>
-          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">RESTful APIs</span>
+          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">Go (Golang)</span>
+          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">Merkle Trees</span>
+          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">AI Supply Chain</span>
+          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">Edge Computing</span>
+          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">Cryptography</span>
         </div>
         <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-500">
           <p className="text-sm">
-            <span className="font-bold text-purple-700">🎯 Innovation:</span> Human-readable ADIs like "adi://genialt/trading-bot/v3.1" •
-            <span className="font-bold text-indigo-700"> 🔒 Impact:</span> Immutable audit trails for AI actions & model provenance
+            <span className="font-bold text-purple-700">🔐 Innovation:</span> Human-readable ADIs (adi://genialt/trading-bot/v3.1) •
+            <span className="font-bold text-indigo-700"> ⚡ Impact:</span> Immutable audit trails for debugging & forensics
           </p>
         </div>
       </div>
     ),
     ctas: [
-      { href: 'https://www.youtube.com/watch?v=mcVZXHcuO70', label: '🎥 Watch KYA Demo', variant: 'solid' },
+      { href: 'https://www.youtube.com/watch?v=mcVZXHcuO70', label: '🎥 Watch Demo', variant: 'solid' },
       { href: 'https://github.com/renatodap/accumulate-liteclient', label: 'View Code', variant: 'outline' },
     ],
-    image: '/acc-lite-client.png',
+    image: 'youtube-embed', // Special case for YouTube video
+    align: 'right',
+    bgClass: 'bg-neutral-25 border-b border-neutral-100',
+  },
+  {
+    id: 'fitness',
+    title: 'Wagner Coach - AI Personal Fitness Platform',
+    description: (
+      <div className="space-y-3">
+        <p className="text-lg font-medium text-neutral-800">
+          In Development • RAG-Powered Fitness Assistant
+        </p>
+        <p>
+          Building a <span className="font-semibold text-orange-600">Retrieval-Augmented Generation (RAG) system</span> that provides
+          personalized AI coaching based on user's complete fitness history. Natural language input enables
+          quick unified tracking of workouts, nutrition, and progress metrics.
+        </p>
+        <div className="flex flex-wrap gap-2 pt-2">
+          <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold">LangChain</span>
+          <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold">Vector Databases</span>
+          <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold">NLP Processing</span>
+          <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold">React Native</span>
+          <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold">Supabase</span>
+        </div>
+        <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-l-4 border-green-500">
+          <p className="text-sm">
+            <span className="font-bold text-green-700">🤖 AI Features:</span> Context-aware coaching from historical data •
+            <span className="font-bold text-emerald-700"> 📊 Smart Tracking:</span> Natural language workout logging
+          </p>
+        </div>
+      </div>
+    ),
+    ctas: [
+      { href: 'https://github.com/renatodap/wagner-coach', label: 'View Project', variant: 'solid' },
+      { href: 'https://wagner-coach.vercel.app', label: 'Live Demo', variant: 'outline' },
+    ],
+    image: '/wagner-icon.svg',
+    align: 'left',
+    bgClass: 'bg-white border-b border-neutral-100',
+  },
+  {
+    id: 'recycling',
+    title: 'Terre Haute AI Recycling Assistant',
+    description: (
+      <div className="space-y-3">
+        <p className="text-lg font-medium text-neutral-800">
+          Civic Tech Initiative • Computer Vision for Sustainability
+        </p>
+        <p>
+          Developing a <span className="font-semibold text-orange-600">computer vision PWA</span> that identifies waste items and provides
+          disposal instructions. Achieving <span className="font-semibold">85-90% accuracy</span> across 30+ waste categories
+          using multi-label classification and transfer learning techniques.
+        </p>
+        <div className="flex flex-wrap gap-2 pt-2">
+          <span className="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-xs font-semibold">TensorFlow</span>
+          <span className="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-xs font-semibold">Computer Vision</span>
+          <span className="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-xs font-semibold">PWA</span>
+          <span className="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-xs font-semibold">MobileNet</span>
+          <span className="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-xs font-semibold">React</span>
+        </div>
+        <div className="mt-3 p-3 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg border-l-4 border-teal-500">
+          <p className="text-sm">
+            <span className="font-bold text-teal-700">♻️ Environmental Impact:</span> Reducing contamination in recycling streams •
+            <span className="font-bold text-cyan-700"> 📱 Accessibility:</span> Works offline on any mobile device
+          </p>
+        </div>
+      </div>
+    ),
+    ctas: [
+      { href: 'https://github.com/renatodap/recycling-th', label: 'View Code', variant: 'solid' },
+      { href: 'https://recycling-th.vercel.app', label: 'Try App', variant: 'outline' },
+    ],
+    image: '/recycling-icon.png',
     align: 'right',
     bgClass: 'bg-neutral-25 border-b border-neutral-100',
   },
   {
     id: 'ai',
-    title: 'Advanced AI & Deep Learning Studies',
+    title: 'Deep Learning & AI Research',
     description: (
       <div className="space-y-3">
         <p className="text-lg font-medium text-neutral-800">
-          Rose-Hulman Institute of Technology • GPA: 3.58
+          Rose-Hulman Institute of Technology • Computer Science • GPA: 3.58
         </p>
         <p>
-          Mastering the <span className="font-semibold text-orange-600">mathematical foundations and practical applications</span> of modern AI through
-          intensive coursework in neural networks, symbolic reasoning, and machine learning systems.
+          Currently enrolled in <span className="font-semibold text-orange-600">advanced AI and deep learning courses</span>, building
+          expertise in neural network architectures, optimization algorithms, and practical ML deployment.
+          Graduation: May 2026.
         </p>
         <div className="flex flex-wrap gap-2 pt-2">
-          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">PyTorch</span>
-          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">CNNs & Transfer Learning</span>
-          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Backpropagation</span>
-          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Pattern Recognition</span>
-          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">AI Ethics</span>
+          <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold">PyTorch</span>
+          <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold">CNNs</span>
+          <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold">Transfer Learning</span>
+          <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold">Backpropagation</span>
+          <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold">Transformers</span>
         </div>
         <div className="mt-3 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border-l-4 border-purple-500">
           <p className="text-sm">
-            <span className="font-bold text-purple-700">📚 Current Focus:</span> CSSE 313 (AI) & CSSE/MA 416 (Deep Learning) •
-            <span className="font-bold text-pink-700"> 🎓 Graduation:</span> May 2026
+            <span className="font-bold text-purple-700">📚 Coursework:</span> CSSE 313 (AI) & CSSE/MA 416 (Deep Learning) •
+            <span className="font-bold text-pink-700"> 🎓 TA Experience:</span> Object-Oriented Software Development
           </p>
         </div>
+        <p className="text-xs text-neutral-500 italic mt-2">
+          Suggested image: Neural network visualization with interconnected nodes, gradient colors from purple to orange
+        </p>
       </div>
     ),
     ctas: [
-      { href: 'https://linkedin.com/in/renatodap', label: 'Connect on LinkedIn', variant: 'solid' },
-      { href: 'https://github.com/renatodap', label: 'GitHub Profile', variant: 'outline' },
+      { href: 'https://linkedin.com/in/renatodap', label: 'LinkedIn', variant: 'solid' },
+      { href: 'https://github.com/renatodap', label: 'GitHub', variant: 'outline' },
     ],
-    image: '/file.svg',
+    image: 'ai-visualization', // Placeholder for AI-generated image
     align: 'center',
-    bgClass: 'bg-white border-b border-neutral-100',
+    bgClass: 'bg-white',
   },
 ];
 
@@ -218,52 +295,94 @@ export default function HomePage() {
                 >
                   <div className="w-full lg:w-1/2">
                     <FloatingCard index={index}>
-                      <div className="relative aspect-video bg-gradient-to-br from-orange-50 to-neutral-50 rounded-3xl overflow-hidden border border-orange-100 shadow-2xl group">
-                        {section.image ? (
-                          <>
-                            <Image
-                              src={section.image}
-                              alt={section.title}
-                              fill
-                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                              className="object-cover group-hover:scale-105 transition-transform duration-700"
-                              priority={index < 2}
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500"></div>
-                          </>
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="text-orange-300 text-8xl opacity-30 group-hover:opacity-50 transition-opacity duration-500">🏠</div>
-                          </div>
-                        )}
-                        <div className="absolute top-6 left-6 right-6">
-                          <div className="flex items-center justify-between">
-                            <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-medium">
-                              Featured
-                            </span>
-                            <span className="bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
-                              2024-2025
-                            </span>
-                          </div>
-                        </div>
-                        <div className="absolute bottom-6 left-6 right-6">
-                          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 border border-white/20 shadow-lg">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-semibold text-neutral-800">{section.title}</p>
-                                <p className="text-xs text-neutral-600">Featured Project</p>
+                      {section.image === 'phone-mockup' ? (
+                        // Phone mockup for AllAboutFood
+                        <div className="relative flex justify-center items-center py-8">
+                          <div className="relative w-[280px] h-[580px] bg-black rounded-[40px] p-2 shadow-2xl">
+                            <div className="w-full h-full bg-white rounded-[32px] overflow-hidden">
+                              <div className="h-14 bg-gradient-to-r from-orange-500 to-orange-600 flex items-center px-4">
+                                <span className="text-white font-bold text-lg">AllAboutFood</span>
+                                <span className="ml-auto text-white/80 text-xs">AI Assistant</span>
                               </div>
-                              <div className="flex gap-2">
-                                {section.ctas.map((cta, ctaIndex) => (
-                                  <div key={ctaIndex} className="w-8 h-8 bg-neutral-100 rounded-full flex items-center justify-center">
-                                    <span className="text-xs">🔗</span>
+                              <div className="p-4 space-y-4">
+                                <div className="bg-orange-50 rounded-2xl p-3">
+                                  <p className="text-xs text-orange-800 font-medium mb-1">🎤 Voice Command</p>
+                                  <p className="text-sm">"Hey Alexa, start cooking lasagna"</p>
+                                </div>
+                                <div className="bg-gray-50 rounded-2xl p-3">
+                                  <p className="text-xs text-gray-600 font-medium mb-1">📋 Recipe Loaded</p>
+                                  <p className="text-sm">Classic Lasagna - 45 mins</p>
+                                </div>
+                                <div className="bg-blue-50 rounded-2xl p-3">
+                                  <p className="text-xs text-blue-800 font-medium mb-1">👨‍🍳 Current Step</p>
+                                  <p className="text-sm">Layer noodles, then meat sauce...</p>
+                                </div>
+                                <div className="flex gap-2 mt-4">
+                                  <div className="flex-1 bg-green-100 rounded-xl p-2 text-center">
+                                    <span className="text-xs">Next Step →</span>
                                   </div>
-                                ))}
+                                  <div className="flex-1 bg-yellow-100 rounded-xl p-2 text-center">
+                                    <span className="text-xs">← Previous</span>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
-                      </div>
+                      ) : section.image === 'youtube-embed' ? (
+                        // YouTube embed for Accumulate/KYA
+                        <div className="relative aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl">
+                          <iframe
+                            src="https://www.youtube.com/embed/mcVZXHcuO70"
+                            title="KYA Framework Demo"
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        </div>
+                      ) : section.image === 'ai-visualization' ? (
+                        // AI visualization placeholder
+                        <div className="relative aspect-video bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 rounded-3xl overflow-hidden shadow-2xl">
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-center text-white">
+                              <div className="text-6xl mb-4">🧠</div>
+                              <p className="text-xl font-bold">Neural Networks</p>
+                              <p className="text-sm opacity-80">Deep Learning Research</p>
+                            </div>
+                          </div>
+                          <div className="absolute inset-0 bg-black/20"></div>
+                        </div>
+                      ) : section.image && !['phone-mockup', 'youtube-embed', 'ai-visualization'].includes(section.image) ? (
+                        // Regular image display
+                        <div className="relative aspect-video bg-gradient-to-br from-orange-50 to-neutral-50 rounded-3xl overflow-hidden border border-orange-100 shadow-2xl group">
+                          <Image
+                            src={section.image}
+                            alt={section.title}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            className="object-cover group-hover:scale-105 transition-transform duration-700"
+                            priority={index < 2}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500"></div>
+                          <div className="absolute top-6 left-6 right-6">
+                            <div className="flex items-center justify-between">
+                              <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-medium">
+                                Featured
+                              </span>
+                              <span className="bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
+                                2025-2026
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        // Fallback for no image
+                        <div className="relative aspect-video bg-gradient-to-br from-orange-50 to-neutral-50 rounded-3xl overflow-hidden border border-orange-100 shadow-2xl group">
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-orange-300 text-8xl opacity-30 group-hover:opacity-50 transition-opacity duration-500">🚀</div>
+                          </div>
+                        </div>
+                      )}
                     </FloatingCard>
                   </div>
                   
