@@ -113,33 +113,34 @@ const SECTIONS: Section[] = [
   },
   {
     id: 'liteclient',
-    title: 'Accumulate Blockchain Lite Client',
+    title: 'KYA (Know Your Agent) - Blockchain Identity for AI',
     description: (
       <div className="space-y-3">
         <p className="text-lg font-medium text-neutral-800">
-          Blockchain Engineering Internship • DeFi Devs
+          Blockchain Engineering Internship • DeFi Devs / Genialt.ai
         </p>
         <p>
-          Built <span className="font-semibold text-orange-600">8,000+ lines of production Go code</span> implementing lightweight blockchain verification with
-          three-tier Merkle proof validation, achieving <span className="font-semibold">cryptographic security</span> without full node requirements.
+          Architected <span className="font-semibold text-orange-600">cryptographic identity system for AI agents</span> enabling verifiable provenance
+          through Accumulate Digital Identifiers (ADIs). Built <span className="font-semibold">8,000+ lines of Go</span> implementing
+          lightweight blockchain verification for edge AI deployment.
         </p>
         <div className="flex flex-wrap gap-2 pt-2">
           <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Go (Golang)</span>
           <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Merkle Trees</span>
-          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Cryptography</span>
-          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Distributed Systems</span>
-          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">REST APIs</span>
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">AI Supply Chain</span>
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">Edge Computing</span>
+          <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">RESTful APIs</span>
         </div>
         <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-500">
           <p className="text-sm">
-            <span className="font-bold text-purple-700">🔐 KYA Framework:</span> Pioneered verifiable AI agent identities •
-            <span className="font-bold text-indigo-700"> ⚡ Performance:</span> Modular caching strategy supporting multiple API versions
+            <span className="font-bold text-purple-700">🎯 Innovation:</span> Human-readable ADIs like "adi://genialt/trading-bot/v3.1" •
+            <span className="font-bold text-indigo-700"> 🔒 Impact:</span> Immutable audit trails for AI actions & model provenance
           </p>
         </div>
       </div>
     ),
     ctas: [
-      { href: 'https://accumulate.defi', label: 'Learn More', variant: 'solid' },
+      { href: 'https://www.youtube.com/watch?v=mcVZXHcuO70', label: '🎥 Watch KYA Demo', variant: 'solid' },
       { href: 'https://github.com/renatodap/accumulate-liteclient', label: 'View Code', variant: 'outline' },
     ],
     image: '/acc-lite-client.png',
