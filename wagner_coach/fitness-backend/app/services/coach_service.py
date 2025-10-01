@@ -63,8 +63,19 @@ class CoachService:
                 user_id=user_id,
                 query=message
             )
-        else:
+        elif coach_type == "nutritionist":
             context_str = await self.context_builder.build_nutritionist_context(
+                user_id=user_id,
+                query=message
+            )
+        elif coach_type == "coach":
+            context_str = await self.context_builder.build_unified_coach_context(
+                user_id=user_id,
+                query=message
+            )
+        else:
+            # Default to unified coach for unknown types
+            context_str = await self.context_builder.build_unified_coach_context(
                 user_id=user_id,
                 query=message
             )
@@ -230,7 +241,7 @@ class CoachService:
         Raises:
             ValueError if coach_type is invalid
         """
-        if coach_type not in ["trainer", "nutritionist"]:
+        if coach_type not in ["trainer", "nutritionist", "coach"]:
             raise ValueError(f"Invalid coach_type: {coach_type}")
 
         # 1. Get coach persona
@@ -244,8 +255,13 @@ class CoachService:
                 user_id=user_id,
                 query=user_message
             )
-        else:
+        elif coach_type == "nutritionist":
             context = await self.context_builder.build_nutritionist_context(
+                user_id=user_id,
+                query=user_message
+            )
+        else:  # coach_type == "coach"
+            context = await self.context_builder.build_unified_coach_context(
                 user_id=user_id,
                 query=user_message
             )

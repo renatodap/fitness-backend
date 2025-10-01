@@ -23,7 +23,7 @@ from app.api.v1.schemas.coach_schemas import ChatRequest, ChatResponse, ContextI
 # Legacy models for backwards compatibility
 class ChatMessageRequest(BaseModel):
     """Request to send message to coach."""
-    coach_type: str = Field(..., description="Coach type: 'trainer' or 'nutritionist'")
+    coach_type: str = Field(..., description="Coach type: 'trainer', 'nutritionist', or 'coach' (unified)")
     message: str = Field(..., description="User's message to the coach")
     conversation_id: Optional[str] = Field(None, description="Optional conversation ID")
     model: str = Field(default="gpt-4o-mini", description="OpenAI model to use")
@@ -58,15 +58,15 @@ async def chat_with_coach(
     user_id: str = Depends(get_current_user)
 ):
     """
-    Chat with AI coach (Trainer or Nutritionist) - INCREMENT 1.
+    Chat with AI coach (Unified Coach, Trainer, or Nutritionist) - INCREMENT 1.
 
     Sends a message to the specified coach and receives a personalized response
     based on user's history, goals, and current context.
     """
     try:
         # Validate coach_type and message
-        if request.coach_type not in ['trainer', 'nutritionist']:
-            raise HTTPException(status_code=400, detail="Invalid coach_type")
+        if request.coach_type not in ['trainer', 'nutritionist', 'coach']:
+            raise HTTPException(status_code=400, detail="Invalid coach_type. Must be 'trainer', 'nutritionist', or 'coach'")
 
         if not request.message or len(request.message.strip()) == 0:
             raise HTTPException(status_code=400, detail="Message cannot be empty")

@@ -167,6 +167,110 @@ class ContextBuilder:
 
         return "\n".join(context_parts)
 
+    async def build_unified_coach_context(
+        self,
+        user_id: str,
+        query: Optional[str] = None,
+        days_lookback: int = 30
+    ) -> str:
+        """
+        Build unified context for the combined fitness + nutrition coach.
+
+        This combines both workout and nutrition data to provide holistic guidance.
+
+        Args:
+            user_id: User ID
+            query: Optional query to focus the context on specific topics
+            days_lookback: Number of days to look back for recent data
+
+        Returns:
+            Formatted context string with both fitness and nutrition data
+        """
+        context_parts = ["=== UNIFIED COACH CONTEXT ===\n"]
+
+        # 1. User Profile & Goals
+        profile_context = await self._get_user_profile_context(user_id)
+        if profile_context:
+            context_parts.append("## User Profile & Goals")
+            context_parts.append(profile_context)
+            context_parts.append("")
+
+        # === TRAINING DATA ===
+        context_parts.append("# TRAINING DATA")
+        context_parts.append("")
+
+        # 2. Current Workout Program
+        workout_program_context = await self._get_active_workout_program(user_id)
+        if workout_program_context:
+            context_parts.append("## Current Workout Program")
+            context_parts.append(workout_program_context)
+            context_parts.append("")
+
+        # 3. Recent Workouts
+        recent_workouts = await self._get_recent_workouts(user_id, days_lookback)
+        if recent_workouts:
+            context_parts.append("## Recent Workouts")
+            context_parts.append(recent_workouts)
+            context_parts.append("")
+
+        # 4. Exercise Progress Tracking
+        exercise_progress = await self._get_exercise_progress(user_id)
+        if exercise_progress:
+            context_parts.append("## Exercise Progress (Progressive Overload)")
+            context_parts.append(exercise_progress)
+            context_parts.append("")
+
+        # === NUTRITION DATA ===
+        context_parts.append("# NUTRITION DATA")
+        context_parts.append("")
+
+        # 5. Current Nutrition Program
+        nutrition_program_context = await self._get_active_nutrition_program(user_id)
+        if nutrition_program_context:
+            context_parts.append("## Current Nutrition Program")
+            context_parts.append(nutrition_program_context)
+            context_parts.append("")
+
+        # 6. Recent Meals
+        recent_meals = await self._get_recent_meals(user_id, days_lookback)
+        if recent_meals:
+            context_parts.append("## Recent Meals")
+            context_parts.append(recent_meals)
+            context_parts.append("")
+
+        # 7. Nutrition Compliance
+        compliance = await self._get_nutrition_compliance(user_id, days_lookback)
+        if compliance:
+            context_parts.append("## Nutrition Compliance")
+            context_parts.append(compliance)
+            context_parts.append("")
+
+        # === HISTORICAL CONTEXT (RAG) ===
+        if query:
+            rag_context = await self._get_rag_context(
+                user_id=user_id,
+                query=query,
+                source_types=["workout", "meal", "activity", "goal"],
+                match_count=5
+            )
+            if rag_context:
+                context_parts.append("## Relevant Historical Context")
+                context_parts.append(rag_context)
+                context_parts.append("")
+
+        # 8. Recent Coach Interactions
+        recent_interactions = await self._get_recent_coach_interactions(
+            user_id=user_id,
+            coach_type="coach",
+            limit=5
+        )
+        if recent_interactions:
+            context_parts.append("## Recent Coach Interactions")
+            context_parts.append(recent_interactions)
+            context_parts.append("")
+
+        return "\n".join(context_parts)
+
     async def _get_user_profile_context(self, user_id: str) -> str:
         """Get user profile and goals."""
         try:
