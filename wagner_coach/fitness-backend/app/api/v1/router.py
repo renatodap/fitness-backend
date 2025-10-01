@@ -12,7 +12,8 @@ from app.api.v1 import (
     embeddings,
     ai,
     nutrition,
-    integrations
+    integrations,
+    coach
 )
 
 api_router = APIRouter()
@@ -24,3 +25,4 @@ api_router.include_router(embeddings.router, prefix="/embeddings", tags=["embedd
 api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
 api_router.include_router(nutrition.router, prefix="/nutrition", tags=["nutrition"])
 api_router.include_router(integrations.router, prefix="/integrations", tags=["integrations"])
+api_router.include_router(coach.router, prefix="/coach", tags=["coach"])

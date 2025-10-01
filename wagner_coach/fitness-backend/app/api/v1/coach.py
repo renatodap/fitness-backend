@@ -1,0 +1,270 @@
+"""
+Coach API Endpoints
+
+API routes for AI coach interactions (Trainer and Nutritionist).
+"""
+
+import logging
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel, Field
+
+from app.services.coach_service import get_coach_service
+from app.api.v1.dependencies import get_current_user
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+
+# Request/Response Models
+
+class ChatMessageRequest(BaseModel):
+    """Request to send message to coach."""
+    coach_type: str = Field(..., description="Coach type: 'trainer' or 'nutritionist'")
+    message: str = Field(..., description="User's message to the coach")
+    model: str = Field(default="gpt-4o-mini", description="OpenAI model to use")
+
+
+class ChatMessageResponse(BaseModel):
+    """Response from coach chat."""
+    coach_type: str
+    coach_name: str
+    message: str
+    timestamp: str
+    model_used: str
+    tokens_used: int
+
+
+class RecommendationsRequest(BaseModel):
+    """Request to generate weekly recommendations."""
+    coach_type: str = Field(..., description="Coach type: 'trainer' or 'nutritionist'")
+
+
+class UpdateRecommendationRequest(BaseModel):
+    """Request to update recommendation status."""
+    status: str = Field(..., description="Status: 'accepted', 'rejected', or 'completed'")
+    feedback_text: Optional[str] = Field(None, description="Optional feedback text")
+
+
+# Endpoints
+
+@router.post("/chat", response_model=ChatMessageResponse)
+async def chat_with_coach(
+    request: ChatMessageRequest,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Chat with AI coach (Trainer or Nutritionist).
+
+    Sends a message to the specified coach and receives a personalized response
+    based on user's history, goals, and current context.
+    """
+    try:
+        coach_service = get_coach_service()
+
+        response = await coach_service.get_coach_response(
+            user_id=user_id,
+            coach_type=request.coach_type,
+            user_message=request.message,
+            model=request.model
+        )
+
+        return ChatMessageResponse(**response)
+
+    except ValueError as e:
+        logger.error(f"Validation error in chat_with_coach: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error in chat_with_coach: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get coach response")
+
+
+@router.post("/recommendations/generate")
+async def generate_recommendations(
+    request: RecommendationsRequest,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Generate weekly recommendations from coach.
+
+    Analyzes user's recent data and generates 3-5 actionable recommendations
+    for the upcoming week.
+    """
+    try:
+        coach_service = get_coach_service()
+
+        recommendations = await coach_service.create_weekly_recommendations(
+            user_id=user_id,
+            coach_type=request.coach_type
+        )
+
+        return {
+            "success": True,
+            "recommendations": recommendations,
+            "count": len(recommendations)
+        }
+
+    except ValueError as e:
+        logger.error(f"Validation error in generate_recommendations: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error in generate_recommendations: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate recommendations")
+
+
+@router.get("/recommendations")
+async def get_recommendations(
+    coach_type: Optional[str] = None,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Get active recommendations for user.
+
+    Optionally filter by coach type ('trainer' or 'nutritionist').
+    Returns recommendations ordered by priority.
+    """
+    try:
+        coach_service = get_coach_service()
+
+        recommendations = await coach_service.get_active_recommendations(
+            user_id=user_id,
+            coach_type=coach_type
+        )
+
+        return {
+            "success": True,
+            "recommendations": recommendations,
+            "count": len(recommendations)
+        }
+
+    except Exception as e:
+        logger.error(f"Error in get_recommendations: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get recommendations")
+
+
+@router.patch("/recommendations/{recommendation_id}")
+async def update_recommendation(
+    recommendation_id: str,
+    request: UpdateRecommendationRequest,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Update recommendation status.
+
+    Allows user to accept, reject, or mark as completed a recommendation.
+    Optionally provide feedback text.
+    """
+    try:
+        coach_service = get_coach_service()
+
+        updated_recommendation = await coach_service.update_recommendation_status(
+            recommendation_id=recommendation_id,
+            user_id=user_id,
+            status=request.status,
+            feedback_text=request.feedback_text
+        )
+
+        return {
+            "success": True,
+            "recommendation": updated_recommendation
+        }
+
+    except Exception as e:
+        logger.error(f"Error in update_recommendation: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update recommendation")
+
+
+@router.get("/personas")
+async def get_coach_personas(
+    _: str = Depends(get_current_user)  # Just require authentication
+):
+    """
+    Get all available coach personas.
+
+    Returns information about the Trainer and Nutritionist personas.
+    """
+    from app.services.supabase_service import get_supabase_service
+
+    try:
+        supabase = get_supabase_service()
+
+        response = (
+            supabase.client.table("coach_personas")
+            .select("id, name, display_name, specialty")
+            .execute()
+        )
+
+        return {
+            "success": True,
+            "personas": response.data if response.data else []
+        }
+
+    except Exception as e:
+        logger.error(f"Error in get_coach_personas: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get coach personas")
+
+
+@router.get("/conversations/{coach_type}")
+async def get_conversation_history(
+    coach_type: str,
+    limit: int = 50,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Get conversation history with specific coach.
+
+    Returns the most recent messages from the conversation.
+    """
+    from app.services.supabase_service import get_supabase_service
+
+    try:
+        supabase = get_supabase_service()
+
+        # Get coach persona
+        persona_response = (
+            supabase.client.table("coach_personas")
+            .select("id")
+            .eq("name", coach_type)
+            .single()
+            .execute()
+        )
+
+        if not persona_response.data:
+            raise HTTPException(status_code=404, detail="Coach persona not found")
+
+        persona_id = persona_response.data["id"]
+
+        # Get conversation
+        conv_response = (
+            supabase.client.table("coach_conversations")
+            .select("messages, last_message_at")
+            .eq("user_id", user_id)
+            .eq("coach_persona_id", persona_id)
+            .order("last_message_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+
+        if not conv_response.data:
+            return {
+                "success": True,
+                "messages": [],
+                "count": 0
+            }
+
+        messages = conv_response.data[0].get("messages", [])
+        recent_messages = messages[-limit:] if messages else []
+
+        return {
+            "success": True,
+            "messages": recent_messages,
+            "count": len(recent_messages),
+            "last_message_at": conv_response.data[0].get("last_message_at")
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in get_conversation_history: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get conversation history")
