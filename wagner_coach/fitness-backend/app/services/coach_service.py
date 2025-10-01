@@ -29,6 +29,185 @@ class CoachService:
         self.supabase = get_service_client()
         self.context_builder = get_context_builder()
 
+    async def get_persona(self, coach_type: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve coach persona by type (for INCREMENT 1 compatibility)
+
+        Args:
+            coach_type: 'trainer' or 'nutritionist'
+
+        Returns:
+            CoachPersona dict or None if not found
+        """
+        return await self._get_coach_persona(coach_type)
+
+    async def build_context(
+        self,
+        user_id: str,
+        message: str,
+        coach_type: str
+    ) -> Dict[str, Any]:
+        """
+        Build complete user context for AI coach (for INCREMENT 1 compatibility)
+
+        Args:
+            user_id: User's UUID
+            message: User's current message
+            coach_type: Type of coach
+
+        Returns:
+            UserContext dict with all relevant user data
+        """
+        if coach_type == "trainer":
+            context_str = await self.context_builder.build_trainer_context(
+                user_id=user_id,
+                query=message
+            )
+        else:
+            context_str = await self.context_builder.build_nutritionist_context(
+                user_id=user_id,
+                query=message
+            )
+
+        # Return structured context (matches INCREMENT 1 expectations)
+        return {
+            "user_id": user_id,
+            "context_str": context_str,
+            "coach_type": coach_type
+        }
+
+    async def generate_response(
+        self,
+        user_id: str,
+        message: str,
+        coach_type: str,
+        conversation_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate AI coach response (for INCREMENT 1 compatibility)
+
+        Args:
+            user_id: User's UUID
+            message: User's message
+            coach_type: Type of coach
+            conversation_id: Optional conversation ID
+
+        Returns:
+            ChatResponse dict with AI's message
+        """
+        try:
+            response = await self.get_coach_response(
+                user_id=user_id,
+                coach_type=coach_type,
+                user_message=message
+            )
+
+            # Get conversation ID from database
+            persona = await self._get_coach_persona(coach_type)
+            conversation = await self._get_or_create_conversation(
+                user_id=user_id,
+                coach_persona_id=persona["id"]
+            )
+
+            return {
+                "success": True,
+                "conversation_id": conversation["id"],
+                "message": response["message"],
+                "context_used": {
+                    "recent_workouts": 0,  # TODO: Add actual counts
+                    "recent_meals": 0,
+                    "embeddings_retrieved": 0,
+                    "profile_used": True
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error generating response: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "conversation_id": conversation_id or "",
+                "message": ""
+            }
+
+    async def save_conversation(
+        self,
+        user_id: str,
+        coach_type: str,
+        messages: List[Dict[str, Any]],
+        conversation_id: Optional[str] = None
+    ) -> str:
+        """
+        Save conversation to database (for INCREMENT 1 compatibility)
+
+        Args:
+            user_id: User's UUID
+            coach_type: Type of coach
+            messages: List of message dicts
+            conversation_id: Optional conversation ID for updates
+
+        Returns:
+            Conversation ID (UUID)
+        """
+        try:
+            persona = await self._get_coach_persona(coach_type)
+            if not persona:
+                raise ValueError(f"Coach persona not found: {coach_type}")
+
+            if conversation_id:
+                # Update existing conversation
+                await self.supabase.table("coach_conversations").update({
+                    "messages": messages,
+                    "last_message_at": datetime.utcnow().isoformat()
+                }).eq("id", conversation_id).execute()
+                return conversation_id
+            else:
+                # Create new conversation
+                response = await self.supabase.table("coach_conversations").insert({
+                    "user_id": user_id,
+                    "coach_persona_id": persona["id"],
+                    "messages": messages,
+                    "last_message_at": datetime.utcnow().isoformat()
+                }).execute()
+                return response.data[0]["id"] if response.data else ""
+        except Exception as e:
+            logger.error(f"Error saving conversation: {e}")
+            raise
+
+    async def load_conversation(
+        self,
+        user_id: str,
+        coach_type: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Load most recent conversation (for INCREMENT 1 compatibility)
+
+        Args:
+            user_id: User's UUID
+            coach_type: Type of coach
+
+        Returns:
+            Conversation dict or None
+        """
+        try:
+            persona = await self._get_coach_persona(coach_type)
+            if not persona:
+                return None
+
+            response = (
+                self.supabase.table("coach_conversations")
+                .select("*")
+                .eq("user_id", user_id)
+                .eq("coach_persona_id", persona["id"])
+                .order("last_message_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+
+            return response.data[0] if response.data else None
+        except Exception as e:
+            logger.error(f"Error loading conversation: {e}")
+            return None
+
     async def get_coach_response(
         self,
         user_id: str,

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/tmp/**)",
+      "Read(//c/Users/pradord/Documents/**)",
+      "Bash(echo \"  -> NOT USED\")",
+      "Bash(done)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

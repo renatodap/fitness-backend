@@ -70,3 +70,59 @@ def mock_supabase_client():
     mock_table.select().execute.return_value = Mock(data=[])
     mock_client.table.return_value = mock_table
     return mock_client
+
+
+@pytest.fixture
+def mock_user():
+    """Mock user data for testing"""
+    return {
+        'id': 'test-user-id-123',
+        'email': 'test@example.com',
+        'full_name': 'Test User',
+        'primary_goal': 'build_muscle',
+        'experience_level': 'intermediate',
+        'age': 28,
+        'weight_lbs': 180,
+        'height_inches': 72
+    }
+
+
+@pytest.fixture
+def mock_workout():
+    """Mock workout data for testing"""
+    return {
+        'id': 'workout-123',
+        'user_id': 'test-user-id-123',
+        'name': 'Push Day',
+        'workout_type': 'strength',
+        'started_at': datetime.utcnow().isoformat(),
+        'ended_at': (datetime.utcnow() + timedelta(hours=1)).isoformat(),
+        'duration_minutes': 60,
+        'perceived_exertion': 8,
+        'energy_level': 7
+    }
+
+
+@pytest.fixture
+def mock_conversation():
+    """Mock conversation data for testing"""
+    return {
+        'id': 'conv-123',
+        'user_id': 'test-user-id-123',
+        'coach_persona_id': 'trainer-persona-id',
+        'messages': [
+            {
+                'role': 'user',
+                'content': 'What should I do today?',
+                'timestamp': datetime.utcnow().isoformat()
+            },
+            {
+                'role': 'assistant',
+                'content': 'Based on your recent workouts...',
+                'timestamp': datetime.utcnow().isoformat()
+            }
+        ],
+        'last_message_at': datetime.utcnow().isoformat(),
+        'created_at': datetime.utcnow().isoformat(),
+        'updated_at': datetime.utcnow().isoformat()
+    }

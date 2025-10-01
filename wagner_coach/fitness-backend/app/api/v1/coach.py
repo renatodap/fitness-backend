@@ -18,11 +18,14 @@ router = APIRouter()
 
 
 # Request/Response Models
+from app.api.v1.schemas.coach_schemas import ChatRequest, ChatResponse, ContextInfo
 
+# Legacy models for backwards compatibility
 class ChatMessageRequest(BaseModel):
     """Request to send message to coach."""
     coach_type: str = Field(..., description="Coach type: 'trainer' or 'nutritionist'")
     message: str = Field(..., description="User's message to the coach")
+    conversation_id: Optional[str] = Field(None, description="Optional conversation ID")
     model: str = Field(default="gpt-4o-mini", description="OpenAI model to use")
 
 
@@ -49,29 +52,49 @@ class UpdateRecommendationRequest(BaseModel):
 
 # Endpoints
 
-@router.post("/chat", response_model=ChatMessageResponse)
+@router.post("/chat")
 async def chat_with_coach(
-    request: ChatMessageRequest,
+    request: ChatRequest,
     user_id: str = Depends(get_current_user)
 ):
     """
-    Chat with AI coach (Trainer or Nutritionist).
+    Chat with AI coach (Trainer or Nutritionist) - INCREMENT 1.
 
     Sends a message to the specified coach and receives a personalized response
     based on user's history, goals, and current context.
     """
     try:
+        # Validate coach_type and message
+        if request.coach_type not in ['trainer', 'nutritionist']:
+            raise HTTPException(status_code=400, detail="Invalid coach_type")
+
+        if not request.message or len(request.message.strip()) == 0:
+            raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+        if len(request.message) > 1000:
+            raise HTTPException(status_code=400, detail="Message too long (max 1000 characters)")
+
         coach_service = get_coach_service()
 
-        response = await coach_service.get_coach_response(
+        # Use INCREMENT 1 compatible method
+        response_dict = await coach_service.generate_response(
             user_id=user_id,
+            message=request.message,
             coach_type=request.coach_type,
-            user_message=request.message,
-            model=request.model
+            conversation_id=request.conversation_id
         )
 
-        return ChatMessageResponse(**response)
+        # Return ChatResponse format
+        return {
+            "success": response_dict.get("success", True),
+            "conversation_id": response_dict.get("conversation_id", ""),
+            "message": response_dict.get("message", ""),
+            "context_used": response_dict.get("context_used"),
+            "error": response_dict.get("error")
+        }
 
+    except HTTPException:
+        raise
     except ValueError as e:
         logger.error(f"Validation error in chat_with_coach: {e}")
         raise HTTPException(status_code=400, detail=str(e))
