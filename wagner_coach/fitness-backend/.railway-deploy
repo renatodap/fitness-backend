@@ -1,0 +1,21 @@
+# Railway Deployment Trigger
+# Last deployed: 2025-09-30
+
+This file triggers Railway deployments when updated.
+
+## Deployment Notes
+- CORS configured for all origins
+- Health endpoint: /health
+- API documentation: /docs (if DEBUG=true)
+- Main API routes: /api/v1/*
+
+## Critical Endpoints
+- POST /api/v1/nutrition/meal/parse - Meal parsing with AI
+- POST /api/v1/ai/context - User context for coaching
+- POST /api/v1/integrations/garmin/test - Test Garmin credentials
+- POST /api/v1/integrations/garmin/sync - Sync Garmin activities
+
+## Environment Variables Required
+See .env.example for complete list.
+
+Deployment Timestamp: 2025-09-30T22:37:00Z
