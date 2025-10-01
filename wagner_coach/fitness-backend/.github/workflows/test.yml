@@ -1,0 +1,47 @@
+name: Test
+
+on:
+  push:
+    branches: [main, career-fair]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install poetry
+          poetry install
+
+      - name: Run tests
+        run: |
+          poetry run pytest --cov=app --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+
+      - name: Run linter
+        run: |
+          poetry run ruff check app/
+
+      - name: Run formatter check
+        run: |
+          poetry run black --check app/
+
+      - name: Type check
+        run: |
+          poetry run mypy app/
+        continue-on-error: true
