@@ -184,13 +184,13 @@ async def get_coach_personas(
 
     Returns information about the Trainer and Nutritionist personas.
     """
-    from app.services.supabase_service import get_supabase_service
+    from app.services.supabase_service import get_service_client
 
     try:
-        supabase = get_supabase_service()
+        supabase = get_service_client()
 
         response = (
-            supabase.client.table("coach_personas")
+            supabase.table("coach_personas")
             .select("id, name, display_name, specialty")
             .execute()
         )
@@ -216,14 +216,14 @@ async def get_conversation_history(
 
     Returns the most recent messages from the conversation.
     """
-    from app.services.supabase_service import get_supabase_service
+    from app.services.supabase_service import get_service_client
 
     try:
-        supabase = get_supabase_service()
+        supabase = get_service_client()
 
         # Get coach persona
         persona_response = (
-            supabase.client.table("coach_personas")
+            supabase.table("coach_personas")
             .select("id")
             .eq("name", coach_type)
             .single()
@@ -237,7 +237,7 @@ async def get_conversation_history(
 
         # Get conversation
         conv_response = (
-            supabase.client.table("coach_conversations")
+            supabase.table("coach_conversations")
             .select("messages, last_message_at")
             .eq("user_id", user_id)
             .eq("coach_persona_id", persona_id)

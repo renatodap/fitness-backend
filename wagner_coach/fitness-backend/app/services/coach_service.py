@@ -12,7 +12,7 @@ from datetime import datetime
 from openai import AsyncOpenAI
 
 from app.config import get_settings
-from app.services.supabase_service import get_supabase_service
+from app.services.supabase_service import get_service_client
 from app.services.context_builder import get_context_builder
 
 settings = get_settings()
@@ -26,7 +26,7 @@ class CoachService:
     """Service for AI coach interactions."""
 
     def __init__(self):
-        self.supabase = get_supabase_service()
+        self.supabase = get_service_client()
         self.context_builder = get_context_builder()
 
     async def get_coach_response(
@@ -227,7 +227,7 @@ Context:
         """
         try:
             query = (
-                self.supabase.client.table("coach_recommendations")
+                self.supabase.table("coach_recommendations")
                 .select("*, coach_personas(*)")
                 .eq("user_id", user_id)
                 .eq("status", "pending")
@@ -270,7 +270,7 @@ Context:
         try:
             # Update recommendation status
             update_response = (
-                self.supabase.client.table("coach_recommendations")
+                self.supabase.table("coach_recommendations")
                 .update({"status": status})
                 .eq("id", recommendation_id)
                 .eq("user_id", user_id)
@@ -279,7 +279,7 @@ Context:
 
             # Save feedback
             if feedback_text:
-                self.supabase.client.table("recommendation_feedback").insert({
+                self.supabase.table("recommendation_feedback").insert({
                     "recommendation_id": recommendation_id,
                     "user_id": user_id,
                     "feedback_type": status,
@@ -296,7 +296,7 @@ Context:
         """Get coach persona by type."""
         try:
             response = (
-                self.supabase.client.table("coach_personas")
+                self.supabase.table("coach_personas")
                 .select("*")
                 .eq("name", coach_type)
                 .single()
@@ -318,7 +318,7 @@ Context:
         try:
             # Try to get existing conversation
             response = (
-                self.supabase.client.table("coach_conversations")
+                self.supabase.table("coach_conversations")
                 .select("*")
                 .eq("user_id", user_id)
                 .eq("coach_persona_id", coach_persona_id)
@@ -332,7 +332,7 @@ Context:
 
             # Create new conversation
             create_response = (
-                self.supabase.client.table("coach_conversations")
+                self.supabase.table("coach_conversations")
                 .insert({
                     "user_id": user_id,
                     "coach_persona_id": coach_persona_id,
@@ -392,7 +392,7 @@ Use this information to provide personalized, specific advice. Reference their a
         try:
             # Get current conversation
             response = (
-                self.supabase.client.table("coach_conversations")
+                self.supabase.table("coach_conversations")
                 .select("messages")
                 .eq("id", conversation_id)
                 .single()
@@ -417,7 +417,7 @@ Use this information to provide personalized, specific advice. Reference their a
             ])
 
             # Update conversation
-            self.supabase.client.table("coach_conversations").update({
+            self.supabase.table("coach_conversations").update({
                 "messages": current_messages,
                 "last_message_at": timestamp
             }).eq("id", conversation_id).execute()
@@ -435,7 +435,7 @@ Use this information to provide personalized, specific advice. Reference their a
         """Save recommendation to database."""
         try:
             response = (
-                self.supabase.client.table("coach_recommendations")
+                self.supabase.table("coach_recommendations")
                 .insert({
                     "user_id": user_id,
                     "coach_persona_id": coach_persona_id,

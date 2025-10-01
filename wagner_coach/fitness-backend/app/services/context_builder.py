@@ -8,7 +8,7 @@ import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 
-from app.services.supabase_service import get_supabase_service
+from app.services.supabase_service import get_service_client
 from app.services.embedding_service import EmbeddingService
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ class ContextBuilder:
     """Service for building AI coach context using RAG and structured data."""
 
     def __init__(self):
-        self.supabase = get_supabase_service()
+        self.supabase = get_service_client()
         self.embedding_service = EmbeddingService()
 
     async def build_trainer_context(
@@ -172,7 +172,7 @@ class ContextBuilder:
         try:
             # Get profile
             profile_response = (
-                self.supabase.client.table("profiles")
+                self.supabase.table("profiles")
                 .select("*")
                 .eq("id", user_id)
                 .single()
@@ -223,7 +223,7 @@ class ContextBuilder:
         """Get active workout program."""
         try:
             response = (
-                self.supabase.client.table("workout_programs")
+                self.supabase.table("workout_programs")
                 .select("*")
                 .eq("user_id", user_id)
                 .eq("status", "active")
@@ -259,7 +259,7 @@ class ContextBuilder:
         """Get active nutrition program."""
         try:
             response = (
-                self.supabase.client.table("nutrition_programs")
+                self.supabase.table("nutrition_programs")
                 .select("*")
                 .eq("user_id", user_id)
                 .eq("status", "active")
@@ -301,7 +301,7 @@ class ContextBuilder:
             cutoff_date = datetime.utcnow() - timedelta(days=days)
 
             response = (
-                self.supabase.client.table("actual_workouts")
+                self.supabase.table("actual_workouts")
                 .select("*, actual_exercise_sets(*)")
                 .eq("user_id", user_id)
                 .gte("started_at", cutoff_date.isoformat())
@@ -341,7 +341,7 @@ class ContextBuilder:
             cutoff_date = datetime.utcnow() - timedelta(days=days)
 
             response = (
-                self.supabase.client.table("meals")
+                self.supabase.table("meals")
                 .select("*")
                 .eq("user_id", user_id)
                 .gte("consumed_at", cutoff_date.isoformat())
@@ -380,7 +380,7 @@ class ContextBuilder:
         try:
             # Get top exercises by frequency
             response = (
-                self.supabase.client.table("exercise_progress")
+                self.supabase.table("exercise_progress")
                 .select("*")
                 .eq("user_id", user_id)
                 .order("date", desc=True)
@@ -421,7 +421,7 @@ class ContextBuilder:
             cutoff_date = datetime.utcnow() - timedelta(days=days)
 
             response = (
-                self.supabase.client.table("nutrition_compliance")
+                self.supabase.table("nutrition_compliance")
                 .select("*")
                 .eq("user_id", user_id)
                 .gte("date", cutoff_date.date().isoformat())
@@ -500,7 +500,7 @@ class ContextBuilder:
         try:
             # Get coach persona ID
             persona_response = (
-                self.supabase.client.table("coach_personas")
+                self.supabase.table("coach_personas")
                 .select("id")
                 .eq("name", coach_type)
                 .single()
@@ -514,7 +514,7 @@ class ContextBuilder:
 
             # Get conversation
             conv_response = (
-                self.supabase.client.table("coach_conversations")
+                self.supabase.table("coach_conversations")
                 .select("messages")
                 .eq("user_id", user_id)
                 .eq("coach_persona_id", persona_id)
