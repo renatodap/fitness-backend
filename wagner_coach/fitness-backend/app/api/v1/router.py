@@ -13,7 +13,8 @@ from app.api.v1 import (
     ai,
     nutrition,
     integrations,
-    coach
+    coach,
+    programs
 )
 
 api_router = APIRouter()
@@ -26,3 +27,4 @@ api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
 api_router.include_router(nutrition.router, prefix="/nutrition", tags=["nutrition"])
 api_router.include_router(integrations.router, prefix="/integrations", tags=["integrations"])
 api_router.include_router(coach.router, prefix="/coach", tags=["coach"])
+api_router.include_router(programs.router, prefix="/programs", tags=["programs"])
