@@ -27,7 +27,11 @@ class Settings(BaseSettings):
 
     # API Settings
     API_V1_PREFIX: str = "/api/v1"
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "https://www.sharpened.me",
+        "https://sharpened.me"
+    ]
 
     # Database Settings (Supabase)
     SUPABASE_URL: str

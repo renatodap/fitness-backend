@@ -415,20 +415,20 @@ Return JSON classification and data extraction."""
 
         try:
             if entry_type == "meal":
-                # Save to meal_logs
+                # Save to meal_logs (using correct field names to match schema)
                 result = self.supabase.table("meal_logs").insert({
                     "user_id": user_id,
-                    "meal_type": data.get("meal_type", "snack"),
-                    "description": data.get("meal_name", original_text[:200]),
-                    "foods": data.get("foods", []),
-                    "calories": data.get("calories"),
-                    "protein_g": data.get("protein_g"),
-                    "carbs_g": data.get("carbs_g"),
-                    "fat_g": data.get("fat_g"),
-                    "fiber_g": data.get("fiber_g"),
-                    "image_url": self._upload_image(image_base64, user_id) if image_base64 else None,
+                    "category": data.get("meal_type", "snack"),  # category, not meal_type
+                    "name": data.get("meal_name", original_text[:200]),  # name, not description
+                    "notes": f"Quick entry. {original_text[:200]}" if len(original_text) > 200 else original_text,
+                    "total_calories": data.get("calories"),  # total_calories, not calories
+                    "total_protein_g": data.get("protein_g"),  # total_protein_g
+                    "total_carbs_g": data.get("carbs_g"),  # total_carbs_g
+                    "total_fat_g": data.get("fat_g"),  # total_fat_g
+                    "total_fiber_g": data.get("fiber_g"),  # total_fiber_g
                     "logged_at": datetime.utcnow().isoformat(),
-                    "source": "quick_entry"
+                    "created_at": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.utcnow().isoformat()
                 }).execute()
 
                 return {"success": True, "entry_id": result.data[0]["id"]}
