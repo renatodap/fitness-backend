@@ -1,17 +1,19 @@
 """
 Meal Parser Service
 
-Intelligent meal parsing using OpenAI for natural language food logging.
+Intelligent meal parsing using FREE AI models for natural language food logging.
+
+OPTIMIZED: Using 100% FREE models with intelligent routing!
 """
 
 import logging
 from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel
-from openai import AsyncOpenAI
 import json
 
 from app.config import settings
 from app.services.supabase_service import get_service_client
+from app.services.dual_model_router import dual_router, TaskType, TaskConfig
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +55,8 @@ class MealParserService:
     """
 
     def __init__(self):
-        """Initialize with OpenAI and Supabase clients."""
-        self.openai = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        """Initialize with dual model router and Supabase clients."""
+        self.router = dual_router
         self.supabase = get_service_client()
 
     async def parse(
@@ -147,8 +149,13 @@ Example output:
 }}"""
 
         try:
-            response = await self.openai.chat.completions.create(
-                model="gpt-4o-mini",
+            # OPTIMIZED: Use Groq for ULTRA FAST extraction with dual router
+            response = await self.router.complete(
+                config=TaskConfig(
+                    type=TaskType.QUICK_CATEGORIZATION,
+                    requires_json=True,
+                    prioritize_speed=True  # Need instant meal parsing
+                ),
                 messages=[{"role": "user", "content": prompt}],
                 response_format={"type": "json_object"}
             )
@@ -254,8 +261,13 @@ Example output:
 Return JSON with calories, protein_g, carbs_g, fat_g"""
 
         try:
-            response = await self.openai.chat.completions.create(
-                model="gpt-4o-mini",
+            # OPTIMIZED: Use Groq for ULTRA FAST nutrition estimation with dual router
+            response = await self.router.complete(
+                config=TaskConfig(
+                    type=TaskType.QUICK_CATEGORIZATION,
+                    requires_json=True,
+                    prioritize_speed=True  # Need instant nutrition estimates
+                ),
                 messages=[{"role": "user", "content": prompt}],
                 response_format={"type": "json_object"}
             )

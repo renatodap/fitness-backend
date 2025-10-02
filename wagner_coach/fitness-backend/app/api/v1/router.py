@@ -14,7 +14,8 @@ from app.api.v1 import (
     nutrition,
     integrations,
     coach,
-    programs
+    programs,
+    quick_entry
 )
 
 api_router = APIRouter()
@@ -28,3 +29,4 @@ api_router.include_router(nutrition.router, prefix="/nutrition", tags=["nutritio
 api_router.include_router(integrations.router, prefix="/integrations", tags=["integrations"])
 api_router.include_router(coach.router, prefix="/coach", tags=["coach"])
 api_router.include_router(programs.router, prefix="/programs", tags=["programs"])
+api_router.include_router(quick_entry.router, tags=["quick-entry"])  # No prefix, routes define their own

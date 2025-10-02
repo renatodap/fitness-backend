@@ -1,15 +1,16 @@
 """
 Service for AI-generated personalized fitness and nutrition programs.
+
+OPTIMIZED: Using 100% FREE models with intelligent routing!
 """
 import json
 from datetime import date, datetime, timedelta
 from typing import Dict, List, Optional, Any
 from uuid import UUID
-import openai
+
 from app.config import settings
 from app.services.context_builder import ContextBuilder
-
-openai.api_key = settings.OPENAI_API_KEY
+from app.services.dual_model_router import dual_router, TaskType, TaskConfig
 
 
 class ProgramService:
@@ -18,6 +19,7 @@ class ProgramService:
     def __init__(self, supabase_client):
         self.supabase = supabase_client
         self.context_builder = ContextBuilder(supabase_client)
+        self.router = dual_router
 
     async def get_user_profile_for_generation(self, user_id: str) -> Dict[str, Any]:
         """
@@ -145,13 +147,17 @@ Return ONLY a JSON object with this structure:
 Generate questions that will help create the best possible program for THIS specific user."""
 
         try:
-            response = openai.chat.completions.create(
-                model=settings.OPENAI_MODEL,
+            # OPTIMIZED: Use FREE structured output model with dual router
+            response = await self.router.complete(
+                config=TaskConfig(
+                    type=TaskType.STRUCTURED_OUTPUT,
+                    requires_json=True,
+                    prioritize_accuracy=True  # Questions need to be accurate
+                ),
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=0.7,
                 response_format={"type": "json_object"}
             )
 
@@ -308,14 +314,21 @@ USER ANSWERS:
 Generate the COMPLETE program with all 84 days of meals and workouts."""
 
         try:
-            # This is a large generation, may need to split or use larger context
-            response = openai.chat.completions.create(
-                model="gpt-4o",  # Use more capable model for this
+            # OPTIMIZED: Use FREE program generation model with dual router
+            # OpenRouter's DeepSeek R1 for complex reasoning - 100% FREE!
+            print("Generating program with FREE dual-API router (DeepSeek R1)")
+
+            response = await self.router.complete(
+                config=TaskConfig(
+                    type=TaskType.PROGRAM_GENERATION,
+                    requires_json=True,
+                    prioritize_accuracy=True,  # Programs need high accuracy
+                    critical_accuracy=True     # This is critical for user programs
+                ),
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=0.7,
                 response_format={"type": "json_object"}
             )
 

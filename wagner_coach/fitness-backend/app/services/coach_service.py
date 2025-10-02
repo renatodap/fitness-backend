@@ -2,6 +2,8 @@
 AI Coach Service
 
 Manages AI coach personas (Trainer and Nutritionist) with RAG-enhanced context.
+
+OPTIMIZED: Using 100% FREE models with intelligent routing!
 """
 
 import logging
@@ -9,17 +11,13 @@ import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
-from openai import AsyncOpenAI
-
 from app.config import get_settings
 from app.services.supabase_service import get_service_client
 from app.services.context_builder import get_context_builder
+from app.services.dual_model_router import dual_router, TaskType, TaskConfig
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
-
-# Initialize OpenAI client
-client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 class CoachService:
@@ -28,6 +26,7 @@ class CoachService:
     def __init__(self):
         self.supabase = get_service_client()
         self.context_builder = get_context_builder()
+        self.router = dual_router
 
     async def get_persona(self, coach_type: str) -> Optional[Dict[str, Any]]:
         """
@@ -280,13 +279,17 @@ class CoachService:
             user_message=user_message
         )
 
-        # 5. Call OpenAI
+        # 5. Call AI with FREE optimized model using dual router
         try:
-            response = await client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=0.7,
-                max_tokens=1000
+            # OPTIMIZED: Use Groq for BLAZING FAST real-time chat with FREE models
+            logger.info(f"Using FREE optimized dual-API router for {coach_type} coach")
+
+            response = await self.router.complete(
+                config=TaskConfig(
+                    type=TaskType.REAL_TIME_CHAT,
+                    prioritize_speed=True  # Real-time coaching needs speed
+                ),
+                messages=messages
             )
 
             assistant_message = response.choices[0].message.content
@@ -362,13 +365,17 @@ Context:
 """
 
         try:
-            response = await client.chat.completions.create(
-                model="gpt-4o-mini",
+            # OPTIMIZED: Use FREE structured output model with dual router
+            response = await self.router.complete(
+                config=TaskConfig(
+                    type=TaskType.STRUCTURED_OUTPUT,
+                    requires_json=True,
+                    prioritize_accuracy=True  # Recommendations need accuracy
+                ),
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=0.7,
                 response_format={"type": "json_object"}
             )
 
