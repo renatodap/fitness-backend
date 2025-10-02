@@ -407,11 +407,11 @@ class ContextBuilder:
             cutoff_date = datetime.utcnow() - timedelta(days=days)
 
             response = (
-                self.supabase.table("actual_workouts")
-                .select("*, actual_exercise_sets(*)")
+                self.supabase.table("workout_completions")
+                .select("*")
                 .eq("user_id", user_id)
-                .gte("started_at", cutoff_date.isoformat())
-                .order("started_at", desc=True)
+                .gte("completed_at", cutoff_date.isoformat())
+                .order("completed_at", desc=True)
                 .limit(10)
                 .execute()
             )
@@ -424,14 +424,19 @@ class ContextBuilder:
 
             for workout in workouts:
                 workout_parts = []
-                workout_parts.append(f"- {workout.get('name')} ({workout.get('started_at')})")
+                workout_name = workout.get('workout_name', 'Workout')
+                workout_parts.append(f"- {workout_name} ({workout.get('completed_at')})")
                 workout_parts.append(f"  Duration: {workout.get('duration_minutes', 'N/A')} min")
 
-                if rpe := workout.get('perceived_exertion'):
+                if rpe := workout.get('rpe'):
                     workout_parts.append(f"  RPE: {rpe}/10")
 
-                if sets := workout.get('actual_exercise_sets'):
-                    workout_parts.append(f"  Exercises: {len(sets)} sets")
+                if notes := workout.get('notes'):
+                    workout_parts.append(f"  Notes: {notes}")
+
+                if exercises := workout.get('exercises'):
+                    if isinstance(exercises, list):
+                        workout_parts.append(f"  Exercises: {len(exercises)}")
 
                 parts.append("\n".join(workout_parts))
 
@@ -447,11 +452,11 @@ class ContextBuilder:
             cutoff_date = datetime.utcnow() - timedelta(days=days)
 
             response = (
-                self.supabase.table("meals")
+                self.supabase.table("meal_logs")
                 .select("*")
                 .eq("user_id", user_id)
-                .gte("consumed_at", cutoff_date.isoformat())
-                .order("consumed_at", desc=True)
+                .gte("logged_at", cutoff_date.isoformat())
+                .order("logged_at", desc=True)
                 .limit(10)
                 .execute()
             )
@@ -464,12 +469,13 @@ class ContextBuilder:
 
             for meal in meals:
                 meal_parts = []
-                meal_parts.append(f"- {meal.get('name')} ({meal.get('consumed_at')})")
+                meal_name = meal.get('description') or meal.get('name', 'Meal')
+                meal_parts.append(f"- {meal_name} ({meal.get('logged_at')})")
 
-                cals = meal.get('calories', 0)
-                protein = meal.get('protein_grams', 0)
-                carbs = meal.get('carbs_grams', 0)
-                fat = meal.get('fat_grams', 0)
+                cals = meal.get('calories') or meal.get('total_calories', 0)
+                protein = meal.get('protein_g') or meal.get('total_protein_g', 0)
+                carbs = meal.get('carbs_g') or meal.get('total_carbs_g', 0)
+                fat = meal.get('fat_g') or meal.get('total_fat_g', 0)
 
                 meal_parts.append(f"  Cals: {cals}, P: {protein}g, C: {carbs}g, F: {fat}g")
 

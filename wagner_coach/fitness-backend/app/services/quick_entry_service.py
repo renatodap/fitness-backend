@@ -528,9 +528,9 @@ Return JSON classification and data extraction."""
             # Generate text embedding using FREE sentence-transformers
             embedding = await self.multimodal_service.embed_text(text)
 
-            # Map entry type to source type
+            # Map entry type to source type (must match context_builder.py expectations!)
             source_type_map = {
-                "meal": "meal_log",
+                "meal": "meal",  # Changed from "meal_log" to match context builder
                 "activity": "activity",
                 "workout": "workout",
                 "note": "voice_note",
