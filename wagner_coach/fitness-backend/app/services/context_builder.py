@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 
 from app.services.supabase_service import get_service_client
 from app.services.embedding_service import EmbeddingService
+from app.services.multimodal_embedding_service import get_multimodal_service
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class ContextBuilder:
     def __init__(self):
         self.supabase = get_service_client()
         self.embedding_service = EmbeddingService()
+        self.multimodal_service = get_multimodal_service()  # REVOLUTIONARY multimodal RAG
 
     async def build_trainer_context(
         self,
@@ -563,36 +565,109 @@ class ContextBuilder:
         user_id: str,
         query: str,
         source_types: List[str],
-        match_count: int = 5
+        match_count: int = 5,
+        include_images: bool = False
     ) -> str:
-        """Get relevant context using RAG."""
+        """
+        Get relevant context using REVOLUTIONARY MULTIMODAL RAG.
+
+        Searches across ALL modalities (text, images, audio transcripts)
+        using vector similarity in the multimodal_embeddings table.
+
+        This is what makes the AI coach truly personalized and revolutionary!
+        """
         try:
-            results = await self.embedding_service.search_similar(
-                query=query,
+            logger.info(f"🔍 Multimodal RAG search for: '{query}' | sources={source_types}")
+
+            # Search using multimodal service (searches text, images, audio, everything!)
+            results = await self.multimodal_service.search_by_text(
+                query_text=query,
                 user_id=user_id,
+                source_types=source_types,
+                data_types=['text', 'image'] if include_images else ['text'],  # Can include images!
                 limit=match_count,
-                threshold=0.7,
-                source_types=source_types
+                threshold=0.5  # Lower threshold for broader context
             )
 
             if not results:
+                logger.info("No RAG results found")
                 return ""
+
+            logger.info(f"✅ Found {len(results)} relevant context items")
 
             parts = []
             for i, result in enumerate(results, 1):
-                content = result.get("content", "")
+                content_text = result.get("content_text", "")
                 similarity = result.get("similarity", 0)
                 source_type = result.get("source_type", "unknown")
+                data_type = result.get("data_type", "text")
+                storage_url = result.get("storage_url")
+                metadata = result.get("metadata", {})
 
-                parts.append(
-                    f"{i}. [{source_type}] (similarity: {similarity:.2f})\n{content}"
-                )
+                # Format based on data type
+                if data_type == "image" and storage_url:
+                    # For images, include URL and any extracted text
+                    parts.append(
+                        f"{i}. [{source_type}] IMAGE (similarity: {similarity:.2f})\n"
+                        f"   Image URL: {storage_url}\n"
+                        f"   Context: {content_text or 'Visual content'}"
+                    )
+                elif data_type == "audio":
+                    # For audio, include transcription
+                    parts.append(
+                        f"{i}. [{source_type}] AUDIO (similarity: {similarity:.2f})\n"
+                        f"   Transcription: {content_text}"
+                    )
+                else:
+                    # For text
+                    parts.append(
+                        f"{i}. [{source_type}] (similarity: {similarity:.2f})\n{content_text}"
+                    )
+
+                # Add metadata context if available
+                if metadata:
+                    key_meta = []
+                    if metadata.get('calories'):
+                        key_meta.append(f"Calories: {metadata['calories']}")
+                    if metadata.get('duration_minutes'):
+                        key_meta.append(f"Duration: {metadata['duration_minutes']}min")
+                    if metadata.get('protein_g'):
+                        key_meta.append(f"Protein: {metadata['protein_g']}g")
+
+                    if key_meta:
+                        parts.append(f"   Metadata: {', '.join(key_meta)}")
 
             return "\n\n".join(parts)
 
         except Exception as e:
-            logger.error(f"Error getting RAG context: {e}")
-            return ""
+            logger.error(f"❌ Error getting multimodal RAG context: {e}")
+            # Fallback to old embedding service if multimodal fails
+            try:
+                logger.warning("Falling back to legacy embedding service")
+                results = await self.embedding_service.search_similar(
+                    query=query,
+                    user_id=user_id,
+                    limit=match_count,
+                    threshold=0.7,
+                    source_types=source_types
+                )
+
+                if not results:
+                    return ""
+
+                parts = []
+                for i, result in enumerate(results, 1):
+                    content = result.get("content", "")
+                    similarity = result.get("similarity", 0)
+                    source_type = result.get("source_type", "unknown")
+
+                    parts.append(
+                        f"{i}. [{source_type}] (similarity: {similarity:.2f})\n{content}"
+                    )
+
+                return "\n\n".join(parts)
+            except:
+                return ""
 
     async def _get_recent_coach_interactions(
         self,

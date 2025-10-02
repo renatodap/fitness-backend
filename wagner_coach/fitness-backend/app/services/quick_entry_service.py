@@ -17,6 +17,7 @@ Uses ONLY FREE top-tier models for max cost efficiency:
 import logging
 import json
 import base64
+import uuid
 from typing import Any, Dict, List, Literal, Optional
 from datetime import datetime
 from io import BytesIO
@@ -24,6 +25,8 @@ from io import BytesIO
 from app.config import get_settings
 from app.services.supabase_service import get_service_client
 from app.services.dual_model_router import dual_router, TaskType, TaskConfig
+from app.services.multimodal_embedding_service import get_multimodal_service
+from app.workers.embedding_worker import embed_meal_log, embed_activity
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -47,6 +50,7 @@ class QuickEntryService:
     def __init__(self):
         self.supabase = get_service_client()
         self.router = dual_router
+        self.multimodal_service = get_multimodal_service()
 
     async def process_entry(
         self,
@@ -185,15 +189,42 @@ class QuickEntryService:
                 logger.error(f"Image processing failed: {e}")
                 extracted_parts.append("IMAGE: Failed to process")
 
-        # Process audio (speech-to-text) - if needed, integrate Whisper or similar
+        # Process audio (speech-to-text) - Whisper integration
         if audio_base64:
             try:
-                logger.info("[QuickEntry] Processing audio")
-                # TODO: Integrate Whisper or similar speech-to-text
-                # For now, placeholder
-                extracted_parts.append("AUDIO: (Speech-to-text integration needed)")
+                logger.info("[QuickEntry] 🎤 Processing audio with Whisper")
+
+                # Decode audio
+                import whisper
+                import tempfile
+                import os
+
+                audio_bytes = base64.b64decode(audio_base64)
+
+                # Save to temp file (Whisper needs file path)
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.m4a') as temp_audio:
+                    temp_audio.write(audio_bytes)
+                    temp_audio_path = temp_audio.name
+
+                try:
+                    # Load Whisper model (tiny for speed, can upgrade to base/small/medium)
+                    model = whisper.load_model("tiny")
+
+                    # Transcribe
+                    result = model.transcribe(temp_audio_path)
+                    transcription = result["text"]
+
+                    extracted_parts.append(f"VOICE NOTE: {transcription}")
+                    logger.info(f"[QuickEntry] ✅ Audio transcribed: {transcription[:100]}...")
+
+                finally:
+                    # Clean up temp file
+                    if os.path.exists(temp_audio_path):
+                        os.remove(temp_audio_path)
+
             except Exception as e:
-                logger.error(f"Audio processing failed: {e}")
+                logger.error(f"❌ Audio processing failed: {e}")
+                extracted_parts.append("AUDIO: Failed to transcribe")
 
         # Process PDF (OCR/text extraction)
         if pdf_base64:
@@ -486,31 +517,143 @@ Return JSON classification and data extraction."""
         metadata: Dict[str, Any]
     ):
         """
-        Vectorize entry for RAG retrieval.
+        Vectorize entry for RAG retrieval - REVOLUTIONARY MULTIMODAL.
 
-        Creates embedding and stores in vector database for AI coach context.
+        Creates text embedding and stores in multimodal_embeddings table
+        for ultra-personalized AI coach context via vector similarity search.
         """
         try:
-            # TODO: Integrate with existing vector/embedding system
-            # For now, log that vectorization would happen
-            logger.info(f"[QuickEntry] Vectorizing {entry_type} entry {entry_id} for user {user_id}")
+            logger.info(f"[QuickEntry] 🔥 Vectorizing {entry_type} entry {entry_id}")
 
-            # Placeholder for actual vectorization
-            # Would create embedding and store in pgvector or similar
+            # Generate text embedding using FREE sentence-transformers
+            embedding = await self.multimodal_service.embed_text(text)
+
+            # Map entry type to source type
+            source_type_map = {
+                "meal": "meal_log",
+                "activity": "activity",
+                "workout": "workout",
+                "note": "voice_note",
+                "measurement": "progress_photo"
+            }
+            source_type = source_type_map.get(entry_type, "quick_entry")
+
+            # Store embedding in multimodal_embeddings table
+            await self.multimodal_service.store_embedding(
+                user_id=user_id,
+                embedding=embedding,
+                data_type='text',
+                source_type=source_type,
+                source_id=entry_id,
+                content_text=text,
+                metadata={
+                    **metadata,
+                    'entry_type': entry_type,
+                    'source': 'quick_entry',
+                    'created_at': datetime.utcnow().isoformat()
+                },
+                confidence_score=0.9,  # High confidence for text entries
+                embedding_model='all-MiniLM-L6-v2'
+            )
+
+            logger.info(f"✅ Vectorized {entry_type} entry: {entry_id}")
 
         except Exception as e:
-            logger.error(f"Vectorization error: {e}")
+            logger.error(f"❌ Vectorization error: {e}")
 
     def _upload_image(self, image_base64: str, user_id: str) -> Optional[str]:
-        """Upload image to storage and return URL."""
+        """
+        Upload image to Supabase Storage and generate image embedding - REVOLUTIONARY.
+
+        Stores image in user-images bucket and creates CLIP embedding for
+        multimodal vector search (find similar meal photos, workout images, etc.)
+        """
         try:
-            # TODO: Implement actual image upload to Supabase Storage
-            # For now, return None
-            logger.info(f"[QuickEntry] Image upload for user {user_id}")
-            return None
+            logger.info(f"[QuickEntry] 📸 Uploading image for user {user_id}")
+
+            # Decode base64 image
+            image_bytes = base64.b64decode(image_base64)
+
+            # Generate unique filename
+            timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+            filename = f"{user_id}/meals/{timestamp}_meal.jpg"
+
+            # Upload to Supabase Storage (user-images bucket)
+            storage_response = self.supabase.storage.from_('user-images').upload(
+                filename,
+                image_bytes,
+                {'content-type': 'image/jpeg'}
+            )
+
+            # Get public URL
+            storage_url = self.supabase.storage.from_('user-images').get_public_url(filename)
+
+            logger.info(f"✅ Image uploaded: {storage_url}")
+
+            # Generate image embedding asynchronously (fire and forget)
+            try:
+                import asyncio
+                asyncio.create_task(self._vectorize_image(
+                    user_id=user_id,
+                    image_base64=image_base64,
+                    storage_url=storage_url,
+                    bucket='user-images',
+                    filename=filename
+                ))
+            except Exception as embed_error:
+                logger.warning(f"Image embedding queued failed (non-critical): {embed_error}")
+
+            return storage_url
+
         except Exception as e:
-            logger.error(f"Image upload failed: {e}")
+            logger.error(f"❌ Image upload failed: {e}")
             return None
+
+    async def _vectorize_image(
+        self,
+        user_id: str,
+        image_base64: str,
+        storage_url: str,
+        bucket: str,
+        filename: str
+    ):
+        """
+        Generate CLIP embedding for uploaded image - REVOLUTIONARY.
+
+        Enables semantic image search: "show me my high-protein meals" will
+        retrieve visually similar meal photos via vector similarity.
+        """
+        try:
+            logger.info(f"[QuickEntry] 🖼️ Vectorizing image for user {user_id}")
+
+            # Generate image embedding using FREE CLIP model
+            embedding = await self.multimodal_service.embed_image(image_base64)
+
+            # Store embedding in multimodal_embeddings table
+            await self.multimodal_service.store_embedding(
+                user_id=user_id,
+                embedding=embedding,
+                data_type='image',
+                source_type='meal_photo',
+                source_id=str(uuid.uuid4()),  # Generate new UUID for image
+                content_text=None,  # No text for pure image
+                metadata={
+                    'uploaded_via': 'quick_entry',
+                    'uploaded_at': datetime.utcnow().isoformat()
+                },
+                storage_url=storage_url,
+                storage_bucket=bucket,
+                file_name=filename,
+                file_size_bytes=len(base64.b64decode(image_base64)),
+                mime_type='image/jpeg',
+                confidence_score=0.95,  # High confidence for CLIP embeddings
+                embedding_model='clip-vit-base-patch32'
+            )
+
+            logger.info(f"✅ Image vectorized successfully")
+
+        except Exception as e:
+            logger.error(f"❌ Image vectorization failed: {e}")
 
 
 # Global instance
