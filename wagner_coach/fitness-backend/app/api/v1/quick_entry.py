@@ -64,6 +64,8 @@ async def quick_entry_text(
 @router.post("/multimodal", response_model=QuickEntryResponse)
 async def quick_entry_multimodal(
     text: Optional[str] = Form(None),
+    notes: Optional[str] = Form(None),  # User feelings/notes
+    manual_type: Optional[str] = Form(None),  # Manual type override (meal, activity, workout, note)
     image: Optional[UploadFile] = File(None),
     audio: Optional[UploadFile] = File(None),
     pdf: Optional[UploadFile] = File(None),
@@ -106,7 +108,13 @@ async def quick_entry_multimodal(
 
         # Parse metadata
         import json
-        parsed_metadata = json.loads(metadata) if metadata else None
+        parsed_metadata = json.loads(metadata) if metadata else {}
+
+        # Add notes and manual_type to metadata if provided
+        if notes:
+            parsed_metadata['notes'] = notes
+        if manual_type:
+            parsed_metadata['manual_type'] = manual_type
 
         # Process entry
         result = await service.process_entry(

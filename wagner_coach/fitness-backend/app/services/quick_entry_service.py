@@ -95,10 +95,29 @@ class QuickEntryService:
             }
 
         # Step 2: Classify entry type and extract structured data (single FREE LLM call)
-        classification = await self._classify_and_extract(
-            extracted_text,
-            has_image=image_base64 is not None
-        )
+        # Check for manual type override from UI
+        manual_type = metadata.get('manual_type') if metadata else None
+
+        if manual_type:
+            # User manually selected type - trust them and just extract data
+            logger.info(f"Manual type override: {manual_type}")
+            classification = await self._classify_and_extract(
+                extracted_text,
+                has_image=image_base64 is not None,
+                force_type=manual_type
+            )
+        else:
+            # Auto-detect
+            classification = await self._classify_and_extract(
+                extracted_text,
+                has_image=image_base64 is not None
+            )
+
+        # Inject user notes into classification data if provided
+        if metadata and 'notes' in metadata:
+            if 'data' not in classification:
+                classification['data'] = {}
+            classification['data']['notes'] = metadata['notes']
 
         # Step 3: Save to appropriate database table
         saved_entry = await self._save_entry(
@@ -240,17 +259,29 @@ class QuickEntryService:
     async def _classify_and_extract(
         self,
         text: str,
-        has_image: bool = False
+        has_image: bool = False,
+        force_type: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Classify entry type and extract structured data.
 
         OPTIMIZED: Single FREE LLM call using DeepSeek V3 or Llama-4 Scout
         Handles ALL entry types: meal, activity, workout, note, measurement
-        """
-        logger.info("[QuickEntry] Classifying entry with FREE model")
 
-        system_prompt = """You are a fitness coach assistant analyzing user entries.
+        Args:
+            text: The text to classify
+            has_image: Whether an image was included
+            force_type: Override auto-detection and force a specific type
+        """
+        logger.info(f"[QuickEntry] Classifying entry with FREE model (force_type={force_type})")
+
+        if force_type:
+            system_prompt = f"""You are a fitness coach assistant analyzing user entries.
+
+The user has indicated this is a **{force_type}** entry. DO NOT classify it differently.
+Extract all relevant data for a {force_type} entry from the text below."""
+        else:
+            system_prompt = """You are a fitness coach assistant analyzing user entries.
 
 Classify the entry into ONE of these types:
 1. **meal**: Any food/drink consumption (meals, snacks, supplements)
@@ -386,7 +417,14 @@ Return JSON classification and data extraction."""
             )
 
             result = json.loads(response.choices[0].message.content)
-            logger.info(f"[QuickEntry] Classified as: {result.get('type')} ({result.get('confidence', 0):.2f})")
+
+            # Override type if force_type is set (user manual selection)
+            if force_type:
+                result['type'] = force_type
+                result['confidence'] = 1.0  # High confidence when user manually selects
+                logger.info(f"[QuickEntry] Forced type: {force_type}")
+            else:
+                logger.info(f"[QuickEntry] Classified as: {result.get('type')} ({result.get('confidence', 0):.2f})")
 
             return result
 
@@ -434,32 +472,42 @@ Return JSON classification and data extraction."""
                 return {"success": True, "entry_id": result.data[0]["id"]}
 
             elif entry_type == "activity":
-                # Save to activities
+                # Save to activities (fixed field names to match schema)
+                duration_min = data.get("duration_minutes", 0)
+                distance_km = data.get("distance_km", 0)
+
                 result = self.supabase.table("activities").insert({
                     "user_id": user_id,
-                    "activity_type": data.get("activity_type", "cardio"),
-                    "name": data.get("activity_name", "Activity"),
-                    "duration_minutes": data.get("duration_minutes"),
-                    "distance_km": data.get("distance_km"),
-                    "calories_burned": data.get("calories_burned"),
+                    "activity_type": data.get("activity_type", "workout"),
+                    "sport_type": data.get("sport_type", data.get("activity_type", "workout")),
+                    "name": data.get("activity_name", original_text[:200]),
+                    "elapsed_time_seconds": int(duration_min * 60) if duration_min else 0,  # Convert minutes to seconds
+                    "moving_time_seconds": int(duration_min * 60) if duration_min else None,
+                    "distance_meters": int(distance_km * 1000) if distance_km else None,  # Convert km to meters
+                    "calories": data.get("calories_burned") or data.get("calories"),
+                    "perceived_exertion": data.get("rpe") or data.get("perceived_exertion"),
+                    "mood": data.get("mood"),
+                    "energy_level": data.get("energy_level"),
                     "notes": data.get("notes", original_text[:500]),
                     "start_date": datetime.utcnow().isoformat(),
-                    "source": "quick_entry"
+                    "source": "manual"  # Changed from quick_entry to match schema constraint
                 }).execute()
 
                 return {"success": True, "entry_id": result.data[0]["id"]}
 
             elif entry_type == "workout":
-                # Save to workout_completions
+                # Save to workout_completions (using correct schema fields)
                 result = self.supabase.table("workout_completions").insert({
                     "user_id": user_id,
-                    "workout_name": data.get("workout_name", "Quick Workout"),
-                    "workout_type": data.get("workout_type", "strength"),
-                    "exercises": data.get("exercises", []),
                     "duration_minutes": data.get("duration_minutes"),
-                    "notes": data.get("notes", original_text[:500]),
-                    "completed_at": datetime.utcnow().isoformat(),
-                    "source": "quick_entry"
+                    "notes": f"Workout: {data.get('workout_name', 'Quick Workout')}. {data.get('notes', original_text[:400])}",
+                    "rpe": data.get("rpe") or data.get("perceived_exertion"),
+                    "mood": data.get("mood"),
+                    "energy_level": data.get("energy_level"),
+                    "workout_rating": data.get("workout_rating"),
+                    "difficulty_rating": data.get("difficulty_rating"),
+                    "started_at": datetime.utcnow().isoformat(),
+                    "completed_at": datetime.utcnow().isoformat()
                 }).execute()
 
                 return {"success": True, "entry_id": result.data[0]["id"]}
@@ -538,7 +586,54 @@ Return JSON classification and data extraction."""
             }
             source_type = source_type_map.get(entry_type, "quick_entry")
 
-            # Store embedding in multimodal_embeddings table
+            # Store embedding in multimodal_embeddings table with FULL context
+            # This allows AI coach to access:
+            # - WHEN it happened (timestamp)
+            # - WHAT happened (description, exercises, foods)
+            # - HOW it went (notes, feelings, RPE)
+            # - WHICH specific meal/workout/activity (source_id)
+
+            comprehensive_metadata = {
+                **metadata,  # LLM-extracted data (calories, exercises, etc.)
+                'entry_type': entry_type,
+                'source': 'quick_entry',
+                'timestamp': datetime.utcnow().isoformat(),  # WHEN
+                'logged_at': metadata.get('logged_at') or datetime.utcnow().isoformat(),
+                'notes': metadata.get('notes', text[:500]),  # HOW (user feelings)
+                'original_text': text,  # Full context
+                'source_id': entry_id,  # Links to SQL table
+            }
+
+            # Add type-specific metadata for AI coach context
+            if entry_type == "meal":
+                comprehensive_metadata.update({
+                    'meal_name': metadata.get('meal_name'),
+                    'meal_type': metadata.get('meal_type'),
+                    'calories': metadata.get('calories'),
+                    'protein_g': metadata.get('protein_g'),
+                    'carbs_g': metadata.get('carbs_g'),
+                    'fat_g': metadata.get('fat_g'),
+                })
+            elif entry_type == "activity":
+                comprehensive_metadata.update({
+                    'activity_name': metadata.get('activity_name'),
+                    'activity_type': metadata.get('activity_type'),
+                    'duration_minutes': metadata.get('duration_minutes'),
+                    'distance_km': metadata.get('distance_km'),
+                    'calories_burned': metadata.get('calories_burned'),
+                    'rpe': metadata.get('rpe'),
+                    'mood': metadata.get('mood'),
+                })
+            elif entry_type == "workout":
+                comprehensive_metadata.update({
+                    'workout_name': metadata.get('workout_name'),
+                    'workout_type': metadata.get('workout_type'),
+                    'exercises': metadata.get('exercises', []),
+                    'duration_minutes': metadata.get('duration_minutes'),
+                    'rpe': metadata.get('rpe'),
+                    'difficulty_rating': metadata.get('difficulty_rating'),
+                })
+
             await self.multimodal_service.store_embedding(
                 user_id=user_id,
                 embedding=embedding,
@@ -546,13 +641,8 @@ Return JSON classification and data extraction."""
                 source_type=source_type,
                 source_id=entry_id,
                 content_text=text,
-                metadata={
-                    **metadata,
-                    'entry_type': entry_type,
-                    'source': 'quick_entry',
-                    'created_at': datetime.utcnow().isoformat()
-                },
-                confidence_score=0.9,  # High confidence for text entries
+                metadata=comprehensive_metadata,
+                confidence_score=0.9,
                 embedding_model='all-MiniLM-L6-v2'
             )
 
