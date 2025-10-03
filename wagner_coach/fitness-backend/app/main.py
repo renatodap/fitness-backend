@@ -34,6 +34,8 @@ async def lifespan(app: FastAPI):
     logger.info(f"Starting {_settings.APP_NAME}")
     logger.info(f"Environment: {_settings.ENVIRONMENT}")
     logger.info(f"Debug mode: {_settings.DEBUG}")
+    logger.info(f"CORS Origins: {_settings.cors_origins_list}")
+    logger.info(f"Allow All Origins: {_settings.ALLOW_ALL_ORIGINS}")
 
     yield
 
@@ -51,13 +53,23 @@ app = FastAPI(
 )
 
 # CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if _settings.ALLOW_ALL_ORIGINS:
+    logger.warning("⚠️  ALLOW_ALL_ORIGINS is enabled - allowing all origins (NOT for production!)")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_settings.cors_origins_list,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 @app.get("/")

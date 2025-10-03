@@ -27,11 +27,17 @@ class Settings(BaseSettings):
 
     # API Settings
     API_V1_PREFIX: str = "/api/v1"
-    CORS_ORIGINS: list[str] = [
-        "http://localhost:3000",
-        "https://www.sharpened.me",
-        "https://sharpened.me"
-    ]
+    # CORS can be a comma-separated string from env or list
+    CORS_ORIGINS: str = "http://localhost:3000,https://www.sharpened.me,https://sharpened.me"
+    ALLOW_ALL_ORIGINS: bool = False  # Set to True to allow all origins (for debugging ONLY)
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parse CORS_ORIGINS into a list."""
+        if isinstance(self.CORS_ORIGINS, list):
+            return self.CORS_ORIGINS
+        # Split by comma and strip whitespace
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
     # Database Settings (Supabase)
     SUPABASE_URL: str
