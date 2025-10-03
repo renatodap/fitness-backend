@@ -1,46 +1,191 @@
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-# personalwebsite
-=======
->>>>>>> 444c49c (Fix tsconfig.json for App Router)
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fitness Backend
 
-## Getting Started
+Python backend service for Wagner Coach fitness application.
 
-First, run the development server:
+## Features
+
+- ✅ FastAPI REST API
+- ✅ Supabase database integration
+- ✅ JWT authentication
+- ✅ OpenAI integration for AI processing
+- ✅ Celery for background jobs
+- ✅ Redis for caching and queues
+- ✅ Comprehensive test suite
+- ✅ Docker support
+- ✅ CI/CD with GitHub Actions
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- Poetry (for dependency management)
+- Docker & Docker Compose (optional)
+
+### Local Development
+
+1. **Clone and navigate:**
+   ```bash
+   cd fitness-backend
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   pip install poetry
+   poetry install
+   ```
+
+3. **Setup environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your actual values
+   ```
+
+4. **Run the server:**
+   ```bash
+   poetry run uvicorn app.main:app --reload
+   ```
+
+5. **Access the API:**
+   - API: http://localhost:8000
+   - Docs: http://localhost:8000/docs
+   - Health: http://localhost:8000/health
+
+### Docker Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker-compose up
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Testing
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Run all tests:
+```bash
+poetry run pytest
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Run with coverage:
+```bash
+poetry run pytest --cov=app --cov-report=html --cov-report=term-missing
+```
 
-## Learn More
+### Run specific test file:
+```bash
+poetry run pytest tests/unit/test_config.py -v
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+fitness-backend/
+├── app/
+│   ├── main.py                 # FastAPI application
+│   ├── config.py               # Configuration management
+│   ├── api/
+│   │   ├── v1/
+│   │   │   ├── router.py       # Main API router
+│   │   │   ├── health.py       # Health check endpoints
+│   │   │   └── ...             # Other endpoints
+│   │   └── middleware/
+│   │       └── auth.py         # Authentication middleware
+│   ├── services/
+│   │   ├── supabase_service.py # Supabase client management
+│   │   └── ...                 # Other services
+│   ├── models/
+│   │   └── ...                 # Pydantic models
+│   └── workers/
+│       └── ...                 # Celery workers
+├── tests/
+│   ├── unit/                   # Unit tests
+│   ├── integration/            # Integration tests
+│   └── conftest.py             # Test fixtures
+├── docs/
+│   ├── design/                 # Feature designs
+│   └── testing/                # Test plans
+├── scripts/
+│   └── ...                     # Utility scripts
+├── Dockerfile
+├── docker-compose.yml
+├── pyproject.toml
+└── README.md
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Code Quality
 
-## Deploy on Vercel
+### Format code:
+```bash
+poetry run black app/
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Lint code:
+```bash
+poetry run ruff check app/
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-<<<<<<< HEAD
-=======
->>>>>>> 94aedd5 (Fresh commit from correct subfolder)
->>>>>>> 444c49c (Fix tsconfig.json for App Router)
+### Type check:
+```bash
+poetry run mypy app/
+```
+
+## Environment Variables
+
+See `.env.example` for all required environment variables.
+
+### Required:
+- `SUPABASE_URL`: Supabase project URL
+- `SUPABASE_KEY`: Supabase anon key
+- `SUPABASE_SERVICE_KEY`: Supabase service role key
+- `OPENAI_API_KEY`: OpenAI API key
+- `JWT_SECRET`: JWT signing secret
+- `CRON_SECRET`: Secret for cron endpoints
+- `WEBHOOK_SECRET`: Secret for webhook endpoints
+
+### Optional:
+- `REDIS_URL`: Redis connection URL (default: redis://localhost:6379)
+- `SENTRY_DSN`: Sentry error tracking DSN
+- `LOG_LEVEL`: Logging level (default: INFO)
+
+## Deployment
+
+### Railway
+
+```bash
+# Install Railway CLI
+npm i -g @railway/cli
+
+# Login
+railway login
+
+# Deploy
+railway up
+```
+
+### Fly.io
+
+```bash
+# Install Fly CLI
+curl -L https://fly.io/install.sh | sh
+
+# Login
+flyctl auth login
+
+# Deploy
+flyctl launch
+```
+
+## Contributing
+
+1. Create a feature branch
+2. Write tests first (TDD approach)
+3. Implement feature
+4. Ensure tests pass and coverage ≥80%
+5. Format and lint code
+6. Submit pull request
+
+## License
+
+Private - Wagner Coach Fitness Application
+
+## Support
+
+For issues or questions, contact: renato@sharpened.me
