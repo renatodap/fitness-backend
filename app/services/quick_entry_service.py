@@ -21,6 +21,7 @@ import uuid
 from typing import Any, Dict, List, Literal, Optional
 from datetime import datetime
 from io import BytesIO
+from openai import OpenAI
 
 from app.config import get_settings
 from app.services.supabase_service import get_service_client
@@ -30,6 +31,7 @@ from app.workers.embedding_worker import embed_meal_log, embed_activity
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
+openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 EntryType = Literal["meal", "activity", "workout", "note", "measurement", "unknown"]
@@ -369,27 +371,28 @@ class QuickEntryService:
         # Process audio (speech-to-text) - Whisper integration
         if audio_base64:
             try:
-                logger.info("[QuickEntry] 🎤 Processing audio with Whisper")
+                logger.info("[QuickEntry] 🎤 Processing audio with OpenAI Whisper API")
 
                 # Decode audio
-                import whisper
                 import tempfile
                 import os
 
                 audio_bytes = base64.b64decode(audio_base64)
 
-                # Save to temp file (Whisper needs file path)
+                # Save to temp file (OpenAI API needs file object)
                 with tempfile.NamedTemporaryFile(delete=False, suffix='.m4a') as temp_audio:
                     temp_audio.write(audio_bytes)
                     temp_audio_path = temp_audio.name
 
                 try:
-                    # Load Whisper model (tiny for speed, can upgrade to base/small/medium)
-                    model = whisper.load_model("tiny")
+                    # Transcribe using OpenAI Whisper API
+                    with open(temp_audio_path, 'rb') as audio_file:
+                        transcription_response = openai_client.audio.transcriptions.create(
+                            model="whisper-1",
+                            file=audio_file
+                        )
 
-                    # Transcribe
-                    result = model.transcribe(temp_audio_path)
-                    transcription = result["text"]
+                    transcription = transcription_response.text
 
                     extracted_parts.append(f"VOICE NOTE: {transcription}")
                     logger.info(f"[QuickEntry] ✅ Audio transcribed: {transcription[:100]}...")

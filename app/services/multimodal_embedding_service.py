@@ -19,7 +19,9 @@ from datetime import datetime
 # Open-source ML models
 from sentence_transformers import SentenceTransformer
 from PIL import Image
-import torch
+
+# Note: torch/transformers removed to reduce dependencies
+# Image embeddings now use OpenAI or are disabled
 
 # Supabase
 from app.services.supabase_service import get_service_client
@@ -77,24 +79,11 @@ class MultimodalEmbeddingService:
         return MultimodalEmbeddingService._text_model
 
     def _load_clip_model(self):
-        """Lazy load CLIP image embedding model."""
-        if MultimodalEmbeddingService._clip_model is None:
-            logger.info("🖼️ Loading CLIP image embedding model (ViT-B/32)...")
-            try:
-                from transformers import CLIPProcessor, CLIPModel
-
-                MultimodalEmbeddingService._clip_model = CLIPModel.from_pretrained(
-                    "openai/clip-vit-base-patch32"
-                )
-                MultimodalEmbeddingService._clip_processor = CLIPProcessor.from_pretrained(
-                    "openai/clip-vit-base-patch32"
-                )
-                logger.info("✅ CLIP model loaded")
-            except Exception as e:
-                logger.error(f"❌ Failed to load CLIP model: {e}")
-                raise RuntimeError(f"CLIP model unavailable: {e}")
-
-        return MultimodalEmbeddingService._clip_model, MultimodalEmbeddingService._clip_processor
+        """CLIP model disabled - use OpenAI for image embeddings instead."""
+        raise NotImplementedError(
+            "CLIP image embeddings disabled to reduce dependencies. "
+            "Use OpenAI Vision API for image analysis instead."
+        )
 
     # ========================================================================
     # EMBEDDING GENERATION
@@ -135,7 +124,7 @@ class MultimodalEmbeddingService:
 
     async def embed_image(self, image_base64: str) -> List[float]:
         """
-        Generate image embedding using CLIP.
+        Image embeddings disabled - use OpenAI Vision API instead.
 
         Args:
             image_base64: Base64-encoded image
@@ -144,80 +133,32 @@ class MultimodalEmbeddingService:
             512-dimensional embedding vector
 
         Raises:
-            ValueError: If image is invalid
-            RuntimeError: If CLIP model unavailable
+            NotImplementedError: CLIP disabled to reduce dependencies
         """
-        if not image_base64:
-            raise ValueError("Image cannot be empty")
+        raise NotImplementedError(
+            "Image embeddings disabled to reduce dependencies (torch/transformers removed). "
+            "Use OpenAI Vision API for image understanding instead of embeddings."
+        )
 
-        try:
-            # Load CLIP model
-            clip_model, clip_processor = self._load_clip_model()
-
-            # Decode base64 image
-            image_bytes = base64.b64decode(image_base64)
-            image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
-
-            logger.debug(f"📷 Processing image: {image.size}")
-
-            # Generate embedding
-            inputs = clip_processor(images=image, return_tensors="pt")
-
-            with torch.no_grad():
-                image_features = clip_model.get_image_features(**inputs)
-                # Normalize embeddings
-                image_features = image_features / image_features.norm(dim=-1, keepdim=True)
-
-            embedding = image_features[0].cpu().numpy()
-            embedding_list = embedding.tolist()
-
-            if len(embedding_list) != 512:
-                raise ValueError(f"Expected 512 dimensions, got {len(embedding_list)}")
-
-            logger.debug(f"✅ Generated image embedding: {len(embedding_list)} dimensions")
-            return embedding_list
-
-        except Exception as e:
-            logger.error(f"❌ Image embedding failed: {e}")
-            raise
-
+    
     async def embed_text_with_clip(self, text: str) -> List[float]:
         """
-        Generate text embedding using CLIP's text encoder (for multimodal similarity).
-
-        This allows comparing text queries directly with image embeddings
-        in the same vector space.
+        CLIP text embeddings disabled - use regular text embeddings instead.
 
         Args:
             text: Text to embed
 
         Returns:
             512-dimensional CLIP text embedding
+
+        Raises:
+            NotImplementedError: CLIP disabled to reduce dependencies
         """
-        if not text or not text.strip():
-            raise ValueError("Text cannot be empty")
+        raise NotImplementedError(
+            "CLIP text embeddings disabled. Use embed_text() for regular text embeddings instead."
+        )
 
-        try:
-            clip_model, clip_processor = self._load_clip_model()
-
-            # Process text
-            inputs = clip_processor(text=[text], return_tensors="pt", padding=True)
-
-            with torch.no_grad():
-                text_features = clip_model.get_text_features(**inputs)
-                # Normalize embeddings
-                text_features = text_features / text_features.norm(dim=-1, keepdim=True)
-
-            embedding = text_features[0].cpu().numpy()
-            embedding_list = embedding.tolist()
-
-            logger.debug(f"✅ Generated CLIP text embedding: {len(embedding_list)} dimensions")
-            return embedding_list
-
-        except Exception as e:
-            logger.error(f"❌ CLIP text embedding failed: {e}")
-            raise
-
+    
     async def batch_embed_text(self, texts: List[str]) -> List[List[float]]:
         """
         Generate embeddings for multiple texts in batch (faster).
