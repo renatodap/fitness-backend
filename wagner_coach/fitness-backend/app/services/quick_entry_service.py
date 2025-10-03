@@ -52,6 +52,154 @@ class QuickEntryService:
         self.router = dual_router
         self.multimodal_service = get_multimodal_service()
 
+    async def process_entry_preview(
+        self,
+        user_id: str,
+        text: Optional[str] = None,
+        image_base64: Optional[str] = None,
+        audio_base64: Optional[str] = None,
+        pdf_base64: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Process entry and return classification WITHOUT saving to database.
+
+        Used for preview/confirmation flow where user reviews before saving.
+
+        Returns:
+            Classification result with type, confidence, extracted data, suggestions
+        """
+        logger.info(f"[QuickEntry] PREVIEW mode for user {user_id}")
+
+        # Step 1: Extract text from all inputs
+        extracted_text = await self._extract_all_text(
+            text=text,
+            image_base64=image_base64,
+            audio_base64=audio_base64,
+            pdf_base64=pdf_base64
+        )
+
+        if not extracted_text:
+            return {
+                "success": False,
+                "error": "No content to process",
+                "entry_type": "unknown",
+                "confidence": 0.0,
+                "data": {}
+            }
+
+        # Step 2: Classify and extract data
+        manual_type = metadata.get('manual_type') if metadata else None
+
+        if manual_type:
+            classification = await self._classify_and_extract(
+                extracted_text,
+                has_image=image_base64 is not None,
+                force_type=manual_type
+            )
+        else:
+            classification = await self._classify_and_extract(
+                extracted_text,
+                has_image=image_base64 is not None
+            )
+
+        # Inject user notes
+        if metadata and 'notes' in metadata:
+            if 'data' not in classification:
+                classification['data'] = {}
+            classification['data']['notes'] = metadata['notes']
+
+        # Return classification WITHOUT saving
+        return {
+            "success": True,
+            "entry_type": classification["type"],
+            "confidence": classification.get("confidence", 0.0),
+            "data": classification.get("data", {}),
+            "suggestions": classification.get("suggestions", []),
+            "extracted_text": extracted_text[:500]
+        }
+
+    async def confirm_and_save_entry(
+        self,
+        user_id: str,
+        entry_type: str,
+        data: Dict[str, Any],
+        original_text: str,
+        extracted_text: Optional[str] = None,
+        image_base64: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Save confirmed entry to database after user approval.
+
+        Args:
+            user_id: User ID
+            entry_type: Type of entry (meal, workout, activity, etc.)
+            data: Extracted/edited data from LLM + user edits
+            original_text: Original user input text
+            extracted_text: Full extracted text from all inputs
+            image_base64: Optional image to upload
+
+        Returns:
+            Success status with entry ID
+        """
+        logger.info(f"[QuickEntry] CONFIRM mode: Saving {entry_type} for user {user_id}")
+
+        try:
+            # Build classification format for save
+            classification = {
+                "type": entry_type,
+                "confidence": 1.0,  # User confirmed, so confidence is max
+                "data": data
+            }
+
+            # Save to database
+            saved_entry = await self._save_entry(
+                user_id=user_id,
+                classification=classification,
+                original_text=original_text,
+                image_base64=image_base64,
+                metadata=None
+            )
+
+            if not saved_entry["success"]:
+                return {
+                    "success": False,
+                    "error": saved_entry.get("error", "Failed to save entry"),
+                    "entry_type": entry_type,
+                    "confidence": 0.0,
+                    "data": {}
+                }
+
+            # Vectorize for RAG (async, don't wait)
+            try:
+                await self._vectorize_entry(
+                    user_id=user_id,
+                    entry_id=saved_entry["entry_id"],
+                    entry_type=entry_type,
+                    text=extracted_text or original_text,
+                    metadata=data
+                )
+            except Exception as e:
+                logger.error(f"Vectorization failed (non-critical): {e}")
+
+            return {
+                "success": True,
+                "entry_type": entry_type,
+                "confidence": 1.0,
+                "data": data,
+                "entry_id": saved_entry.get("entry_id")
+            }
+
+        except Exception as e:
+            logger.error(f"[QuickEntry] Confirm and save failed: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e),
+                "entry_type": entry_type,
+                "confidence": 0.0,
+                "data": {}
+            }
+
     async def process_entry(
         self,
         user_id: str,

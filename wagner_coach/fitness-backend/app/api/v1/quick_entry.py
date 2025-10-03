@@ -161,3 +161,118 @@ async def quick_entry_image(
     except Exception as e:
         logger.error(f"Quick entry image processing failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/preview", response_model=QuickEntryResponse)
+async def quick_entry_preview(
+    text: Optional[str] = Form(None),
+    notes: Optional[str] = Form(None),
+    manual_type: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
+    audio: Optional[UploadFile] = File(None),
+    pdf: Optional[UploadFile] = File(None),
+    metadata: Optional[str] = Form(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Preview quick entry - process and classify WITHOUT saving to database.
+
+    This endpoint:
+    1. Extracts text from all inputs (text, image, audio, pdf)
+    2. Classifies entry type and extracts structured data via LLM
+    3. Returns classification for user confirmation
+    4. Does NOT save to database or vectorize
+
+    User must call /confirm endpoint to actually save.
+    """
+    service = get_quick_entry_service()
+
+    try:
+        # Convert uploads to base64
+        image_base64 = None
+        audio_base64 = None
+        pdf_base64 = None
+
+        if image:
+            image_bytes = await image.read()
+            image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+            logger.info(f"Image received: {len(image_bytes)} bytes")
+
+        if audio:
+            audio_bytes = await audio.read()
+            audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+            logger.info(f"Audio received: {len(audio_bytes)} bytes")
+
+        if pdf:
+            pdf_bytes = await pdf.read()
+            pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+            logger.info(f"PDF received: {len(pdf_bytes)} bytes")
+
+        # Parse metadata
+        import json
+        parsed_metadata = json.loads(metadata) if metadata else {}
+
+        if notes:
+            parsed_metadata['notes'] = notes
+        if manual_type:
+            parsed_metadata['manual_type'] = manual_type
+
+        # Process entry WITHOUT saving (preview only)
+        result = await service.process_entry_preview(
+            user_id=current_user["id"],
+            text=text,
+            image_base64=image_base64,
+            audio_base64=audio_base64,
+            pdf_base64=pdf_base64,
+            metadata=parsed_metadata
+        )
+
+        return QuickEntryResponse(**result)
+
+    except Exception as e:
+        logger.error(f"Quick entry preview failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ConfirmEntryRequest(BaseModel):
+    """Confirm entry request after user approval"""
+    entry_type: str
+    data: dict
+    original_text: str
+    extracted_text: Optional[str] = None
+    image_base64: Optional[str] = None
+
+
+@router.post("/confirm", response_model=QuickEntryResponse)
+async def quick_entry_confirm(
+    request: ConfirmEntryRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Confirm and save quick entry after user approval.
+
+    This endpoint:
+    1. Takes LLM-classified data (possibly edited by user)
+    2. Saves to appropriate database table
+    3. Vectorizes for RAG
+    4. Returns success confirmation
+
+    Only called after user explicitly confirms via UI.
+    """
+    service = get_quick_entry_service()
+
+    try:
+        result = await service.confirm_and_save_entry(
+            user_id=current_user["id"],
+            entry_type=request.entry_type,
+            data=request.data,
+            original_text=request.original_text,
+            extracted_text=request.extracted_text,
+            image_base64=request.image_base64
+        )
+
+        return QuickEntryResponse(**result)
+
+    except Exception as e:
+        logger.error(f"Quick entry confirm failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
