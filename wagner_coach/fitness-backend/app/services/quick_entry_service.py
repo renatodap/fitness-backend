@@ -120,13 +120,23 @@ class QuickEntryService:
             classification['data']['notes'] = metadata['notes']
 
         # Step 3: Save to appropriate database table
-        saved_entry = await self._save_entry(
-            user_id=user_id,
-            classification=classification,
-            original_text=extracted_text,
-            image_base64=image_base64,
-            metadata=metadata
-        )
+        try:
+            saved_entry = await self._save_entry(
+                user_id=user_id,
+                classification=classification,
+                original_text=extracted_text,
+                image_base64=image_base64,
+                metadata=metadata
+            )
+        except Exception as e:
+            logger.error(f"[QuickEntry] ❌ Save failed: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": f"Failed to save entry: {str(e)}",
+                "entry_type": classification.get("type", "unknown"),
+                "confidence": 0.0,
+                "data": {}
+            }
 
         # Step 4: Vectorize for RAG (async, don't wait)
         if saved_entry["success"]:
@@ -275,34 +285,36 @@ class QuickEntryService:
         """
         logger.info(f"[QuickEntry] Classifying entry with FREE model (force_type={force_type})")
 
+        # Build classification instruction
         if force_type:
-            system_prompt = f"""You are a fitness coach assistant analyzing user entries.
-
-The user has indicated this is a **{force_type}** entry. DO NOT classify it differently.
-Extract all relevant data for a {force_type} entry from the text below."""
+            classification_instruction = f"""The user has indicated this is a **{force_type}** entry.
+Type is already determined: "{force_type}"
+Extract all relevant data for this {force_type} entry."""
         else:
-            system_prompt = """You are a fitness coach assistant analyzing user entries.
-
-Classify the entry into ONE of these types:
+            classification_instruction = """Classify the entry into ONE of these types:
 1. **meal**: Any food/drink consumption (meals, snacks, supplements)
 2. **activity**: Cardio activities (running, walking, cycling, swimming, sports)
 3. **workout**: Strength training (lifting, calisthenics, specific exercises)
 4. **measurement**: Body measurements (weight, body fat %, circumference, progress photos)
 5. **note**: General thoughts, goals, feelings, observations, plans
-6. **unknown**: Cannot determine
+6. **unknown**: Cannot determine"""
+
+        system_prompt = f"""You are a fitness coach assistant analyzing user entries.
+
+{classification_instruction}
 
 Extract ALL relevant data in structured JSON format.
 
 Return ONLY valid JSON (no markdown, no code blocks):
 
-{
+{{
   "type": "meal|activity|workout|measurement|note|unknown",
   "confidence": 0.0-1.0,
-  "data": {
+  "data": {{
     // Type-specific fields (see examples below)
-  },
+  }},
   "suggestions": ["helpful tips for user"]
-}
+}}
 
 MEAL example:
 {
