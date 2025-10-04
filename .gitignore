@@ -55,3 +55,12 @@ celerybeat.pid
 
 # Redis
 dump.rdb
+# Next.js / Frontend (should not be in backend repo)
+.next/
+out/
+node_modules/
+public/
+next-env.d.ts
+package.json
+package-lock.json
+tsconfig.json
