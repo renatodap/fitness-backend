@@ -1,0 +1,128 @@
+# Git
+.git
+.gitignore
+
+# Next.js / Frontend
+.next
+out
+node_modules
+public
+next-env.d.ts
+package.json
+package-lock.json
+tsconfig.json
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+pytest.ini
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Redis
+dump.rdb
+
+# Documentation
+*.md
+!README.md
+
+# Other projects/folders that shouldn't be deployed
+00-DOCUMENTATION/
+01-NOW/
+99-ARCHIVE/
+ai-content-pipeline/
+aidaily/
+automation-empire/
+COT_Website/
+ChatGPT-Micro-Cap-Experiment-main/
+JaboCafe/
+LLMPromptHack/
+PersimmonLabs/
+PersonalWebsite-Fresh/
+PersonalWebsite/
+RoseTennis/
+Sharpened/
+business_pending_knowledge/
+claude-config/
+claude-systems/
+courtsync/
+feelsharper-backend/
+feelsharper-deploy/
+free-cluely/
+ideas_dump/
+issues/
+jobflow-clean/
+knowledge/
+mental-wellness-app/
+personal_pending_knowledge/
+rallycut/
+recall-notebook/
+recyclying_terrehaute/
+renato-professional/
+sharpened-monorepo/
+study-refresher/
+studysharper-deploy/
+sudoku_bt/
+sudoku_bt.zip
+supabase/
+tennis-instagram-page/
+textbookshare/
+wagner_coach/
+
+# Misc files
+*.svg
+*.csv
+*.pdf
+*.bat
+*.txt
+!requirements.txt
+nul
