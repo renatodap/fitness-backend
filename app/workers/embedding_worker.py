@@ -10,6 +10,7 @@ Celery tasks for generating embeddings for all user data:
 """
 
 import logging
+import asyncio
 from typing import Dict, Any, Optional
 from datetime import datetime
 from celery import shared_task
@@ -64,10 +65,10 @@ def embed_meal_log(self, meal_log_id: str):
             content_text += f"Notes: {meal['notes']}"
 
         # Generate embedding
-        embedding = await service.embed_text(content_text)
+        embedding = asyncio.run(service.embed_text(content_text))
 
         # Store embedding
-        await service.store_embedding(
+        asyncio.run(service.store_embedding(
             user_id=meal['user_id'],
             embedding=embedding,
             data_type='text',
@@ -82,7 +83,7 @@ def embed_meal_log(self, meal_log_id: str):
                 'foods_count': len(meal.get('meal_log_foods', []))
             },
             confidence_score=1.0
-        )
+        ))
 
         logger.info(f"✅ Embedded meal log: {meal_log_id}")
         return {"status": "success", "meal_log_id": meal_log_id}
@@ -141,10 +142,10 @@ def embed_activity(self, activity_id: str):
             content_text += f"RPE: {activity['perceived_exertion']}/10\n"
 
         # Generate embedding
-        embedding = await service.embed_text(content_text)
+        embedding = asyncio.run(service.embed_text(content_text))
 
         # Store embedding
-        await service.store_embedding(
+        asyncio.run(service.store_embedding(
             user_id=activity['user_id'],
             embedding=embedding,
             data_type='text',
@@ -161,7 +162,7 @@ def embed_activity(self, activity_id: str):
                 'perceived_exertion': activity.get('perceived_exertion')
             },
             confidence_score=1.0
-        )
+        ))
 
         logger.info(f"✅ Embedded activity: {activity_id}")
         return {"status": "success", "activity_id": activity_id}
@@ -213,10 +214,10 @@ def embed_user_goal(self, goal_id: str):
             content_text += f"Progress Notes: {goal['progress_notes']}\n"
 
         # Generate embedding
-        embedding = await service.embed_text(content_text)
+        embedding = asyncio.run(service.embed_text(content_text))
 
         # Store embedding
-        await service.store_embedding(
+        asyncio.run(service.store_embedding(
             user_id=goal['user_id'],
             embedding=embedding,
             data_type='text',
@@ -231,7 +232,7 @@ def embed_user_goal(self, goal_id: str):
                 'created_at': goal['created_at']
             },
             confidence_score=1.0
-        )
+        ))
 
         logger.info(f"✅ Embedded user goal: {goal_id}")
         return {"status": "success", "goal_id": goal_id}
@@ -295,10 +296,10 @@ def embed_user_profile(self, user_id: str):
             return {"status": "skipped", "reason": "empty_profile"}
 
         # Generate embedding
-        embedding = await service.embed_text(content_text)
+        embedding = asyncio.run(service.embed_text(content_text))
 
         # Store embedding
-        await service.store_embedding(
+        asyncio.run(service.store_embedding(
             user_id=user_id,
             embedding=embedding,
             data_type='text',
@@ -312,7 +313,7 @@ def embed_user_profile(self, user_id: str):
                 'updated_at': profile['updated_at']
             },
             confidence_score=1.0
-        )
+        ))
 
         logger.info(f"✅ Embedded user profile: {user_id}")
         return {"status": "success", "user_id": user_id}
