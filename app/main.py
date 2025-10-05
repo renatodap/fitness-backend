@@ -54,7 +54,10 @@ app = FastAPI(
 
 # CORS middleware
 if _settings.ALLOW_ALL_ORIGINS:
+    # WARNING: This is a security risk in production!
+    # Only use during development or with proper IP restrictions
     logger.warning("⚠️  ALLOW_ALL_ORIGINS is enabled - allowing all origins (NOT for production!)")
+    logger.warning("⚠️  Set ALLOW_ALL_ORIGINS=false before deploying to production!")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
