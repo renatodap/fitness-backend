@@ -2,7 +2,7 @@
 Multimodal Embedding Service - Using OpenAI Embeddings
 
 Generates embeddings for text, images, audio using OpenAI API:
-- Text: text-embedding-3-small (1536 dimensions)
+- Text: text-embedding-3-small (384 dimensions, matches DB schema)
 - Images: Vision API for analysis
 - Audio: Whisper API for transcription
 
@@ -51,10 +51,10 @@ class MultimodalEmbeddingService:
         self.openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         self._initialized = True
 
-        # OpenAI text-embedding-3-small dimensions
-        self.text_dimensions = 1536
+        # OpenAI text-embedding-3-small dimensions (using 384 to match DB schema)
+        self.text_dimensions = 384
 
-        logger.info("✅ MultimodalEmbeddingService initialized (using OpenAI embeddings)")
+        logger.info("✅ MultimodalEmbeddingService initialized (using OpenAI embeddings with 384 dims)")
 
     # ========================================================================
     # EMBEDDING GENERATION
@@ -68,7 +68,7 @@ class MultimodalEmbeddingService:
             text: Text to embed
 
         Returns:
-            1536-dimensional embedding vector
+            384-dimensional embedding vector (matches database schema)
 
         Raises:
             ValueError: If text is empty
@@ -79,7 +79,8 @@ class MultimodalEmbeddingService:
         try:
             response = await self.openai_client.embeddings.create(
                 model="text-embedding-3-small",
-                input=text
+                input=text,
+                dimensions=384  # Match database schema
             )
 
             embedding = response.data[0].embedding
@@ -115,7 +116,7 @@ class MultimodalEmbeddingService:
             texts: List of texts to embed
 
         Returns:
-            List of 1536-dimensional embeddings
+            List of 384-dimensional embeddings (matches database schema)
         """
         if not texts:
             raise ValueError("Texts list cannot be empty")
@@ -123,7 +124,8 @@ class MultimodalEmbeddingService:
         try:
             response = await self.openai_client.embeddings.create(
                 model="text-embedding-3-small",
-                input=texts
+                input=texts,
+                dimensions=384  # Match database schema
             )
 
             embeddings = [item.embedding for item in response.data]
