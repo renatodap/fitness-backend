@@ -5,6 +5,7 @@ from datetime import date, datetime
 
 from app.services.program_service import ProgramService
 from app.api.middleware.auth import get_current_user
+from app.api.middleware.rate_limit import program_generation_rate_limit
 
 router = APIRouter(prefix="/programs", tags=["AI Programs"])
 
@@ -121,6 +122,7 @@ class MarkCompletedRequest(BaseModel):
 
 # Endpoints
 @router.post("/generate/start", response_model=StartProgramGenerationResponse)
+@program_generation_rate_limit()
 async def start_program_generation(
     request: StartProgramGenerationRequest,
     current_user: dict = Depends(get_current_user)
@@ -163,6 +165,7 @@ async def start_program_generation(
 
 
 @router.post("/generate/complete", response_model=CompleteProgramGenerationResponse)
+@program_generation_rate_limit()
 async def complete_program_generation(
     request: CompleteProgramGenerationRequest,
     current_user: dict = Depends(get_current_user)

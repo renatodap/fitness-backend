@@ -63,19 +63,24 @@ This document outlines security policies and best practices for the Wagner Coach
 ## 🚨 Known Security Considerations
 
 ### ALLOW_ALL_ORIGINS Flag
-**Status**: ⚠️ Currently enabled in development
+**Status**: ✅ FIXED - Now disabled by default
 
 **Risk**: Allows requests from any origin (CORS bypass)
 
 **Mitigation**:
-- MUST be set to `false` in production
+- Default value changed to `False` in `app/config.py`
 - Backend logs warning when enabled
 - `.env.example` includes deployment checklist
+- Must explicitly set to `true` in development if needed
 
-**Action Required**:
+**Configuration**:
 ```bash
-# In production .env
-ALLOW_ALL_ORIGINS=false
+# In .env (development)
+ALLOW_ALL_ORIGINS=false  # Default is False
+CORS_ORIGINS=http://localhost:3000,https://wagnercoach.com
+
+# In production
+ALLOW_ALL_ORIGINS=false  # MUST be False
 CORS_ORIGINS=https://wagnercoach.com,https://www.wagnercoach.com
 ```
 
@@ -89,20 +94,48 @@ CORS_ORIGINS=https://wagnercoach.com,https://www.wagnercoach.com
 - `.env` file in `.gitignore`
 
 ### Rate Limiting
-**Status**: ⚠️ TODO - Needs implementation
+**Status**: ✅ IMPLEMENTED
 
-**Required For**:
-- Coach chat endpoints (`/api/v1/coach/chat`)
-- Quick entry endpoints (`/api/v1/quick-entry/*`)
-- Program generation (`/api/v1/programs/generate`)
+**Implementation**: Redis-based sliding window rate limiter
 
-**Implementation Plan**:
+**Applied To**:
+- Coach chat endpoints: 100 messages/day per user
+- Quick entry endpoints: 200 entries/day per user
+- Program generation: 5 programs/month per user
+
+**How It Works**:
 ```python
-# TODO: Add rate limiting middleware
-# Target rates:
-# - Coach chat: 100 messages/day per user
-# - Quick entry: 200 entries/day per user
-# - Program generation: 5 programs/month per user
+from app.api.middleware.rate_limit import coach_chat_rate_limit
+
+@router.post("/chat")
+@coach_chat_rate_limit()
+async def chat_with_coach(request: ChatRequest, current_user: dict = Depends(get_current_user)):
+    # Endpoint automatically rate-limited
+    pass
+```
+
+**Rate Limits**:
+| Endpoint | Limit | Window | Key |
+|----------|-------|--------|-----|
+| Coach Chat | 100 requests | 24 hours | `coach_chat:{user_id}` |
+| Quick Entry (Text) | 200 requests | 24 hours | `quick_entry:{user_id}` |
+| Quick Entry (Multimodal) | 200 requests | 24 hours | `quick_entry:{user_id}` |
+| Program Generation | 5 requests | 30 days | `program_generation:{user_id}` |
+
+**Error Response** (429 Too Many Requests):
+```json
+{
+  "error": "Rate limit exceeded",
+  "message": "You have exceeded the rate limit of 100 requests per 24 hour(s). Please try again later.",
+  "retry_after": 3600,
+  "limit": 100,
+  "window": 86400
+}
+```
+
+**Testing**:
+```bash
+poetry run pytest tests/unit/test_rate_limit.py -v
 ```
 
 ---

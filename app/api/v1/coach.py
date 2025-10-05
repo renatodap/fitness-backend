@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from app.services.coach_service import get_coach_service
 from app.api.v1.dependencies import get_current_user
+from app.api.middleware.rate_limit import coach_chat_rate_limit
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -53,9 +54,10 @@ class UpdateRecommendationRequest(BaseModel):
 # Endpoints
 
 @router.post("/chat")
+@coach_chat_rate_limit()
 async def chat_with_coach(
     request: ChatRequest,
-    user_id: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user)
 ):
     """
     Chat with AI coach (Unified Coach, Trainer, or Nutritionist) - INCREMENT 1.
@@ -73,6 +75,9 @@ async def chat_with_coach(
 
         if len(request.message) > 1000:
             raise HTTPException(status_code=400, detail="Message too long (max 1000 characters)")
+
+        # Extract user_id from current_user
+        user_id = current_user
 
         coach_service = get_coach_service()
 

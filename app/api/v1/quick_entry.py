@@ -12,6 +12,7 @@ import base64
 
 from app.services.quick_entry_service import get_quick_entry_service
 from app.services.auth_service import get_current_user
+from app.api.middleware.rate_limit import quick_entry_rate_limit
 
 router = APIRouter(prefix="/quick-entry", tags=["quick-entry"])
 logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ class QuickEntryResponse(BaseModel):
 
 
 @router.post("/text", response_model=QuickEntryResponse)
+@quick_entry_rate_limit()
 async def quick_entry_text(
     request: QuickEntryTextRequest,
     current_user: dict = Depends(get_current_user)
@@ -62,6 +64,7 @@ async def quick_entry_text(
 
 
 @router.post("/multimodal", response_model=QuickEntryResponse)
+@quick_entry_rate_limit()
 async def quick_entry_multimodal(
     text: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),  # User feelings/notes

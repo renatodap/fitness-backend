@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     # CORS can be a comma-separated string from env or list
     CORS_ORIGINS: str = "http://localhost:3000,https://www.sharpened.me,https://sharpened.me"
-    ALLOW_ALL_ORIGINS: bool = True  # Temporarily enabled to fix CORS issue
+    ALLOW_ALL_ORIGINS: bool = False  # SECURITY: Set to False in production!
 
     @property
     def cors_origins_list(self) -> list[str]:
