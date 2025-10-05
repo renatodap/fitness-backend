@@ -200,8 +200,8 @@ class DualModelRouter:
             return ModelSelection(
                 provider="groq",
                 model=GROQ_MODELS["llama-3.3-70b"],
-                fallback_provider=base_routing["fallback_provider"],
-                fallback_model=base_routing["fallback_model"],
+                fallback_provider="openrouter",  # Fallback to OpenRouter if Groq fails
+                fallback_model=base_routing["model"],  # Use the original OpenRouter model
                 max_tokens=base_routing["max_tokens"],
                 temperature=base_routing["temperature"],
             )
@@ -211,8 +211,8 @@ class DualModelRouter:
             return ModelSelection(
                 provider="openrouter",
                 model=OPENROUTER_MODELS["deepseek-r1"],
-                fallback_provider=base_routing["fallback_provider"],
-                fallback_model=base_routing["fallback_model"],
+                fallback_provider="groq",  # Fallback to Groq if OpenRouter fails
+                fallback_model=base_routing["model"],  # Use the original Groq model
                 max_tokens=base_routing["max_tokens"],
                 temperature=base_routing["temperature"],
             )
