@@ -468,16 +468,16 @@ Return ONLY valid JSON (no markdown, no code blocks):
 }}
 
 MEAL example:
-{
+{{
   "type": "meal",
   "confidence": 0.95,
-  "data": {
+  "data": {{
     "meal_name": "Grilled chicken with rice and broccoli",
     "meal_type": "lunch",
     "foods": [
-      {"name": "Grilled chicken breast", "quantity": "6 oz"},
-      {"name": "Brown rice", "quantity": "1 cup"},
-      {"name": "Steamed broccoli", "quantity": "2 cups"}
+      {{"name": "Grilled chicken breast", "quantity": "6 oz"}},
+      {{"name": "Brown rice", "quantity": "1 cup"}},
+      {{"name": "Steamed broccoli", "quantity": "2 cups"}}
     ],
     "calories": 450,
     "protein_g": 45,
@@ -485,15 +485,15 @@ MEAL example:
     "fat_g": 8,
     "fiber_g": 6,
     "estimated": false
-  },
+  }},
   "suggestions": ["Great protein content!", "Consider adding healthy fats"]
-}
+}}
 
 ACTIVITY example:
-{
+{{
   "type": "activity",
   "confidence": 0.9,
-  "data": {
+  "data": {{
     "activity_name": "Morning run",
     "activity_type": "running",
     "duration_minutes": 45,
@@ -501,55 +501,55 @@ ACTIVITY example:
     "pace": "6:00/km",
     "calories_burned": 550,
     "notes": "Felt great, cool weather"
-  },
+  }},
   "suggestions": ["Excellent consistency!", "Stay hydrated"]
-}
+}}
 
 WORKOUT example:
-{
+{{
   "type": "workout",
   "confidence": 0.92,
-  "data": {
+  "data": {{
     "workout_name": "Upper Body Push",
     "workout_type": "strength",
     "exercises": [
-      {"name": "Bench Press", "sets": 4, "reps": "8-10", "weight_lbs": 185},
-      {"name": "Overhead Press", "sets": 3, "reps": 10, "weight_lbs": 95}
+      {{"name": "Bench Press", "sets": 4, "reps": "8-10", "weight_lbs": 185}},
+      {{"name": "Overhead Press", "sets": 3, "reps": 10, "weight_lbs": 95}}
     ],
     "duration_minutes": 60,
     "notes": "New PR on bench!"
-  },
+  }},
   "suggestions": ["Progressive overload working!", "Don't forget cooldown"]
-}
+}}
 
 NOTE example:
-{
+{{
   "type": "note",
   "confidence": 0.8,
-  "data": {
+  "data": {{
     "title": "Feeling motivated",
     "content": "Starting to see results, energy levels up",
     "tags": ["motivation", "progress", "energy"],
     "category": "reflection"
-  },
+  }},
   "suggestions": ["Great mindset!", "Track these wins"]
-}
+}}
 
 MEASUREMENT example:
-{
+{{
   "type": "measurement",
   "confidence": 0.95,
-  "data": {
+  "data": {{
     "weight_lbs": 175.2,
     "body_fat_pct": 15.5,
-    "measurements": {
+    "measurements": {{
       "chest_in": 42,
       "waist_in": 32,
       "arms_in": 15
-    }
-  },
+    }}
+  }},
   "suggestions": ["Consistent progress!", "Measure weekly"]
-}
+}}
 
 IMPORTANT:
 - Be intelligent about nutrition estimation from images
