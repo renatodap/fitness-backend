@@ -7,20 +7,8 @@ pydantic-settings==2.11.0
 # Database
 supabase==2.20.0
 
-# AI/ML - OpenAI
-openai==1.109.1
-
-# AI/ML - Open Source Embeddings (REVOLUTIONARY MULTIMODAL)
-sentence-transformers==2.7.0  # Text embeddings (all-MiniLM-L6-v2)
-transformers==4.41.0  # CLIP for image embeddings
-torch==2.3.1  # PyTorch for model inference
-torchvision==0.18.1  # Vision transforms for CLIP
-pillow==10.3.0  # Image processing
-safetensors==0.4.3  # Fast model loading
-
-# AI/ML - Audio Processing
-openai-whisper==20240930  # Audio transcription (open-source)
-# Alternative: faster-whisper==1.0.2  # Faster Whisper implementation
+# AI/ML - Use OpenAI API instead of local models
+openai==1.109.1  # Also used for Groq API (OpenAI-compatible)
 
 # Background Jobs
 celery[redis]==5.5.3
@@ -39,4 +27,3 @@ sentry-sdk[fastapi]==1.45.1
 
 # Utilities
 python-dotenv==1.1.1
-numpy==1.26.4  # Required for embeddings

@@ -200,8 +200,8 @@ class DualModelRouter:
             return ModelSelection(
                 provider="groq",
                 model=GROQ_MODELS["llama-3.3-70b"],
-                fallback_provider=base_routing["fallback_provider"],
-                fallback_model=base_routing["fallback_model"],
+                fallback_provider="openrouter",  # Fallback to OpenRouter if Groq fails
+                fallback_model=base_routing["model"],  # Use the original OpenRouter model
                 max_tokens=base_routing["max_tokens"],
                 temperature=base_routing["temperature"],
             )
@@ -211,8 +211,8 @@ class DualModelRouter:
             return ModelSelection(
                 provider="openrouter",
                 model=OPENROUTER_MODELS["deepseek-r1"],
-                fallback_provider=base_routing["fallback_provider"],
-                fallback_model=base_routing["fallback_model"],
+                fallback_provider="groq",  # Fallback to Groq if OpenRouter fails
+                fallback_model=base_routing["model"],  # Use the original Groq model
                 max_tokens=base_routing["max_tokens"],
                 temperature=base_routing["temperature"],
             )
@@ -282,8 +282,12 @@ class DualModelRouter:
             error_msg = str(error)
             print(f"[DualRouter] ERROR: {selection.provider} failed: {error_msg}")
 
-            # Check if it's a quota/rate limit error
-            if "429" in error_msg or "quota" in error_msg.lower() or "rate limit" in error_msg.lower():
+            # Check if it's a quota/rate limit/auth error
+            if ("429" in error_msg or "401" in error_msg or
+                "quota" in error_msg.lower() or
+                "rate limit" in error_msg.lower() or
+                "unauthorized" in error_msg.lower() or
+                "user not found" in error_msg.lower()):
                 self.failed_models.add(model_key)
                 print(f"[DualRouter] Falling back to {selection.fallback_provider}")
 
@@ -324,7 +328,10 @@ class DualModelRouter:
 
         except Exception as error:
             error_msg = str(error)
-            if "429" in error_msg or "quota" in error_msg.lower():
+            if ("429" in error_msg or "401" in error_msg or
+                "quota" in error_msg.lower() or
+                "unauthorized" in error_msg.lower() or
+                "user not found" in error_msg.lower()):
                 self.failed_models.add(f"{selection.provider}:{selection.model}")
                 print(f"[DualRouter] Streaming fallback to {selection.fallback_provider}")
 

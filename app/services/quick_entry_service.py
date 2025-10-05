@@ -27,6 +27,9 @@ from app.config import get_settings
 from app.services.supabase_service import get_service_client
 from app.services.dual_model_router import dual_router, TaskType, TaskConfig
 from app.services.multimodal_embedding_service import get_multimodal_service
+from app.services.groq_service import get_groq_service
+from app.services.enrichment_service import get_enrichment_service
+from app.services.semantic_search_service import get_semantic_search_service
 from app.workers.embedding_worker import embed_meal_log, embed_activity
 
 settings = get_settings()
@@ -53,6 +56,9 @@ class QuickEntryService:
         self.supabase = get_service_client()
         self.router = dual_router
         self.multimodal_service = get_multimodal_service()
+        self.groq_service = get_groq_service()
+        self.enrichment_service = get_enrichment_service()
+        self.semantic_search = get_semantic_search_service()
 
     async def process_entry_preview(
         self,
@@ -111,8 +117,19 @@ class QuickEntryService:
                 classification['data'] = {}
             classification['data']['notes'] = metadata['notes']
 
+        # OPTIONAL: Get semantic context for smart suggestions
+        semantic_context = None
+        try:
+            semantic_context = await self._get_semantic_context(
+                user_id=user_id,
+                entry_text=extracted_text,
+                entry_type=classification["type"]
+            )
+        except Exception as e:
+            logger.warning(f"Semantic context retrieval failed (non-critical): {e}")
+
         # Return classification WITHOUT saving
-        return {
+        result = {
             "success": True,
             "entry_type": classification["type"],
             "confidence": classification.get("confidence", 0.0),
@@ -120,6 +137,12 @@ class QuickEntryService:
             "suggestions": classification.get("suggestions", []),
             "extracted_text": extracted_text[:500]
         }
+
+        # Add semantic context if available
+        if semantic_context:
+            result["semantic_context"] = semantic_context
+
+        return result
 
     async def confirm_and_save_entry(
         self,
@@ -330,37 +353,16 @@ class QuickEntryService:
         if text:
             extracted_parts.append(f"USER TEXT: {text}")
 
-        # Process image with vision (if provided)
+        # Process image with vision (if provided) - USE GROQ for ultra-fast, cheap vision
         if image_base64:
             try:
-                logger.info("[QuickEntry] Processing image with FREE vision model")
+                logger.info("[QuickEntry] Processing image with Groq llama-3.2-90b-vision")
 
-                # Use FREE Meta Llama-4 Scout or Yi-Vision with dual router
-                image_text = await self.router.complete(
-                    config=TaskConfig(
-                        type=TaskType.VISION,
-                        requires_vision=True
-                    ),
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": "Describe what you see in this image. If it's food, list all visible items, portions, and any nutrition labels. If it's a workout/activity screenshot, extract all text and data."
-                                },
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:image/jpeg;base64,{image_base64}"
-                                    }
-                                }
-                            ]
-                        }
-                    ]
+                vision_output = await self.groq_service.analyze_image(
+                    image_base64=image_base64,
+                    prompt="Describe what you see in this image. If it's food, list all visible items, portions, and any nutrition labels. If it's a workout/activity screenshot, extract all text and data."
                 )
 
-                vision_output = image_text.choices[0].message.content
                 extracted_parts.append(f"IMAGE CONTENT: {vision_output}")
                 logger.info(f"[QuickEntry] Image processed: {vision_output[:100]}...")
 
@@ -368,39 +370,18 @@ class QuickEntryService:
                 logger.error(f"Image processing failed: {e}")
                 extracted_parts.append("IMAGE: Failed to process")
 
-        # Process audio (speech-to-text) - Whisper integration
+        # Process audio (speech-to-text) - USE GROQ Whisper for ultra-fast, cheap transcription
         if audio_base64:
             try:
-                logger.info("[QuickEntry] 🎤 Processing audio with OpenAI Whisper API")
+                logger.info("[QuickEntry] 🎤 Processing audio with Groq Whisper Turbo")
 
-                # Decode audio
-                import tempfile
-                import os
+                transcription = await self.groq_service.transcribe_audio(
+                    audio_base64=audio_base64,
+                    audio_format='m4a'
+                )
 
-                audio_bytes = base64.b64decode(audio_base64)
-
-                # Save to temp file (OpenAI API needs file object)
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.m4a') as temp_audio:
-                    temp_audio.write(audio_bytes)
-                    temp_audio_path = temp_audio.name
-
-                try:
-                    # Transcribe using OpenAI Whisper API
-                    with open(temp_audio_path, 'rb') as audio_file:
-                        transcription_response = openai_client.audio.transcriptions.create(
-                            model="whisper-1",
-                            file=audio_file
-                        )
-
-                    transcription = transcription_response.text
-
-                    extracted_parts.append(f"VOICE NOTE: {transcription}")
-                    logger.info(f"[QuickEntry] ✅ Audio transcribed: {transcription[:100]}...")
-
-                finally:
-                    # Clean up temp file
-                    if os.path.exists(temp_audio_path):
-                        os.remove(temp_audio_path)
+                extracted_parts.append(f"VOICE NOTE: {transcription}")
+                logger.info(f"[QuickEntry] ✅ Audio transcribed: {transcription[:100]}...")
 
             except Exception as e:
                 logger.error(f"❌ Audio processing failed: {e}")
@@ -468,16 +449,16 @@ Return ONLY valid JSON (no markdown, no code blocks):
 }}
 
 MEAL example:
-{
+{{
   "type": "meal",
   "confidence": 0.95,
-  "data": {
+  "data": {{
     "meal_name": "Grilled chicken with rice and broccoli",
     "meal_type": "lunch",
     "foods": [
-      {"name": "Grilled chicken breast", "quantity": "6 oz"},
-      {"name": "Brown rice", "quantity": "1 cup"},
-      {"name": "Steamed broccoli", "quantity": "2 cups"}
+      {{"name": "Grilled chicken breast", "quantity": "6 oz"}},
+      {{"name": "Brown rice", "quantity": "1 cup"}},
+      {{"name": "Steamed broccoli", "quantity": "2 cups"}}
     ],
     "calories": 450,
     "protein_g": 45,
@@ -485,15 +466,15 @@ MEAL example:
     "fat_g": 8,
     "fiber_g": 6,
     "estimated": false
-  },
+  }},
   "suggestions": ["Great protein content!", "Consider adding healthy fats"]
-}
+}}
 
 ACTIVITY example:
-{
+{{
   "type": "activity",
   "confidence": 0.9,
-  "data": {
+  "data": {{
     "activity_name": "Morning run",
     "activity_type": "running",
     "duration_minutes": 45,
@@ -501,55 +482,55 @@ ACTIVITY example:
     "pace": "6:00/km",
     "calories_burned": 550,
     "notes": "Felt great, cool weather"
-  },
+  }},
   "suggestions": ["Excellent consistency!", "Stay hydrated"]
-}
+}}
 
 WORKOUT example:
-{
+{{
   "type": "workout",
   "confidence": 0.92,
-  "data": {
+  "data": {{
     "workout_name": "Upper Body Push",
     "workout_type": "strength",
     "exercises": [
-      {"name": "Bench Press", "sets": 4, "reps": "8-10", "weight_lbs": 185},
-      {"name": "Overhead Press", "sets": 3, "reps": 10, "weight_lbs": 95}
+      {{"name": "Bench Press", "sets": 4, "reps": "8-10", "weight_lbs": 185}},
+      {{"name": "Overhead Press", "sets": 3, "reps": 10, "weight_lbs": 95}}
     ],
     "duration_minutes": 60,
     "notes": "New PR on bench!"
-  },
+  }},
   "suggestions": ["Progressive overload working!", "Don't forget cooldown"]
-}
+}}
 
 NOTE example:
-{
+{{
   "type": "note",
   "confidence": 0.8,
-  "data": {
+  "data": {{
     "title": "Feeling motivated",
     "content": "Starting to see results, energy levels up",
     "tags": ["motivation", "progress", "energy"],
     "category": "reflection"
-  },
+  }},
   "suggestions": ["Great mindset!", "Track these wins"]
-}
+}}
 
 MEASUREMENT example:
-{
+{{
   "type": "measurement",
   "confidence": 0.95,
-  "data": {
+  "data": {{
     "weight_lbs": 175.2,
     "body_fat_pct": 15.5,
-    "measurements": {
+    "measurements": {{
       "chest_in": 42,
       "waist_in": 32,
       "arms_in": 15
-    }
-  },
+    }}
+  }},
   "suggestions": ["Consistent progress!", "Measure weekly"]
-}
+}}
 
 IMPORTANT:
 - Be intelligent about nutrition estimation from images
@@ -565,30 +546,13 @@ IMPORTANT:
 Return JSON classification and data extraction."""
 
         try:
-            # Use FREE DeepSeek V3 or Llama-4 Scout for complex reasoning with dual router
-            response = await self.router.complete(
-                config=TaskConfig(
-                    type=TaskType.STRUCTURED_OUTPUT,
-                    requires_json=True,
-                    prioritize_accuracy=True  # Accuracy important for classification
-                ),
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                response_format={"type": "json_object"}
+            # USE GROQ for ultra-fast, ultra-cheap classification
+            result = await self.groq_service.classify_and_extract(
+                text=text,
+                force_type=force_type
             )
 
-            result = json.loads(response.choices[0].message.content)
-
-            # Override type if force_type is set (user manual selection)
-            if force_type:
-                result['type'] = force_type
-                result['confidence'] = 1.0  # High confidence when user manually selects
-                logger.info(f"[QuickEntry] Forced type: {force_type}")
-            else:
-                logger.info(f"[QuickEntry] Classified as: {result.get('type')} ({result.get('confidence', 0):.2f})")
-
+            logger.info(f"[QuickEntry] Classified as: {result.get('type')} ({result.get('confidence', 0):.2f})")
             return result
 
         except Exception as e:
@@ -616,76 +580,151 @@ Return JSON classification and data extraction."""
 
         try:
             if entry_type == "meal":
-                # Save to meal_logs (using correct field names to match schema)
-                result = self.supabase.table("meal_logs").insert({
+                # Enrich meal data with quality scores and tags
+                enrichment = self.enrichment_service.enrich_meal(user_id, data)
+
+                # Save to meal_logs with new quick entry fields + enrichment
+                meal_data = {
                     "user_id": user_id,
-                    "category": data.get("meal_type", "snack"),  # category, not meal_type
-                    "name": data.get("meal_name", original_text[:200]),  # name, not description
-                    "notes": f"Quick entry. {original_text[:200]}" if len(original_text) > 200 else original_text,
-                    "total_calories": data.get("calories"),  # total_calories, not calories
-                    "total_protein_g": data.get("protein_g"),  # total_protein_g
-                    "total_carbs_g": data.get("carbs_g"),  # total_carbs_g
-                    "total_fat_g": data.get("fat_g"),  # total_fat_g
-                    "total_fiber_g": data.get("fiber_g"),  # total_fiber_g
+                    "category": data.get("meal_type", "snack"),
+                    "name": data.get("meal_name", original_text[:200]),
+                    "notes": data.get("notes", original_text[:500]),
+                    "total_calories": data.get("calories"),
+                    "total_protein_g": data.get("protein_g"),
+                    "total_carbs_g": data.get("carbs_g"),
+                    "total_fat_g": data.get("fat_g"),
+                    "total_fiber_g": data.get("fiber_g"),
+                    # NEW: Quick entry fields from migration
+                    "foods": data.get("foods", []),  # JSONB array
+                    "source": "quick_entry",
+                    "estimated": data.get("estimated", False),
+                    "confidence_score": classification.get("confidence", 0.0),
+                    "image_url": self._upload_image(image_base64, user_id) if image_base64 else None,
+                    "total_sugar_g": data.get("sugar_g"),
+                    "total_sodium_mg": data.get("sodium_mg"),
+                    # Enrichment fields
+                    "meal_quality_score": enrichment.get("meal_quality_score"),
+                    "macro_balance_score": enrichment.get("macro_balance_score"),
+                    "adherence_to_goals": enrichment.get("adherence_to_goals"),
+                    "tags": enrichment.get("tags", []),
                     "logged_at": datetime.utcnow().isoformat(),
                     "created_at": datetime.utcnow().isoformat(),
                     "updated_at": datetime.utcnow().isoformat()
-                }).execute()
+                }
 
+                result = self.supabase.table("meal_logs").insert(meal_data).execute()
                 return {"success": True, "entry_id": result.data[0]["id"]}
 
             elif entry_type == "activity":
-                # Save to activities (fixed field names to match schema)
+                # Enrich activity data with performance scores
+                enrichment = self.enrichment_service.enrich_activity(user_id, data)
+
+                # Save to activities with new quick entry fields + enrichment
                 duration_min = data.get("duration_minutes", 0)
                 distance_km = data.get("distance_km", 0)
 
-                result = self.supabase.table("activities").insert({
+                activity_data = {
                     "user_id": user_id,
                     "activity_type": data.get("activity_type", "workout"),
                     "sport_type": data.get("sport_type", data.get("activity_type", "workout")),
                     "name": data.get("activity_name", original_text[:200]),
-                    "elapsed_time_seconds": int(duration_min * 60) if duration_min else 0,  # Convert minutes to seconds
+                    "elapsed_time_seconds": int(duration_min * 60) if duration_min else 0,
                     "moving_time_seconds": int(duration_min * 60) if duration_min else None,
-                    "distance_meters": int(distance_km * 1000) if distance_km else None,  # Convert km to meters
+                    "distance_meters": int(distance_km * 1000) if distance_km else None,
                     "calories": data.get("calories_burned") or data.get("calories"),
                     "perceived_exertion": data.get("rpe") or data.get("perceived_exertion"),
                     "mood": data.get("mood"),
                     "energy_level": data.get("energy_level"),
                     "notes": data.get("notes", original_text[:500]),
-                    "start_date": datetime.utcnow().isoformat(),
-                    "source": "manual"  # Changed from quick_entry to match schema constraint
-                }).execute()
+                    # NEW: Quick entry fields from migration + enrichment
+                    "source": "quick_entry",
+                    "performance_score": enrichment.get("performance_score"),
+                    "effort_level": data.get("rpe") or data.get("perceived_exertion"),
+                    "recovery_needed_hours": enrichment.get("recovery_needed_hours"),
+                    "tags": enrichment.get("tags", []),
+                    "start_date": datetime.utcnow().isoformat()
+                }
 
+                result = self.supabase.table("activities").insert(activity_data).execute()
                 return {"success": True, "entry_id": result.data[0]["id"]}
 
             elif entry_type == "workout":
-                # Save to workout_completions (using correct schema fields)
-                result = self.supabase.table("workout_completions").insert({
+                # Calculate volume load and muscle groups
+                exercises = data.get("exercises", [])
+                volume_load = 0
+                muscle_groups = set()
+
+                for exercise in exercises:
+                    sets = exercise.get("sets", 0)
+                    reps = exercise.get("reps", 0) if isinstance(exercise.get("reps"), int) else 0
+                    weight = exercise.get("weight_lbs", 0)
+                    volume_load += sets * reps * weight
+
+                    # Extract muscle groups (simplified)
+                    exercise_name = exercise.get("name", "").lower()
+                    if any(word in exercise_name for word in ["bench", "chest", "push"]):
+                        muscle_groups.add("chest")
+                    if any(word in exercise_name for word in ["squat", "leg", "quad"]):
+                        muscle_groups.add("legs")
+                    if any(word in exercise_name for word in ["deadlift", "row", "back"]):
+                        muscle_groups.add("back")
+                    if any(word in exercise_name for word in ["shoulder", "press", "overhead"]):
+                        muscle_groups.add("shoulders")
+                    if any(word in exercise_name for word in ["curl", "bicep", "arm"]):
+                        muscle_groups.add("arms")
+
+                # Add calculated fields to data for enrichment
+                data['volume_load'] = volume_load
+                data['muscle_groups'] = list(muscle_groups)
+
+                # Enrich workout data with progressive overload detection
+                enrichment = self.enrichment_service.enrich_workout(user_id, data)
+
+                workout_data = {
                     "user_id": user_id,
                     "duration_minutes": data.get("duration_minutes"),
-                    "notes": f"Workout: {data.get('workout_name', 'Quick Workout')}. {data.get('notes', original_text[:400])}",
+                    "notes": data.get("notes", f"Workout: {data.get('workout_name', 'Quick Workout')}"),
                     "rpe": data.get("rpe") or data.get("perceived_exertion"),
                     "mood": data.get("mood"),
                     "energy_level": data.get("energy_level"),
                     "workout_rating": data.get("workout_rating"),
                     "difficulty_rating": data.get("difficulty_rating"),
+                    # NEW: Quick entry fields from migration + enrichment
+                    "exercises": exercises,  # JSONB array
+                    "volume_load": volume_load if volume_load > 0 else None,
+                    "estimated_calories": data.get("estimated_calories"),
+                    "muscle_groups": list(muscle_groups),
+                    "progressive_overload_status": enrichment.get("progressive_overload_status"),
+                    "recovery_needed_hours": enrichment.get("recovery_needed_hours"),
+                    "tags": enrichment.get("tags", []),
                     "started_at": datetime.utcnow().isoformat(),
                     "completed_at": datetime.utcnow().isoformat()
-                }).execute()
+                }
 
+                result = self.supabase.table("workout_completions").insert(workout_data).execute()
                 return {"success": True, "entry_id": result.data[0]["id"]}
 
             elif entry_type == "note":
-                # Save to user_notes (create if doesn't exist)
-                result = self.supabase.table("user_notes").insert({
+                # Enrich note with sentiment analysis
+                enrichment = await self.enrichment_service.enrich_note(user_id, data)
+
+                # Save to user_notes with sentiment enrichment
+                note_data = {
                     "user_id": user_id,
                     "title": data.get("title", "Quick Note"),
                     "content": data.get("content", original_text),
-                    "tags": data.get("tags", []),
                     "category": data.get("category", "general"),
+                    # Enrichment fields
+                    "sentiment": enrichment.get("sentiment"),
+                    "sentiment_score": enrichment.get("sentiment_score"),
+                    "detected_themes": enrichment.get("detected_themes", []),
+                    "related_goals": enrichment.get("related_goals", []),
+                    "action_items": enrichment.get("action_items", []),
+                    "tags": enrichment.get("tags", []),
                     "created_at": datetime.utcnow().isoformat()
-                }).execute()
+                }
 
+                result = self.supabase.table("user_notes").insert(note_data).execute()
                 return {"success": True, "entry_id": result.data[0]["id"]}
 
             elif entry_type == "measurement":
@@ -907,6 +946,79 @@ Return JSON classification and data extraction."""
 
         except Exception as e:
             logger.error(f"❌ Image vectorization failed: {e}")
+
+    async def _get_semantic_context(
+        self,
+        user_id: str,
+        entry_text: str,
+        entry_type: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get semantic context for smart suggestions (OPTIONAL enhancement).
+
+        Returns similar past entries to help user with autocomplete, reminders, etc.
+
+        Example: User logs "chicken and rice" → Show similar past meals with macros
+        """
+        try:
+            # Only provide context for meals and workouts (most useful)
+            if entry_type not in ["meal", "workout", "activity"]:
+                return None
+
+            # Search for similar entries
+            similar_entries = await self.semantic_search.search_similar_entries(
+                user_id=user_id,
+                query_text=entry_text,
+                source_type=entry_type,
+                limit=3,
+                recency_weight=0.4,
+                similarity_threshold=0.6  # Only show if reasonably similar
+            )
+
+            if not similar_entries:
+                return None
+
+            # Format context for frontend
+            context = {
+                "similar_count": len(similar_entries),
+                "suggestions": []
+            }
+
+            for entry in similar_entries:
+                metadata = entry.get('metadata', {})
+                suggestion = {
+                    "similarity": round(entry.get('similarity', 0), 2),
+                    "created_at": entry.get('created_at'),
+                }
+
+                # Add type-specific data
+                if entry_type == "meal":
+                    suggestion.update({
+                        "meal_name": metadata.get('meal_name'),
+                        "calories": metadata.get('calories'),
+                        "protein_g": metadata.get('protein_g'),
+                        "quality_score": metadata.get('meal_quality_score')
+                    })
+                elif entry_type == "workout":
+                    suggestion.update({
+                        "workout_name": metadata.get('workout_name'),
+                        "volume_load": metadata.get('volume_load'),
+                        "exercises": metadata.get('exercises', [])[:2]  # First 2 exercises
+                    })
+                elif entry_type == "activity":
+                    suggestion.update({
+                        "activity_name": metadata.get('activity_name'),
+                        "duration_minutes": metadata.get('duration_minutes'),
+                        "distance_km": metadata.get('distance_km')
+                    })
+
+                context["suggestions"].append(suggestion)
+
+            return context
+
+        except Exception as e:
+            logger.error(f"Semantic context retrieval failed: {e}")
+            return None
 
 
 # Global instance
