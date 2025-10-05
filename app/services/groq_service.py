@@ -75,11 +75,18 @@ Extract all relevant data for this {force_type} entry."""
 5. **note**: General thoughts, goals, feelings, observations, plans
 6. **unknown**: Cannot determine"""
 
-        system_prompt = f"""You are a fitness coach assistant analyzing user entries.
+        system_prompt = f"""You are a precise fitness data extraction assistant.
 
 {classification_instruction}
 
-Extract ALL relevant data in structured JSON format.
+Extract data with MAXIMUM ACCURACY. Use conservative estimates when unsure.
+
+CRITICAL RULES:
+1. ONLY estimate macros if you have enough information (portion sizes, cooking methods)
+2. Set "estimated": true if ANY value is a guess
+3. Set confidence lower if uncertain
+4. Break down combo foods into individual items in "foods" array
+5. Use standard serving sizes (oz, cups, grams) consistently
 
 Return ONLY valid JSON (no markdown, no code blocks):
 
@@ -87,7 +94,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
   "type": "meal|activity|workout|measurement|note|unknown",
   "confidence": 0.0-1.0,
   "data": {{
-    // Type-specific fields
+    // Type-specific fields (see examples below)
   }},
   "suggestions": ["helpful tips"]
 }}

@@ -27,7 +27,7 @@ from app.config import get_settings
 from app.services.supabase_service import get_service_client
 from app.services.dual_model_router import dual_router, TaskType, TaskConfig
 from app.services.multimodal_embedding_service import get_multimodal_service
-from app.services.groq_service import get_groq_service
+from app.services.groq_service_v2 import get_groq_service_v2
 from app.services.enrichment_service import get_enrichment_service
 from app.services.semantic_search_service import get_semantic_search_service
 from app.workers.embedding_worker import embed_meal_log, embed_activity
@@ -56,7 +56,7 @@ class QuickEntryService:
         self.supabase = get_service_client()
         self.router = dual_router
         self.multimodal_service = get_multimodal_service()
-        self.groq_service = get_groq_service()
+        self.groq_service = get_groq_service_v2()
         self.enrichment_service = get_enrichment_service()
         self.semantic_search = get_semantic_search_service()
 
