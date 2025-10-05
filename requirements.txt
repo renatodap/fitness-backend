@@ -8,7 +8,7 @@ pydantic-settings==2.11.0
 supabase==2.20.0
 
 # AI/ML - Use OpenAI API instead of local models
-openai==1.109.1
+openai==1.109.1  # Also used for Groq API (OpenAI-compatible)
 
 # Background Jobs
 celery[redis]==5.5.3

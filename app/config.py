@@ -46,6 +46,7 @@ class Settings(BaseSettings):
 
     # External Services
     OPENAI_API_KEY: str
+    GROQ_API_KEY: str  # Groq API for ultra-fast, ultra-cheap LLM inference
     REDIS_URL: str = "redis://localhost:6379"
 
     # Celery Settings
@@ -101,6 +102,7 @@ class Settings(BaseSettings):
         # Mask sensitive fields
         sensitive_fields = [
             "OPENAI_API_KEY",
+            "GROQ_API_KEY",
             "JWT_SECRET",
             "CRON_SECRET",
             "WEBHOOK_SECRET",
