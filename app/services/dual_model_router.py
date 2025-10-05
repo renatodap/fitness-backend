@@ -282,8 +282,12 @@ class DualModelRouter:
             error_msg = str(error)
             print(f"[DualRouter] ERROR: {selection.provider} failed: {error_msg}")
 
-            # Check if it's a quota/rate limit error
-            if "429" in error_msg or "quota" in error_msg.lower() or "rate limit" in error_msg.lower():
+            # Check if it's a quota/rate limit/auth error
+            if ("429" in error_msg or "401" in error_msg or
+                "quota" in error_msg.lower() or
+                "rate limit" in error_msg.lower() or
+                "unauthorized" in error_msg.lower() or
+                "user not found" in error_msg.lower()):
                 self.failed_models.add(model_key)
                 print(f"[DualRouter] Falling back to {selection.fallback_provider}")
 
@@ -324,7 +328,10 @@ class DualModelRouter:
 
         except Exception as error:
             error_msg = str(error)
-            if "429" in error_msg or "quota" in error_msg.lower():
+            if ("429" in error_msg or "401" in error_msg or
+                "quota" in error_msg.lower() or
+                "unauthorized" in error_msg.lower() or
+                "user not found" in error_msg.lower()):
                 self.failed_models.add(f"{selection.provider}:{selection.model}")
                 print(f"[DualRouter] Streaming fallback to {selection.fallback_provider}")
 
