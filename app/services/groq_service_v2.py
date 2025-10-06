@@ -125,23 +125,29 @@ CRITICAL ESTIMATION RULES - WHERE TO DRAW THE LINE:
 
 3. **ACTIVITY LOGS** - Only estimate what's reasonable:
 
-   ✅ ALWAYS ESTIMATE:
-   - `start_date` - timestamp
-   - `activity_type` - extract from text
-   - `calories_burned` - IF you have duration (even estimated)
+   ✅ ALWAYS EXTRACT IF PROVIDED:
+   - `distance_miles` / `distance_km` - IF user says it ("ran 4 miles", "10k run")
+   - `pace` - IF user says it ("8:30 pace", "6min/km") - extract the number and add /mile or /km
+   - `duration_minutes` - IF user says it OR if you have distance+pace (calculate: distance / (pace_per_mile))
 
-   ⚠️ CONDITIONALLY ESTIMATE (only if reasonable):
-   - `duration_minutes` - ONLY if typical activity ("morning run" → ~35min is reasonable)
-   - `rpe` - ONLY if effort words present ("easy"→4, "hard"→8)
+   ✅ ALWAYS ESTIMATE:
+   - `start_date` - timestamp from context ("this morning"→7am, "after work"→5pm)
+   - `activity_type` - extract from text (ran→running, biked→cycling, swam→swimming)
+   - `calories_burned` - IF you have duration (use: duration * 10 for running, duration * 8 for cycling)
+
+   ⚠️ CONDITIONALLY ESTIMATE (only if NOT provided):
+   - `duration_minutes` - ONLY if typical activity ("morning run" → ~35min reasonable) OR calculate from distance+pace
+   - `rpe` - ONLY if effort words present ("easy"→4, "moderate"→6, "hard"→8)
    - `mood` - ONLY if mood words present ("felt great"→good)
 
    ❌ NEVER ESTIMATE/MAKE UP:
-   - `distance_km` / `distance_miles` - too variable (could be 1km or 20km)
-   - `pace` - requires distance, don't make up
+   - `distance` if not mentioned (too variable - could be 1km or 20km)
+   - `pace` if neither distance nor pace mentioned
    - `avg_heart_rate` - impossible to know
    - Specific route or location
 
-   Example: "morning run" → timestamp 7am, duration ~35min, calories ~350 (based on duration)
+   Example: "morning run" → timestamp 7am, duration ~35min, calories ~350 (based on duration), NO distance/pace
+   Example: "ran 4 miles at 8:30 pace" → distance=4mi, pace=8:30/mile, duration=34min (calculated), calories=340
    Example: "morning run" → distance=null, pace=null (DON'T MAKE UP)
 
 4. **WORKOUT LOGS** - Only log what user actually said:
@@ -577,6 +583,42 @@ OUTPUT:
 }}
 
 ACTIVITY EXAMPLES:
+
+INPUT: "i ran 4 miles this morning at 8:30 pace"  (has distance and pace)
+OUTPUT:
+{{
+  "type": "activity",
+  "confidence": 0.9,
+  "data": {{
+    "primary_fields": {{
+      "activity_name": "Morning Run",
+      "activity_type": "running",
+      "start_date": "2025-10-06T07:00:00Z",
+      "distance_miles": 4,
+      "distance_km": 6.44,
+      "duration_minutes": 34,
+      "pace": "8:30/mile (5:17/km)",
+      "calories_burned": 400
+    }},
+    "secondary_fields": {{
+      "rpe": null,
+      "mood": null,
+      "tags": ["cardio", "running", "morning"]
+    }},
+    "estimated": false,
+    "needs_clarification": false
+  }},
+  "validation": {{
+    "errors": [],
+    "warnings": [],
+    "missing_critical": []
+  }},
+  "suggestions": [
+    "Great pace! 8:30/mile",
+    "Duration calculated from distance and pace",
+    "Add RPE (1-10) for effort tracking"
+  ]
+}}
 
 INPUT: "ran 5 miles in 40 minutes"  (specific data)
 OUTPUT:
