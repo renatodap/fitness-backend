@@ -751,6 +751,8 @@ Return structured JSON using historical patterns above for smarter estimates."""
 Return structured JSON with primary_fields (show by default) and secondary_fields (expandable)."""
 
         try:
+            logger.info(f"[GroqV2] Calling Groq API with text: '{text[:100]}...'")
+
             response = self.client.chat.completions.create(
                 model="llama-3.1-8b-instant",
                 messages=[
@@ -762,7 +764,11 @@ Return structured JSON with primary_fields (show by default) and secondary_field
                 max_tokens=2048
             )
 
-            result = json.loads(response.choices[0].message.content)
+            logger.info(f"[GroqV2] Received response, parsing JSON...")
+            raw_content = response.choices[0].message.content
+            logger.info(f"[GroqV2] Raw response: {raw_content[:500]}")
+
+            result = json.loads(raw_content)
 
             # Override type if forced
             if force_type:
@@ -772,8 +778,9 @@ Return structured JSON with primary_fields (show by default) and secondary_field
             logger.info(f"[GroqV2] ✅ Classified: {result.get('type')} (confidence: {result.get('confidence', 0):.2f})")
             return result
 
-        except Exception as e:
-            logger.error(f"[GroqV2] ❌ Classification failed: {e}")
+        except json.JSONDecodeError as e:
+            logger.error(f"[GroqV2] ❌ JSON parsing failed: {e}")
+            logger.error(f"[GroqV2] Raw response was: {raw_content if 'raw_content' in locals() else 'No response'}")
             return {
                 "type": "unknown",
                 "confidence": 0.0,
@@ -784,11 +791,31 @@ Return structured JSON with primary_fields (show by default) and secondary_field
                     "needs_clarification": True
                 },
                 "validation": {
-                    "errors": [str(e)],
+                    "errors": [f"JSON parsing error: {str(e)}"],
                     "warnings": [],
                     "missing_critical": ["all_data"]
                 },
-                "suggestions": ["Try being more specific", "Include details like amounts, duration, etc."]
+                "suggestions": ["System error - try again", "Contact support if issue persists"]
+            }
+        except Exception as e:
+            logger.error(f"[GroqV2] ❌ API call failed: {type(e).__name__}: {e}")
+            import traceback
+            logger.error(f"[GroqV2] Traceback: {traceback.format_exc()}")
+            return {
+                "type": "unknown",
+                "confidence": 0.0,
+                "data": {
+                    "primary_fields": {},
+                    "secondary_fields": {},
+                    "estimated": True,
+                    "needs_clarification": True
+                },
+                "validation": {
+                    "errors": [f"API error: {type(e).__name__}"],
+                    "warnings": [],
+                    "missing_critical": ["all_data"]
+                },
+                "suggestions": ["System error - try again", "Check your connection"]
             }
 
     async def analyze_image(
