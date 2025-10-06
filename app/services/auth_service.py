@@ -15,14 +15,14 @@ async def get_current_user(
     """
     Get current user from JWT token.
 
-    For now, returns a mock user.
+    For now, returns a mock user with valid UUID.
     In production, validate token with Supabase.
     """
     token = credentials.credentials
 
     # TODO: Validate token with Supabase
-    # For now, return mock user
+    # For now, return mock user with valid UUID (Supabase users table requires UUID)
     return {
-        "id": "user_123",  # Replace with actual user ID from token
+        "id": "00000000-0000-0000-0000-000000000001",  # Valid UUID for testing
         "email": "user@example.com"
     }

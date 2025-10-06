@@ -772,9 +772,28 @@ Return structured JSON with primary_fields (show by default) and secondary_field
 
             logger.info(f"[GroqV2] Received response, parsing JSON...")
             raw_content = response.choices[0].message.content
-            logger.info(f"[GroqV2] Raw response: {raw_content[:500]}")
+            logger.info(f"[GroqV2] Raw response: {raw_content[:500] if raw_content else 'EMPTY'}")
 
-            result = json.loads(raw_content)
+            # Handle empty or malformed response
+            if not raw_content or not raw_content.strip():
+                logger.error(f"[GroqV2] Empty response from Groq API")
+                raise ValueError("Empty response from Groq API")
+
+            # Try to parse JSON, with better error handling
+            try:
+                result = json.loads(raw_content)
+            except json.JSONDecodeError as json_err:
+                logger.error(f"[GroqV2] JSON parse error: {json_err}")
+                logger.error(f"[GroqV2] Problematic JSON: {raw_content}")
+                # Try to extract JSON from markdown code blocks if present
+                if "```json" in raw_content:
+                    json_start = raw_content.find("```json") + 7
+                    json_end = raw_content.find("```", json_start)
+                    raw_content = raw_content[json_start:json_end].strip()
+                    logger.info(f"[GroqV2] Extracted JSON from markdown: {raw_content[:200]}")
+                    result = json.loads(raw_content)
+                else:
+                    raise
 
             # Override type if forced
             if force_type:

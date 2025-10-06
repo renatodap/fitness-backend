@@ -72,49 +72,16 @@ class SemanticSearchService:
             # Convert to list for SQL query
             query_embedding_list = query_embedding.tolist() if hasattr(query_embedding, 'tolist') else query_embedding
 
-            # Build SQL query using pgvector cosine similarity
-            # Uses <=> operator for cosine distance (1 - cosine_similarity)
-            sql_query = """
-            SELECT
-                id,
-                source_type,
-                source_id,
-                content_text,
-                metadata,
-                data_type,
-                storage_url,
-                created_at,
-                (1 - (embedding <=> %s::vector)) AS similarity,
-                EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (86400 * 30)) AS recency_score,
-                ((1 - %s) * (1 - (embedding <=> %s::vector)) +
-                 %s * EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (86400 * 30))) AS final_score
-            FROM multimodal_embeddings
-            WHERE user_id = %s
-            """
-
-            params = [
-                str(query_embedding_list),  # For similarity calc
-                recency_weight,
-                str(query_embedding_list),  # For final score
-                recency_weight,
-                user_id
-            ]
-
-            # Add source type filter if provided
-            if source_type:
-                sql_query += " AND source_type = %s"
-                params.append(source_type)
-
-            # Add similarity threshold filter
-            sql_query += " AND (1 - (embedding <=> %s::vector)) >= %s"
-            params.extend([str(query_embedding_list), similarity_threshold])
-
-            # Order by final score and limit
-            sql_query += " ORDER BY final_score DESC LIMIT %s"
-            params.append(limit)
-
-            # Execute query
-            result = self.supabase.rpc('raw_sql', {'query': sql_query, 'params': params}).execute()
+            # Use the semantic_search_entries RPC function from migration
+            # This function is created in supabase_migration_semantic_search_helpers.sql
+            result = self.supabase.rpc('semantic_search_entries', {
+                'p_user_id': user_id,
+                'p_query_embedding': query_embedding_list,
+                'p_source_type': source_type,
+                'p_limit': limit,
+                'p_recency_weight': recency_weight,
+                'p_similarity_threshold': similarity_threshold
+            }).execute()
 
             if not result.data:
                 logger.info(f"[SemanticSearch] No results found")
