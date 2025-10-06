@@ -253,7 +253,7 @@ async def confirm_log(
     5. Return success response
     """
     try:
-        user_id = current_user["id"]["id"]
+        user_id = current_user["id"]  # Fixed: was current_user["id"]["id"]
 
         # Get unified coach service
         coach_service = get_unified_coach_service()

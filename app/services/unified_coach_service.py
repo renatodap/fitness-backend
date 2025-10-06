@@ -79,7 +79,20 @@ class UnifiedCoachService:
 
         # Create or reuse conversation
         if not conversation_id:
-            conversation_id = str(uuid.uuid4())
+            # Create new conversation in database
+            conversation_id = await self._create_conversation(user_id)
+        else:
+            # Verify conversation exists
+            existing = self.supabase.table("coach_conversations")\
+                .select("id")\
+                .eq("id", conversation_id)\
+                .eq("user_id", user_id)\
+                .execute()
+
+            if not existing.data:
+                # Conversation doesn't exist or doesn't belong to user
+                logger.warning(f"[UnifiedCoach] Conversation {conversation_id} not found, creating new one")
+                conversation_id = await self._create_conversation(user_id)
 
         # Save user message to database
         user_message_id = await self._save_user_message(
@@ -472,6 +485,29 @@ If you reference their data, be specific (e.g., "Based on your meal from Tuesday
         except Exception as e:
             logger.error(f"[UnifiedCoach] RAG context building failed: {e}")
             return "Unable to retrieve user history."
+
+    async def _create_conversation(self, user_id: str) -> str:
+        """
+        Create a new conversation in coach_conversations table.
+
+        Returns:
+            conversation_id (UUID string)
+        """
+        conversation_data = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "title": None,  # Will be set after first AI response
+            "message_count": 0,
+            "archived": False,
+            "last_message_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.utcnow().isoformat()
+        }
+
+        result = self.supabase.table("coach_conversations").insert(conversation_data).execute()
+        conversation_id = result.data[0]["id"]
+
+        logger.info(f"[UnifiedCoach] Created new conversation: {conversation_id}")
+        return conversation_id
 
     async def _save_user_message(
         self,
