@@ -188,6 +188,18 @@ async def quick_entry_preview(
 
     User must call /confirm endpoint to actually save.
     """
+    logger.info("=" * 80)
+    logger.info(f"[API] 🚀 QUICK ENTRY PREVIEW REQUEST")
+    logger.info(f"[API] User ID: {current_user.get('id')}")
+    logger.info(f"[API] User email: {current_user.get('email')}")
+    logger.info(f"[API] Text input: '{text[:100] if text else 'None'}...'")
+    logger.info(f"[API] Notes: '{notes[:50] if notes else 'None'}'")
+    logger.info(f"[API] Manual type: {manual_type}")
+    logger.info(f"[API] Has image: {image is not None}")
+    logger.info(f"[API] Has audio: {audio is not None}")
+    logger.info(f"[API] Has PDF: {pdf is not None}")
+    logger.info("=" * 80)
+
     service = get_quick_entry_service()
 
     try:
@@ -221,6 +233,7 @@ async def quick_entry_preview(
             parsed_metadata['manual_type'] = manual_type
 
         # Process entry WITHOUT saving (preview only)
+        logger.info(f"[API] ⚙️  Calling service.process_entry_preview()...")
         result = await service.process_entry_preview(
             user_id=current_user["id"],
             text=text,
@@ -230,10 +243,21 @@ async def quick_entry_preview(
             metadata=parsed_metadata
         )
 
+        logger.info(f"[API] ✅ Service returned: success={result.get('success')}, type={result.get('entry_type')}, confidence={result.get('confidence')}")
+        logger.info(f"[API] Response data keys: {list(result.get('data', {}).keys())}")
+        logger.info(f"[API] Suggestions: {result.get('suggestions')}")
+        logger.info("=" * 80)
+
         return QuickEntryResponse(**result)
 
     except Exception as e:
-        logger.error(f"Quick entry preview failed: {e}")
+        logger.error("=" * 80)
+        logger.error(f"[API] ❌ QUICK ENTRY PREVIEW FAILED")
+        logger.error(f"[API] Error type: {type(e).__name__}")
+        logger.error(f"[API] Error message: {str(e)}")
+        import traceback
+        logger.error(f"[API] Full traceback:\n{traceback.format_exc()}")
+        logger.error("=" * 80)
         raise HTTPException(status_code=500, detail=str(e))
 
 

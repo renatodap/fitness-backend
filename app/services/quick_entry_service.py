@@ -77,17 +77,34 @@ class QuickEntryService:
         Returns:
             Classification result with type, confidence, extracted data, suggestions
         """
-        logger.info(f"[QuickEntry] PREVIEW mode for user {user_id}")
+        logger.info("╔" + "═" * 78 + "╗")
+        logger.info(f"║ [QuickEntry] 🔍 PREVIEW MODE START")
+        logger.info(f"║ User ID: {user_id}")
+        logger.info(f"║ Text: '{text[:80] if text else 'None'}{'...' if text and len(text) > 80 else ''}'")
+        logger.info(f"║ Image: {bool(image_base64)}")
+        logger.info(f"║ Audio: {bool(audio_base64)}")
+        logger.info(f"║ PDF: {bool(pdf_base64)}")
+        logger.info(f"║ Metadata: {metadata}")
+        logger.info("╚" + "═" * 78 + "╝")
 
         # Step 1: Extract text from all inputs
-        extracted_text = await self._extract_all_text(
-            text=text,
-            image_base64=image_base64,
-            audio_base64=audio_base64,
-            pdf_base64=pdf_base64
-        )
+        logger.info(f"[QuickEntry] 📝 STEP 1: Extracting text from all inputs...")
+        try:
+            extracted_text = await self._extract_all_text(
+                text=text,
+                image_base64=image_base64,
+                audio_base64=audio_base64,
+                pdf_base64=pdf_base64
+            )
+            logger.info(f"[QuickEntry] ✅ Text extracted: '{extracted_text[:200] if extracted_text else 'NONE'}{'...' if extracted_text and len(extracted_text) > 200 else ''}'")
+        except Exception as e:
+            logger.error(f"[QuickEntry] ❌ Text extraction failed: {type(e).__name__}: {e}")
+            import traceback
+            logger.error(f"[QuickEntry] Traceback:\n{traceback.format_exc()}")
+            raise
 
         if not extracted_text:
+            logger.warning(f"[QuickEntry] ⚠️  No content extracted - returning error")
             return {
                 "success": False,
                 "error": "No content to process",
@@ -99,30 +116,50 @@ class QuickEntryService:
         # Step 2: Classify and extract data
         manual_type = metadata.get('manual_type') if metadata else None
 
-        logger.info(f"[QuickEntry] Classifying text: '{extracted_text[:100]}'")
-        logger.info(f"[QuickEntry] Manual type: {manual_type}")
+        logger.info(f"[QuickEntry] 🤖 STEP 2: Classifying and extracting data...")
+        logger.info(f"[QuickEntry] Text to classify: '{extracted_text[:150]}{'...' if len(extracted_text) > 150 else ''}'")
+        logger.info(f"[QuickEntry] Manual type override: {manual_type or 'None (auto-detect)'}")
+        logger.info(f"[QuickEntry] Has image context: {image_base64 is not None}")
 
-        if manual_type:
-            classification = await self._classify_and_extract(
-                extracted_text,
-                user_id=user_id,
-                has_image=image_base64 is not None,
-                force_type=manual_type
-            )
-        else:
-            classification = await self._classify_and_extract(
-                extracted_text,
-                user_id=user_id,
-                has_image=image_base64 is not None
-            )
+        try:
+            if manual_type:
+                logger.info(f"[QuickEntry] Using force_type={manual_type}")
+                classification = await self._classify_and_extract(
+                    extracted_text,
+                    user_id=user_id,
+                    has_image=image_base64 is not None,
+                    force_type=manual_type
+                )
+            else:
+                logger.info(f"[QuickEntry] Auto-detecting entry type...")
+                classification = await self._classify_and_extract(
+                    extracted_text,
+                    user_id=user_id,
+                    has_image=image_base64 is not None
+                )
 
-        logger.info(f"[QuickEntry] Classification result: type={classification.get('type')}, confidence={classification.get('confidence')}")
+            logger.info(f"[QuickEntry] ✅ Classification complete:")
+            logger.info(f"[QuickEntry]    └─ Type: {classification.get('type')}")
+            logger.info(f"[QuickEntry]    └─ Confidence: {classification.get('confidence')}")
+            logger.info(f"[QuickEntry]    └─ Data fields: {list(classification.get('data', {}).keys())}")
 
-        # If classification failed, log the error details
-        if classification.get('type') == 'unknown' or classification.get('confidence', 0) == 0:
-            logger.error(f"[QuickEntry] ❌ Classification FAILED!")
-            logger.error(f"[QuickEntry] Validation errors: {classification.get('validation', {}).get('errors')}")
-            logger.error(f"[QuickEntry] Full classification: {classification}")
+            # If classification failed, log the error details
+            if classification.get('type') == 'unknown' or classification.get('confidence', 0) == 0:
+                logger.error(f"[QuickEntry] ❌❌❌ CLASSIFICATION FAILED ❌❌❌")
+                logger.error(f"[QuickEntry] Type: {classification.get('type')}")
+                logger.error(f"[QuickEntry] Confidence: {classification.get('confidence')}")
+                logger.error(f"[QuickEntry] Validation errors: {classification.get('validation', {}).get('errors', [])}")
+                logger.error(f"[QuickEntry] Validation warnings: {classification.get('validation', {}).get('warnings', [])}")
+                logger.error(f"[QuickEntry] Missing critical: {classification.get('validation', {}).get('missing_critical', [])}")
+                logger.error(f"[QuickEntry] Suggestions: {classification.get('suggestions', [])}")
+                logger.error(f"[QuickEntry] FULL CLASSIFICATION OBJECT:")
+                logger.error(f"{classification}")
+
+        except Exception as e:
+            logger.error(f"[QuickEntry] ❌ Classification threw exception: {type(e).__name__}: {e}")
+            import traceback
+            logger.error(f"[QuickEntry] Traceback:\n{traceback.format_exc()}")
+            raise
 
         # Inject user notes
         if metadata and 'notes' in metadata:
