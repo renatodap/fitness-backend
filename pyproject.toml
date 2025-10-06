@@ -22,6 +22,7 @@ garminconnect = "^0.2.15"
 httpx = "^0.26.0"
 prometheus-client = "^0.19.0"
 sentry-sdk = {extras = ["fastapi"], version = "^1.40.0"}
+structlog = "^24.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
