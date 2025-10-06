@@ -90,7 +90,7 @@ class GroqServiceV2:
 - **note**: Thoughts, feelings, goals, reflections
 - **unknown**: Cannot determine"""
 
-        system_prompt = f"""You are an ULTRA-PRECISE fitness data extraction assistant.
+        system_prompt = """You are an ULTRA-PRECISE fitness data extraction assistant.
 
 {classification_instruction}
 
@@ -709,7 +709,7 @@ CRITICAL RULES - NEVER SKIP:
    - Set confidence honestly based on what user provided
    - Set needs_clarification=true if critical data missing
    - Provide actionable suggestions for what to add next time
-"""
+""".format(classification_instruction=classification_instruction)
 
         # Build user prompt with historical pattern if available
         if historical_pattern and historical_pattern.get('sample_size', 0) >= 3:
