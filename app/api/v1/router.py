@@ -16,7 +16,8 @@ from app.api.v1 import (
     coach,
     programs,
     quick_entry,
-    test_groq
+    test_groq,
+    debug
 )
 
 api_router = APIRouter()
@@ -32,3 +33,4 @@ api_router.include_router(coach.router, prefix="/coach", tags=["coach"])
 api_router.include_router(programs.router, prefix="/programs", tags=["programs"])
 api_router.include_router(quick_entry.router, tags=["quick-entry"])  # No prefix, routes define their own
 api_router.include_router(test_groq.router, tags=["test"])  # Test endpoints
+api_router.include_router(debug.router, tags=["debug"])  # Debug endpoints (remove in production)
