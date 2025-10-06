@@ -748,7 +748,13 @@ Return JSON classification and data extraction."""
         metadata: Optional[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """
-        Save entry to appropriate database table based on type.
+        Save entry to NEW SCHEMA (quick_entry_logs + structured tables).
+
+        Flow:
+        1. Create quick_entry_logs record (raw input + AI metadata)
+        2. Create structured log (meal_logs, activities, etc.) with FK link
+        3. Update quick_entry_logs with linked IDs
+        4. Return success with both IDs
         """
         entry_type = classification["type"]
         raw_data = classification.get("data", {})
@@ -768,13 +774,66 @@ Return JSON classification and data extraction."""
             data = raw_data
 
         try:
+            # STEP 1: Create quick_entry_logs record (NEW SCHEMA)
+            logger.info(f"[QuickEntry] 📝 Creating quick_entry_logs record for {entry_type}")
+
+            # Determine input type and modalities
+            input_modalities = []
+            if original_text:
+                input_modalities.append("text")
+            if image_base64:
+                input_modalities.append("image")
+            if metadata and metadata.get("audio_base64"):
+                input_modalities.append("audio")
+
+            input_type = "multimodal" if len(input_modalities) > 1 else (input_modalities[0] if input_modalities else "text")
+
+            # Upload image if provided
+            image_url = None
+            if image_base64:
+                image_url = self._upload_image(image_base64, user_id)
+
+            # Create quick_entry_logs record
+            quick_entry_log_data = {
+                "user_id": user_id,
+                "input_type": input_type,
+                "input_modalities": input_modalities,
+                "raw_text": original_text[:5000] if original_text else None,  # Limit to 5k chars
+                "image_urls": [image_url] if image_url else [],
+                "ai_provider": "groq",  # We use Groq for classification
+                "ai_model": "llama-3.3-70b-versatile",  # Default model
+                "ai_cost_usd": 0.0001,  # Estimated cost (~$0.10 per 1M tokens)
+                "tokens_used": len(original_text.split()) * 2 if original_text else 0,  # Rough estimate
+                "ai_classification": entry_type,
+                "ai_extracted_data": data,  # Store full extracted data
+                "ai_confidence_score": classification.get("confidence", 0.0),
+                "contains_meal": entry_type == "meal",
+                "contains_workout": entry_type == "workout",
+                "contains_body_measurement": entry_type == "measurement",
+                "contains_activity": entry_type == "activity",
+                "contains_goal": False,
+                "contains_note": entry_type == "note",
+                "processing_status": "completed",
+                "logged_at": datetime.utcnow().isoformat(),
+                "timezone": "UTC"
+            }
+
+            quick_entry_result = self.supabase.table("quick_entry_logs").insert(quick_entry_log_data).execute()
+            quick_entry_log_id = quick_entry_result.data[0]["id"]
+
+            logger.info(f"[QuickEntry] ✅ Created quick_entry_logs: {quick_entry_log_id}")
+
+            # STEP 2: Create structured log with FK link
+            structured_log_id = None
+
             if entry_type == "meal":
                 # Enrich meal data with quality scores and tags
                 enrichment = self.enrichment_service.enrich_meal(user_id, data)
 
-                # Save to meal_logs with new quick entry fields + enrichment
+                # Save to meal_logs with quick_entry_log_id FK link
                 meal_data = {
                     "user_id": user_id,
+                    "quick_entry_log_id": quick_entry_log_id,  # NEW: FK link!
                     "category": data.get("meal_type", "snack"),
                     "name": data.get("meal_name", original_text[:200]),
                     "notes": data.get("notes", original_text[:500]),
@@ -783,14 +842,20 @@ Return JSON classification and data extraction."""
                     "total_carbs_g": data.get("carbs_g"),
                     "total_fat_g": data.get("fat_g"),
                     "total_fiber_g": data.get("fiber_g"),
-                    # NEW: Quick entry fields from migration
                     "foods": data.get("foods", []),  # JSONB array
                     "source": "quick_entry",
                     "estimated": data.get("estimated", False),
                     "confidence_score": classification.get("confidence", 0.0),
-                    "image_url": self._upload_image(image_base64, user_id) if image_base64 else None,
+                    "image_url": image_url,  # Already uploaded
                     "total_sugar_g": data.get("sugar_g"),
                     "total_sodium_mg": data.get("sodium_mg"),
+                    "ai_extracted": True,  # NEW: Flag from migration
+                    "ai_confidence": classification.get("confidence", 0.0),  # NEW
+                    "extraction_metadata": {  # NEW: Store AI metadata
+                        "provider": "groq",
+                        "model": "llama-3.3-70b-versatile",
+                        "cost_usd": 0.0001
+                    },
                     # Enrichment fields
                     "meal_quality_score": enrichment.get("meal_quality_score"),
                     "macro_balance_score": enrichment.get("macro_balance_score"),
@@ -802,18 +867,26 @@ Return JSON classification and data extraction."""
                 }
 
                 result = self.supabase.table("meal_logs").insert(meal_data).execute()
-                return {"success": True, "entry_id": result.data[0]["id"]}
+                structured_log_id = result.data[0]["id"]
+
+                # Update quick_entry_logs with meal_log_id link
+                self.supabase.table("quick_entry_logs").update({
+                    "meal_log_ids": [structured_log_id]
+                }).eq("id", quick_entry_log_id).execute()
+
+                logger.info(f"[QuickEntry] ✅ Created meal_log: {structured_log_id}")
 
             elif entry_type == "activity":
                 # Enrich activity data with performance scores
                 enrichment = self.enrichment_service.enrich_activity(user_id, data)
 
-                # Save to activities with new quick entry fields + enrichment
+                # Save to activities with quick_entry_log_id FK link
                 duration_min = data.get("duration_minutes", 0)
                 distance_km = data.get("distance_km", 0)
 
                 activity_data = {
                     "user_id": user_id,
+                    "quick_entry_log_id": quick_entry_log_id,  # NEW: FK link!
                     "activity_type": data.get("activity_type", "workout"),
                     "sport_type": data.get("sport_type", data.get("activity_type", "workout")),
                     "name": data.get("activity_name", original_text[:200]),
@@ -825,8 +898,14 @@ Return JSON classification and data extraction."""
                     "mood": data.get("mood"),
                     "energy_level": data.get("energy_level"),
                     "notes": data.get("notes", original_text[:500]),
-                    # NEW: Quick entry fields from migration + enrichment
                     "source": "quick_entry",
+                    "ai_extracted": True,  # NEW: Flag from migration
+                    "ai_confidence": classification.get("confidence", 0.0),  # NEW
+                    "extraction_metadata": {  # NEW: Store AI metadata
+                        "provider": "groq",
+                        "model": "llama-3.3-70b-versatile",
+                        "cost_usd": 0.0001
+                    },
                     "performance_score": enrichment.get("performance_score"),
                     "effort_level": data.get("rpe") or data.get("perceived_exertion"),
                     "recovery_needed_hours": enrichment.get("recovery_needed_hours"),
@@ -835,7 +914,14 @@ Return JSON classification and data extraction."""
                 }
 
                 result = self.supabase.table("activities").insert(activity_data).execute()
-                return {"success": True, "entry_id": result.data[0]["id"]}
+                structured_log_id = result.data[0]["id"]
+
+                # Update quick_entry_logs with activity_id link
+                self.supabase.table("quick_entry_logs").update({
+                    "activity_ids": [structured_log_id]
+                }).eq("id", quick_entry_log_id).execute()
+
+                logger.info(f"[QuickEntry] ✅ Created activity: {structured_log_id}")
 
             elif entry_type == "workout":
                 # NEW SCHEMA: Save to activities + activity_exercises + activity_sets
@@ -864,10 +950,11 @@ Return JSON classification and data extraction."""
                     if any(word in exercise_name for word in ["curl", "bicep", "arm"]):
                         muscle_groups.add("arms")
 
-                # 1. Create activity record
+                # 1. Create activity record with FK link
                 duration_min = data.get("duration_minutes", 0)
                 activity_data = {
                     "user_id": user_id,
+                    "quick_entry_log_id": quick_entry_log_id,  # NEW: FK link!
                     "source": "workout_log",  # NEW: workout_log source type
                     "activity_type": "strength",  # Workouts are strength training
                     "name": data.get("workout_name", "Quick Workout"),
@@ -879,11 +966,24 @@ Return JSON classification and data extraction."""
                     "rpe": data.get("rpe") or data.get("perceived_exertion"),
                     "notes": data.get("notes", original_text[:500]),
                     "calories": data.get("estimated_calories"),
-                    "completed": True
+                    "completed": True,
+                    "ai_extracted": True,  # NEW: Flag from migration
+                    "ai_confidence": classification.get("confidence", 0.0),  # NEW
+                    "extraction_metadata": {  # NEW: Store AI metadata
+                        "provider": "groq",
+                        "model": "llama-3.3-70b-versatile",
+                        "cost_usd": 0.0001
+                    }
                 }
 
                 activity_result = self.supabase.table("activities").insert(activity_data).execute()
                 activity_id = activity_result.data[0]["id"]
+                structured_log_id = activity_id
+
+                # Update quick_entry_logs with workout_log_id link
+                self.supabase.table("quick_entry_logs").update({
+                    "workout_log_ids": [activity_id]
+                }).eq("id", quick_entry_log_id).execute()
 
                 # 2. Create activity_exercises and activity_sets for each exercise
                 for idx, exercise in enumerate(exercises):
@@ -940,15 +1040,13 @@ Return JSON classification and data extraction."""
 
                             self.supabase.table("activity_sets").insert(activity_set_data).execute()
 
-                logger.info(f"✅ Saved workout to NEW schema: activity_id={activity_id}, {len(exercises)} exercises")
-
-                return {"success": True, "entry_id": activity_id}
+                logger.info(f"[QuickEntry] ✅ Saved workout: activity_id={activity_id}, {len(exercises)} exercises")
 
             elif entry_type == "note":
                 # Enrich note with sentiment analysis
                 enrichment = await self.enrichment_service.enrich_note(user_id, data)
 
-                # Save to user_notes with sentiment enrichment
+                # Save to user_notes
                 note_data = {
                     "user_id": user_id,
                     "title": data.get("title", "Quick Note"),
@@ -965,37 +1063,73 @@ Return JSON classification and data extraction."""
                 }
 
                 result = self.supabase.table("user_notes").insert(note_data).execute()
-                return {"success": True, "entry_id": result.data[0]["id"]}
+                structured_log_id = result.data[0]["id"]
+                logger.info(f"[QuickEntry] ✅ Created note: {structured_log_id}")
 
             elif entry_type == "measurement":
-                # Save to body_measurements
-                result = self.supabase.table("body_measurements").insert({
+                # Save to body_measurements with FK link
+                measurement_data = {
                     "user_id": user_id,
+                    "quick_entry_log_id": quick_entry_log_id,  # NEW: FK link!
                     "weight_lbs": data.get("weight_lbs"),
                     "body_fat_pct": data.get("body_fat_pct"),
                     "measurements": data.get("measurements", {}),
                     "notes": original_text[:500],
                     "measured_at": datetime.utcnow().isoformat(),
-                    "source": "quick_entry"
-                }).execute()
+                    "source": "quick_entry",
+                    "ai_extracted": True,  # NEW
+                    "ai_confidence": classification.get("confidence", 0.0),  # NEW
+                    "extraction_metadata": {  # NEW
+                        "provider": "groq",
+                        "model": "llama-3.3-70b-versatile",
+                        "cost_usd": 0.0001
+                    }
+                }
 
-                return {"success": True, "entry_id": result.data[0]["id"]}
+                result = self.supabase.table("body_measurements").insert(measurement_data).execute()
+                structured_log_id = result.data[0]["id"]
+
+                # Update quick_entry_logs with measurement_id link
+                self.supabase.table("quick_entry_logs").update({
+                    "body_measurement_ids": [structured_log_id]
+                }).eq("id", quick_entry_log_id).execute()
+
+                logger.info(f"[QuickEntry] ✅ Created body_measurement: {structured_log_id}")
 
             else:
                 # Unknown - save to general notes
-                result = self.supabase.table("user_notes").insert({
+                note_data = {
                     "user_id": user_id,
                     "title": "Unclassified Entry",
                     "content": original_text,
                     "tags": ["unclassified"],
                     "category": "general",
                     "created_at": datetime.utcnow().isoformat()
-                }).execute()
+                }
 
-                return {"success": True, "entry_id": result.data[0]["id"]}
+                result = self.supabase.table("user_notes").insert(note_data).execute()
+                structured_log_id = result.data[0]["id"]
+                logger.info(f"[QuickEntry] ✅ Created unknown entry as note: {structured_log_id}")
+
+            # STEP 3: Return success with both IDs
+            return {
+                "success": True,
+                "entry_id": structured_log_id,
+                "quick_entry_log_id": quick_entry_log_id  # NEW: Return both IDs
+            }
 
         except Exception as e:
-            logger.error(f"Failed to save entry: {e}")
+            logger.error(f"[QuickEntry] ❌ Failed to save entry: {e}", exc_info=True)
+
+            # Update quick_entry_logs with error status
+            try:
+                self.supabase.table("quick_entry_logs").update({
+                    "processing_status": "failed",
+                    "processing_error": str(e)
+                }).eq("id", quick_entry_log_id).execute()
+            except:
+                pass
+
             return {"success": False, "error": str(e)}
 
     async def _vectorize_entry(
@@ -1007,43 +1141,40 @@ Return JSON classification and data extraction."""
         metadata: Dict[str, Any]
     ):
         """
-        Vectorize entry for RAG retrieval - REVOLUTIONARY MULTIMODAL.
+        Vectorize entry for RAG retrieval - NEW SCHEMA (quick_entry_embeddings).
 
-        Creates text embedding and stores in multimodal_embeddings table
+        Creates text embedding and stores in quick_entry_embeddings table
         for ultra-personalized AI coach context via vector similarity search.
         """
         try:
             logger.info(f"[QuickEntry] 🔥 Vectorizing {entry_type} entry {entry_id}")
 
-            # Generate text embedding using FREE sentence-transformers
+            # Generate text embedding using FREE sentence-transformers (384 dimensions)
             embedding = await self.multimodal_service.embed_text(text)
 
-            # Map entry type to source type (must match context_builder.py expectations!)
-            source_type_map = {
-                "meal": "meal",  # Changed from "meal_log" to match context builder
+            # Map entry type to source classification
+            source_classification_map = {
+                "meal": "meal",
                 "activity": "activity",
                 "workout": "workout",
-                "note": "voice_note",
-                "measurement": "progress_photo"
+                "note": "note",
+                "measurement": "body_measurement"
             }
-            source_type = source_type_map.get(entry_type, "quick_entry")
+            source_classification = source_classification_map.get(entry_type, "unknown")
 
-            # Store embedding in multimodal_embeddings table with FULL context
-            # This allows AI coach to access:
-            # - WHEN it happened (timestamp)
-            # - WHAT happened (description, exercises, foods)
-            # - HOW it went (notes, feelings, RPE)
-            # - WHICH specific meal/workout/activity (source_id)
+            # Build content summary (1-2 sentences)
+            content_summary = self._build_content_summary(entry_type, metadata, text)
 
+            # Build comprehensive metadata for RAG context
             comprehensive_metadata = {
                 **metadata,  # LLM-extracted data (calories, exercises, etc.)
                 'entry_type': entry_type,
                 'source': 'quick_entry',
-                'timestamp': datetime.utcnow().isoformat(),  # WHEN
+                'timestamp': datetime.utcnow().isoformat(),
                 'logged_at': metadata.get('logged_at') or datetime.utcnow().isoformat(),
-                'notes': metadata.get('notes', text[:500]),  # HOW (user feelings)
-                'original_text': text,  # Full context
-                'source_id': entry_id,  # Links to SQL table
+                'notes': metadata.get('notes', text[:500]),
+                'original_text': text[:1000],  # First 1000 chars
+                'source_id': entry_id,  # Links to structured table
             }
 
             # Add type-specific metadata for AI coach context
@@ -1073,25 +1204,67 @@ Return JSON classification and data extraction."""
                     'exercises': metadata.get('exercises', []),
                     'duration_minutes': metadata.get('duration_minutes'),
                     'rpe': metadata.get('rpe'),
-                    'difficulty_rating': metadata.get('difficulty_rating'),
                 })
 
-            await self.multimodal_service.store_embedding(
-                user_id=user_id,
-                embedding=embedding,
-                data_type='text',
-                source_type=source_type,
-                source_id=entry_id,
-                content_text=text,
-                metadata=comprehensive_metadata,
-                confidence_score=0.9,
-                embedding_model='all-MiniLM-L6-v2'
-            )
+            # Store embedding in NEW quick_entry_embeddings table
+            embedding_data = {
+                "quick_entry_log_id": entry_id,  # Links to quick_entry_logs
+                "user_id": user_id,
+                "embedding_type": "text",
+                "embedding": embedding.tolist() if hasattr(embedding, 'tolist') else embedding,
+                "content_text": text[:5000],  # Store full text (limit 5k chars)
+                "content_summary": content_summary,
+                "metadata": comprehensive_metadata,
+                "source_classification": source_classification,
+                "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+                "embedding_dimensions": 384,
+                "content_hash": str(hash(text)),
+                "is_active": True,
+                "logged_at": datetime.utcnow().isoformat()
+            }
 
-            logger.info(f"✅ Vectorized {entry_type} entry: {entry_id}")
+            result = self.supabase.table("quick_entry_embeddings").insert(embedding_data).execute()
+            embedding_id = result.data[0]["id"]
+
+            # Update quick_entry_logs with embedding_id link
+            self.supabase.table("quick_entry_logs").update({
+                "embedding_generated": True,
+                "embedding_id": embedding_id
+            }).eq("id", entry_id).execute()
+
+            logger.info(f"[QuickEntry] ✅ Vectorized {entry_type} entry: embedding_id={embedding_id}")
 
         except Exception as e:
-            logger.error(f"❌ Vectorization error: {e}")
+            logger.error(f"[QuickEntry] ❌ Vectorization error: {e}", exc_info=True)
+
+    def _build_content_summary(self, entry_type: str, metadata: Dict[str, Any], text: str) -> str:
+        """Build 1-2 sentence summary for quick_entry_embeddings."""
+        if entry_type == "meal":
+            meal_name = metadata.get('meal_name', 'Meal')
+            calories = metadata.get('calories', '?')
+            protein = metadata.get('protein_g', '?')
+            return f"{meal_name}: {calories} cal, {protein}g protein"
+
+        elif entry_type == "activity":
+            activity_name = metadata.get('activity_name', 'Activity')
+            duration = metadata.get('duration_minutes', '?')
+            distance = metadata.get('distance_km', '?')
+            return f"{activity_name}: {duration} min, {distance} km"
+
+        elif entry_type == "workout":
+            workout_name = metadata.get('workout_name', 'Workout')
+            exercises = metadata.get('exercises', [])
+            exercise_count = len(exercises)
+            return f"{workout_name}: {exercise_count} exercises"
+
+        elif entry_type == "measurement":
+            weight = metadata.get('weight_lbs', '?')
+            body_fat = metadata.get('body_fat_pct', '?')
+            return f"Body measurement: {weight} lbs, {body_fat}% body fat"
+
+        else:
+            # Truncate text for summary
+            return text[:100] + "..." if len(text) > 100 else text
 
     def _upload_image(self, image_base64: str, user_id: str) -> Optional[str]:
         """

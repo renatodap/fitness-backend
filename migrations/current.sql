@@ -24,7 +24,7 @@ CREATE TABLE public.active_workout_sessions (
 CREATE TABLE public.activities (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
-  source text NOT NULL CHECK (source = ANY (ARRAY['strava'::text, 'garmin'::text, 'manual'::text, 'apple'::text, 'fitbit'::text, 'polar'::text, 'suunto'::text, 'wahoo'::text])),
+  source text NOT NULL CHECK (source = ANY (ARRAY['strava'::text, 'garmin'::text, 'manual'::text, 'apple'::text, 'fitbit'::text, 'polar'::text, 'suunto'::text, 'wahoo'::text, 'quick_entry'::text])),
   external_id text,
   name text NOT NULL,
   activity_type text NOT NULL,
@@ -148,6 +148,10 @@ CREATE TABLE public.activities (
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
   synced_at timestamp with time zone,
+  performance_score numeric CHECK (performance_score >= 0::numeric AND performance_score <= 10::numeric),
+  effort_level numeric CHECK (effort_level >= 0::numeric AND effort_level <= 10::numeric),
+  recovery_needed_hours integer,
+  tags ARRAY DEFAULT ARRAY[]::text[],
   CONSTRAINT activities_pkey PRIMARY KEY (id),
   CONSTRAINT activities_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
   CONSTRAINT activities_workout_id_fkey FOREIGN KEY (workout_id) REFERENCES public.workouts(id)
@@ -193,7 +197,7 @@ CREATE TABLE public.activity_streams (
   original_size integer,
   series_type text CHECK (series_type = ANY (ARRAY['time'::text, 'distance'::text])),
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT activity_streams_pkey PRIMARY KEY (activity_id, stream_type),
+  CONSTRAINT activity_streams_pkey PRIMARY KEY (stream_type, activity_id),
   CONSTRAINT activity_streams_activity_id_fkey FOREIGN KEY (activity_id) REFERENCES public.activities(id)
 );
 CREATE TABLE public.activity_workout_links (
@@ -361,6 +365,27 @@ CREATE TABLE public.barcode_scan_history (
   CONSTRAINT barcode_scan_history_pkey PRIMARY KEY (id),
   CONSTRAINT barcode_scan_history_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
   CONSTRAINT barcode_scan_history_food_id_fkey FOREIGN KEY (food_id) REFERENCES public.foods_enhanced(id)
+);
+CREATE TABLE public.body_measurements (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  measured_at timestamp with time zone NOT NULL DEFAULT now(),
+  weight_lbs numeric,
+  weight_kg numeric,
+  body_fat_pct numeric,
+  muscle_mass_lbs numeric,
+  muscle_mass_kg numeric,
+  measurements jsonb,
+  source text DEFAULT 'manual'::text CHECK (source = ANY (ARRAY['manual'::text, 'scale'::text, 'dexa'::text, 'inbody'::text, 'quick_entry'::text])),
+  notes text,
+  trend_direction text CHECK (trend_direction = ANY (ARRAY['up'::text, 'down'::text, 'stable'::text])),
+  rate_of_change_weekly numeric,
+  goal_progress_pct numeric CHECK (goal_progress_pct >= 0::numeric AND goal_progress_pct <= 100::numeric),
+  health_assessment text CHECK (health_assessment = ANY (ARRAY['healthy'::text, 'caution'::text, 'concern'::text])),
+  tags ARRAY DEFAULT ARRAY[]::text[],
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT body_measurements_pkey PRIMARY KEY (id),
+  CONSTRAINT body_measurements_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
 CREATE TABLE public.coach_conversations (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -851,6 +876,17 @@ CREATE TABLE public.meal_logs (
   total_fiber_g numeric DEFAULT 0,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  foods jsonb DEFAULT '[]'::jsonb,
+  source text DEFAULT 'manual'::text CHECK (source = ANY (ARRAY['quick_entry'::text, 'manual'::text, 'imported'::text, 'api'::text])),
+  estimated boolean DEFAULT false,
+  confidence_score numeric CHECK (confidence_score >= 0::numeric AND confidence_score <= 1::numeric),
+  image_url text,
+  meal_quality_score numeric CHECK (meal_quality_score >= 0::numeric AND meal_quality_score <= 10::numeric),
+  macro_balance_score numeric CHECK (macro_balance_score >= 0::numeric AND macro_balance_score <= 10::numeric),
+  adherence_to_goals numeric CHECK (adherence_to_goals >= 0::numeric AND adherence_to_goals <= 10::numeric),
+  tags ARRAY DEFAULT ARRAY[]::text[],
+  total_sugar_g numeric,
+  total_sodium_mg numeric,
   CONSTRAINT meal_logs_pkey PRIMARY KEY (id),
   CONSTRAINT meal_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
@@ -1339,6 +1375,23 @@ CREATE TABLE public.user_milestones (
   CONSTRAINT user_milestones_pkey PRIMARY KEY (id),
   CONSTRAINT user_milestones_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
+CREATE TABLE public.user_notes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title text,
+  content text NOT NULL,
+  category text CHECK (category = ANY (ARRAY['reflection'::text, 'goal'::text, 'plan'::text, 'observation'::text, 'general'::text])),
+  tags ARRAY DEFAULT ARRAY[]::text[],
+  sentiment text CHECK (sentiment = ANY (ARRAY['positive'::text, 'neutral'::text, 'negative'::text])),
+  sentiment_score numeric CHECK (sentiment_score >= '-1'::integer::numeric AND sentiment_score <= 1::numeric),
+  detected_themes ARRAY DEFAULT ARRAY[]::text[],
+  related_goals ARRAY DEFAULT ARRAY[]::text[],
+  action_items ARRAY DEFAULT ARRAY[]::text[],
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_notes_pkey PRIMARY KEY (id),
+  CONSTRAINT user_notes_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
 CREATE TABLE public.user_nutrition_preferences (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL UNIQUE,
@@ -1382,6 +1435,14 @@ CREATE TABLE public.user_onboarding (
   city text,
   location_permission boolean DEFAULT false,
   facility_access ARRAY DEFAULT ARRAY[]::text[],
+  daily_calorie_target integer,
+  daily_protein_target_g integer,
+  daily_carbs_target_g integer,
+  daily_fat_target_g integer,
+  goal_weight_kg numeric,
+  goal_body_fat_pct numeric,
+  estimated_tdee integer,
+  goal_type text CHECK (goal_type = ANY (ARRAY['cut'::text, 'bulk'::text, 'maintain'::text, 'recomp'::text])),
   CONSTRAINT user_onboarding_pkey PRIMARY KEY (id),
   CONSTRAINT user_onboarding_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
@@ -1546,6 +1607,13 @@ CREATE TABLE public.workout_completions (
   total_pause_duration_seconds integer DEFAULT 0,
   duration_minutes integer,
   embedding USER-DEFINED,
+  exercises jsonb DEFAULT '[]'::jsonb,
+  volume_load integer,
+  estimated_calories integer,
+  muscle_groups ARRAY DEFAULT ARRAY[]::text[],
+  progressive_overload_status text CHECK (progressive_overload_status = ANY (ARRAY['improving'::text, 'maintaining'::text, 'declining'::text])),
+  recovery_needed_hours integer,
+  tags ARRAY DEFAULT ARRAY[]::text[],
   CONSTRAINT workout_completions_pkey PRIMARY KEY (id),
   CONSTRAINT workout_completions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
   CONSTRAINT workout_completions_user_workout_id_fkey FOREIGN KEY (user_workout_id) REFERENCES public.user_workouts(id),
@@ -1604,7 +1672,7 @@ CREATE TABLE public.workout_templates (
 CREATE TABLE public.workout_workout_tags (
   workout_id integer NOT NULL,
   tag_id integer NOT NULL,
-  CONSTRAINT workout_workout_tags_pkey PRIMARY KEY (tag_id, workout_id),
+  CONSTRAINT workout_workout_tags_pkey PRIMARY KEY (workout_id, tag_id),
   CONSTRAINT workout_workout_tags_workout_id_fkey FOREIGN KEY (workout_id) REFERENCES public.workouts(id),
   CONSTRAINT workout_workout_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.workout_tags(id)
 );

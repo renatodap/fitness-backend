@@ -1,298 +1,549 @@
 """
-Coach API Endpoints
+Unified Coach API Endpoints
 
-API routes for AI coach interactions (Trainer and Nutritionist).
+Single "Coach" interface that replaces AI Chat + Quick Entry.
+- Auto-detects logs (meals, workouts, measurements) and shows preview
+- Handles questions/comments with RAG-powered responses
+- ChatGPT-like conversation interface
+- Vectorizes ALL messages for future RAG
+
+Cost: $0.16/user/month
+- Classification: Groq Llama 3.3 70B ($0.01/month)
+- Chat responses: Claude 3.5 Sonnet ($0.30/month)
+- Embeddings: FREE (sentence-transformers)
 """
 
 import logging
 from typing import Optional
+from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi.responses import StreamingResponse
 
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, Field
-
-from app.services.coach_service import get_coach_service
+from app.api.v1.schemas.unified_coach_schemas import (
+    UnifiedMessageRequest,
+    UnifiedMessageResponse,
+    ConfirmLogRequest,
+    ConfirmLogResponse,
+    ConversationListResponse,
+    ConversationSummary,
+    MessageListResponse,
+    MessageSummary,
+    MessageRole,
+    MessageType,
+)
+from app.services.unified_coach_service import get_unified_coach_service
+from app.services.supabase_service import get_service_client
 from app.api.v1.dependencies import get_current_user
-from app.api.middleware.rate_limit import coach_chat_rate_limit
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-# Request/Response Models
-from app.api.v1.schemas.coach_schemas import ChatRequest, ChatResponse, ContextInfo
+# =====================================================
+# ENDPOINT 1: Send Message (Chat or Log)
+# =====================================================
 
-# Legacy models for backwards compatibility
-class ChatMessageRequest(BaseModel):
-    """Request to send message to coach."""
-    coach_type: str = Field(..., description="Coach type: 'trainer', 'nutritionist', or 'coach' (unified)")
-    message: str = Field(..., description="User's message to the coach")
-    conversation_id: Optional[str] = Field(None, description="Optional conversation ID")
-    model: str = Field(default="gpt-4o-mini", description="OpenAI model to use")
+@router.post(
+    "/message",
+    response_model=UnifiedMessageResponse,
+    summary="Send message to Coach (auto-detects chat vs log)",
+    description="""
+    Send any message to the unified Coach interface.
 
+    The AI automatically detects if your message is:
+    - **Chat**: Question, comment, general conversation → Get AI response with RAG context
+    - **Log**: Meal, workout, measurement → Get log preview for confirmation
 
-class ChatMessageResponse(BaseModel):
-    """Response from coach chat."""
-    coach_type: str
-    coach_name: str
-    message: str
-    timestamp: str
-    model_used: str
-    tokens_used: int
+    **Examples:**
+    - "What should I eat for breakfast?" → Chat response
+    - "I just ate 3 eggs and oatmeal" → Log preview (meal)
+    - "Did 10 pushups" → Log preview (workout)
+    - "Weight is 175 lbs" → Log preview (measurement)
 
+    **Cost per message:**
+    - Classification: $0.00005 (Groq)
+    - Chat response: $0.015 (Claude + RAG)
+    - Embedding: FREE
 
-class RecommendationsRequest(BaseModel):
-    """Request to generate weekly recommendations."""
-    coach_type: str = Field(..., description="Coach type: 'trainer' or 'nutritionist'")
-
-
-class UpdateRecommendationRequest(BaseModel):
-    """Request to update recommendation status."""
-    status: str = Field(..., description="Status: 'accepted', 'rejected', or 'completed'")
-    feedback_text: Optional[str] = Field(None, description="Optional feedback text")
-
-
-# Endpoints
-
-@router.post("/chat")
-@coach_chat_rate_limit()
-async def chat_with_coach(
-    request: ChatRequest,
+    **Rate limit:** 100 messages per day
+    """,
+    tags=["coach"]
+)
+async def send_message(
+    request: UnifiedMessageRequest,
     current_user: str = Depends(get_current_user)
 ):
     """
-    Chat with AI coach (Unified Coach, Trainer, or Nutritionist) - INCREMENT 1.
+    Main unified Coach endpoint - handles both chat and log detection.
 
-    Sends a message to the specified coach and receives a personalized response
-    based on user's history, goals, and current context.
+    FLOW:
+    1. Classify message type (Groq Llama 3.3 70B)
+    2. If LOG with high confidence:
+       - Return log preview for user confirmation
+    3. If CHAT:
+       - Build RAG context from ALL embeddings
+       - Generate Claude response
+       - Vectorize both user message and AI response
+    4. Save all messages to database
     """
     try:
-        # Validate coach_type and message
-        if request.coach_type not in ['trainer', 'nutritionist', 'coach']:
-            raise HTTPException(status_code=400, detail="Invalid coach_type. Must be 'trainer', 'nutritionist', or 'coach'")
-
-        if not request.message or len(request.message.strip()) == 0:
-            raise HTTPException(status_code=400, detail="Message cannot be empty")
-
-        if len(request.message) > 1000:
-            raise HTTPException(status_code=400, detail="Message too long (max 1000 characters)")
-
-        # Extract user_id from current_user
         user_id = current_user
 
-        coach_service = get_coach_service()
+        # Get unified coach service
+        coach_service = get_unified_coach_service()
 
-        # Use INCREMENT 1 compatible method
-        response_dict = await coach_service.generate_response(
+        # Process message (auto-routing to chat or log mode)
+        response = await coach_service.process_message(
             user_id=user_id,
             message=request.message,
-            coach_type=request.coach_type,
-            conversation_id=request.conversation_id
+            conversation_id=request.conversation_id,
+            has_image=request.has_image,
+            has_audio=request.has_audio,
+            image_urls=request.image_urls
         )
 
-        # Return ChatResponse format
-        return {
-            "success": response_dict.get("success", True),
-            "conversation_id": response_dict.get("conversation_id", ""),
-            "message": response_dict.get("message", ""),
-            "context_used": response_dict.get("context_used"),
-            "error": response_dict.get("error")
-        }
-
-    except HTTPException:
-        raise
-    except ValueError as e:
-        logger.error(f"Validation error in chat_with_coach: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error in chat_with_coach: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get coach response")
-
-
-@router.post("/recommendations/generate")
-async def generate_recommendations(
-    request: RecommendationsRequest,
-    user_id: str = Depends(get_current_user)
-):
-    """
-    Generate weekly recommendations from coach.
-
-    Analyzes user's recent data and generates 3-5 actionable recommendations
-    for the upcoming week.
-    """
-    try:
-        coach_service = get_coach_service()
-
-        recommendations = await coach_service.create_weekly_recommendations(
-            user_id=user_id,
-            coach_type=request.coach_type
-        )
-
-        return {
-            "success": True,
-            "recommendations": recommendations,
-            "count": len(recommendations)
-        }
+        return response
 
     except ValueError as e:
-        logger.error(f"Validation error in generate_recommendations: {e}")
+        logger.error(f"Validation error in send_message: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error in generate_recommendations: {e}")
-        raise HTTPException(status_code=500, detail="Failed to generate recommendations")
-
-
-@router.get("/recommendations")
-async def get_recommendations(
-    coach_type: Optional[str] = None,
-    user_id: str = Depends(get_current_user)
-):
-    """
-    Get active recommendations for user.
-
-    Optionally filter by coach type ('trainer' or 'nutritionist').
-    Returns recommendations ordered by priority.
-    """
-    try:
-        coach_service = get_coach_service()
-
-        recommendations = await coach_service.get_active_recommendations(
-            user_id=user_id,
-            coach_type=coach_type
+        logger.error(f"Error in send_message: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to process message. Please try again."
         )
 
-        return {
-            "success": True,
-            "recommendations": recommendations,
-            "count": len(recommendations)
-        }
 
-    except Exception as e:
-        logger.error(f"Error in get_recommendations: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get recommendations")
+# =====================================================
+# ENDPOINT 2: Confirm Detected Log
+# =====================================================
 
+@router.post(
+    "/confirm-log",
+    response_model=ConfirmLogResponse,
+    summary="Confirm a detected log",
+    description="""
+    After receiving a log preview, user confirms to save it.
 
-@router.patch("/recommendations/{recommendation_id}")
-async def update_recommendation(
-    recommendation_id: str,
-    request: UpdateRecommendationRequest,
-    user_id: str = Depends(get_current_user)
+    This endpoint:
+    1. Saves structured log to appropriate table (meal_logs, activities, body_measurements)
+    2. Creates quick_entry_logs record for audit trail
+    3. Adds success message to conversation
+    4. Returns log ID and success message
+
+    **Example:**
+    ```json
+    {
+      "conversation_id": "123e4567...",
+      "log_type": "meal",
+      "log_data": {
+        "meal_type": "breakfast",
+        "calories": 450,
+        "protein": 35,
+        ...
+      }
+    }
+    ```
+    """,
+    tags=["coach"]
+)
+async def confirm_log(
+    request: ConfirmLogRequest,
+    current_user: str = Depends(get_current_user)
 ):
     """
-    Update recommendation status.
+    Confirm and save a detected log.
 
-    Allows user to accept, reject, or mark as completed a recommendation.
-    Optionally provide feedback text.
+    FLOW:
+    1. Validate conversation belongs to user
+    2. Save structured log to database
+    3. Update quick_entry_logs with linked IDs
+    4. Add success message to conversation
+    5. Return success response
     """
     try:
-        coach_service = get_coach_service()
+        user_id = current_user
 
-        updated_recommendation = await coach_service.update_recommendation_status(
-            recommendation_id=recommendation_id,
+        # Get unified coach service
+        coach_service = get_unified_coach_service()
+
+        # Confirm and save log
+        response = await coach_service.confirm_log(
             user_id=user_id,
-            status=request.status,
-            feedback_text=request.feedback_text
+            conversation_id=request.conversation_id,
+            log_data=request.log_data,
+            log_type=request.log_type.value,
+            user_message_id=request.user_message_id
         )
 
-        return {
-            "success": True,
-            "recommendation": updated_recommendation
-        }
+        return response
 
+    except ValueError as e:
+        logger.error(f"Validation error in confirm_log: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error in update_recommendation: {e}")
-        raise HTTPException(status_code=500, detail="Failed to update recommendation")
+        logger.error(f"Error in confirm_log: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save log. Please try again."
+        )
 
 
-@router.get("/personas")
-async def get_coach_personas(
-    _: str = Depends(get_current_user)  # Just require authentication
+# =====================================================
+# ENDPOINT 3: Get Conversation List
+# =====================================================
+
+@router.get(
+    "/conversations",
+    response_model=ConversationListResponse,
+    summary="Get conversation history list",
+    description="""
+    Get list of all conversations (ChatGPT-like history sidebar).
+
+    Returns conversations ordered by most recent first.
+    Supports pagination with offset/limit.
+
+    **Features:**
+    - Auto-generated titles from first message
+    - Last message preview (truncated)
+    - Message count
+    - Archive support
+
+    **Example response:**
+    ```json
+    {
+      "success": true,
+      "conversations": [
+        {
+          "id": "123e4567...",
+          "title": "Breakfast nutrition advice",
+          "message_count": 12,
+          "last_message_at": "2025-10-06T10:30:00Z",
+          "last_message_preview": "Great! That breakfast has..."
+        }
+      ],
+      "total_count": 25,
+      "has_more": true
+    }
+    ```
+    """,
+    tags=["coach"]
+)
+async def get_conversations(
+    current_user: str = Depends(get_current_user),
+    limit: int = Query(50, ge=1, le=100, description="Number of conversations to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    include_archived: bool = Query(False, description="Include archived conversations")
 ):
     """
-    Get all available coach personas.
+    Get list of user's conversations.
 
-    Returns information about the Trainer and Nutritionist personas.
+    FLOW:
+    1. Query coach_conversations table
+    2. Filter by user_id and archived status
+    3. Order by last_message_at DESC
+    4. Apply pagination (limit/offset)
+    5. Get last message preview for each conversation
+    6. Return conversation list
     """
-    from app.services.supabase_service import get_service_client
-
     try:
+        user_id = current_user
         supabase = get_service_client()
 
-        response = (
-            supabase.table("coach_personas")
-            .select("id, name, display_name, specialty")
-            .execute()
+        # Build query
+        query = (
+            supabase.table("coach_conversations")
+            .select("id, title, message_count, last_message_at, created_at, archived")
+            .eq("user_id", user_id)
         )
 
-        return {
-            "success": True,
-            "personas": response.data if response.data else []
-        }
+        # Filter archived
+        if not include_archived:
+            query = query.eq("archived", False)
+
+        # Order and paginate
+        query = query.order("last_message_at", desc=True).range(offset, offset + limit - 1)
+
+        response = query.execute()
+
+        if not response.data:
+            return ConversationListResponse(
+                success=True,
+                conversations=[],
+                total_count=0,
+                has_more=False
+            )
+
+        # Get last message preview for each conversation
+        conversations = []
+        for conv in response.data:
+            # Get last message for preview
+            last_msg_response = (
+                supabase.table("coach_messages")
+                .select("content")
+                .eq("conversation_id", conv["id"])
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+
+            last_message_preview = None
+            if last_msg_response.data:
+                content = last_msg_response.data[0]["content"]
+                last_message_preview = content[:100] if len(content) > 100 else content
+
+            conversations.append(
+                ConversationSummary(
+                    id=conv["id"],
+                    title=conv.get("title"),
+                    message_count=conv.get("message_count", 0),
+                    last_message_at=conv["last_message_at"],
+                    created_at=conv["created_at"],
+                    archived=conv.get("archived", False),
+                    last_message_preview=last_message_preview
+                )
+            )
+
+        # Check if there are more conversations
+        total_count_response = (
+            supabase.table("coach_conversations")
+            .select("id", count="exact")
+            .eq("user_id", user_id)
+        )
+        if not include_archived:
+            total_count_response = total_count_response.eq("archived", False)
+
+        total_count_result = total_count_response.execute()
+        total_count = total_count_result.count if total_count_result.count else 0
+
+        has_more = (offset + limit) < total_count
+
+        return ConversationListResponse(
+            success=True,
+            conversations=conversations,
+            total_count=total_count,
+            has_more=has_more
+        )
 
     except Exception as e:
-        logger.error(f"Error in get_coach_personas: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get coach personas")
+        logger.error(f"Error in get_conversations: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve conversations. Please try again."
+        )
 
 
-@router.get("/conversations/{coach_type}")
-async def get_conversation_history(
-    coach_type: str,
-    limit: int = 50,
-    user_id: str = Depends(get_current_user)
+# =====================================================
+# ENDPOINT 4: Get Messages in Conversation
+# =====================================================
+
+@router.get(
+    "/conversations/{conversation_id}/messages",
+    response_model=MessageListResponse,
+    summary="Get messages in a conversation",
+    description="""
+    Get all messages in a specific conversation (for ChatGPT-like interface).
+
+    Returns messages ordered chronologically (oldest first).
+    Supports pagination with offset/limit for infinite scroll.
+
+    **Message types:**
+    - `user`: User's messages
+    - `assistant`: AI Coach's responses
+    - `system`: System messages (e.g., "✅ Meal logged!")
+
+    **Example response:**
+    ```json
+    {
+      "success": true,
+      "conversation_id": "123e4567...",
+      "messages": [
+        {
+          "id": "456e7890...",
+          "role": "user",
+          "content": "What should I eat for breakfast?",
+          "message_type": "chat",
+          "created_at": "2025-10-06T08:00:00Z"
+        },
+        {
+          "id": "789e0123...",
+          "role": "assistant",
+          "content": "Based on your goals, I recommend...",
+          "message_type": "chat",
+          "created_at": "2025-10-06T08:00:05Z"
+        }
+      ],
+      "total_count": 12,
+      "has_more": false
+    }
+    ```
+    """,
+    tags=["coach"]
+)
+async def get_conversation_messages(
+    conversation_id: str,
+    current_user: str = Depends(get_current_user),
+    limit: int = Query(50, ge=1, le=100, description="Number of messages to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination")
 ):
     """
-    Get conversation history with specific coach.
+    Get messages in a conversation.
 
-    Returns the most recent messages from the conversation.
+    FLOW:
+    1. Verify conversation belongs to user
+    2. Query coach_messages table
+    3. Filter by conversation_id
+    4. Order by created_at ASC (chronological)
+    5. Apply pagination (limit/offset)
+    6. Return message list
     """
-    from app.services.supabase_service import get_service_client
-
     try:
+        user_id = current_user
         supabase = get_service_client()
 
-        # Get coach persona
-        persona_response = (
-            supabase.table("coach_personas")
+        # Verify conversation belongs to user
+        conv_response = (
+            supabase.table("coach_conversations")
             .select("id")
-            .eq("name", coach_type)
+            .eq("id", conversation_id)
+            .eq("user_id", user_id)
             .single()
             .execute()
         )
 
-        if not persona_response.data:
-            raise HTTPException(status_code=404, detail="Coach persona not found")
+        if not conv_response.data:
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation not found or access denied"
+            )
 
-        persona_id = persona_response.data["id"]
-
-        # Get conversation
-        conv_response = (
-            supabase.table("coach_conversations")
-            .select("messages, last_message_at")
-            .eq("user_id", user_id)
-            .eq("coach_persona_id", persona_id)
-            .order("last_message_at", desc=True)
-            .limit(1)
+        # Get messages
+        messages_response = (
+            supabase.table("coach_messages")
+            .select("id, role, content, message_type, quick_entry_log_id, is_vectorized, created_at")
+            .eq("conversation_id", conversation_id)
+            .order("created_at", desc=False)  # Chronological order
+            .range(offset, offset + limit - 1)
             .execute()
         )
 
-        if not conv_response.data:
-            return {
-                "success": True,
-                "messages": [],
-                "count": 0
-            }
+        if not messages_response.data:
+            return MessageListResponse(
+                success=True,
+                conversation_id=conversation_id,
+                messages=[],
+                total_count=0,
+                has_more=False
+            )
 
-        messages = conv_response.data[0].get("messages", [])
-        recent_messages = messages[-limit:] if messages else []
+        # Convert to MessageSummary objects
+        messages = [
+            MessageSummary(
+                id=msg["id"],
+                role=MessageRole(msg["role"]),
+                content=msg["content"],
+                message_type=MessageType(msg["message_type"]),
+                quick_entry_log_id=msg.get("quick_entry_log_id"),
+                is_vectorized=msg.get("is_vectorized", False),
+                created_at=msg["created_at"]
+            )
+            for msg in messages_response.data
+        ]
 
-        return {
-            "success": True,
-            "messages": recent_messages,
-            "count": len(recent_messages),
-            "last_message_at": conv_response.data[0].get("last_message_at")
-        }
+        # Get total count
+        count_response = (
+            supabase.table("coach_messages")
+            .select("id", count="exact")
+            .eq("conversation_id", conversation_id)
+            .execute()
+        )
+
+        total_count = count_response.count if count_response.count else 0
+        has_more = (offset + limit) < total_count
+
+        return MessageListResponse(
+            success=True,
+            conversation_id=conversation_id,
+            messages=messages,
+            total_count=total_count,
+            has_more=has_more
+        )
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error in get_conversation_history: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get conversation history")
+        logger.error(f"Error in get_conversation_messages: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve messages. Please try again."
+        )
+
+
+# =====================================================
+# ENDPOINT 5: Archive Conversation
+# =====================================================
+
+@router.patch(
+    "/conversations/{conversation_id}/archive",
+    summary="Archive a conversation",
+    description="Archive a conversation to hide it from main list (still searchable via RAG)",
+    tags=["coach"]
+)
+async def archive_conversation(
+    conversation_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Archive a conversation."""
+    try:
+        user_id = current_user
+        supabase = get_service_client()
+
+        # Verify ownership and update
+        response = (
+            supabase.table("coach_conversations")
+            .update({"archived": True, "updated_at": "now()"})
+            .eq("id", conversation_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+
+        if not response.data:
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation not found or access denied"
+            )
+
+        return {"success": True, "message": "Conversation archived"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in archive_conversation: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to archive conversation"
+        )
+
+
+# =====================================================
+# ENDPOINT 6: Health Check (For Testing)
+# =====================================================
+
+@router.get(
+    "/health",
+    summary="Health check for unified Coach API",
+    tags=["coach"]
+)
+async def health_check():
+    """Simple health check endpoint."""
+    return {
+        "status": "healthy",
+        "service": "unified_coach_api",
+        "version": "1.0.0",
+        "features": [
+            "auto_log_detection",
+            "rag_powered_chat",
+            "message_vectorization",
+            "conversation_history"
+        ]
+    }
