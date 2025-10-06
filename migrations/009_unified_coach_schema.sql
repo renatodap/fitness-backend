@@ -230,7 +230,7 @@ RETURNS TABLE (
     source_type TEXT,
     content TEXT,
     similarity FLOAT,
-    timestamp TIMESTAMPTZ
+    created_timestamp TIMESTAMPTZ
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -243,7 +243,7 @@ BEGIN
         'coach_message'::TEXT AS source_type,
         e.content_text AS content,
         1 - (e.embedding <=> query_embedding) AS similarity,
-        e.created_at AS timestamp
+        e.created_at AS created_timestamp
     FROM public.coach_message_embeddings e
     WHERE
         e.user_id = user_id_filter
@@ -256,7 +256,7 @@ BEGIN
         'quick_entry'::TEXT AS source_type,
         e.content_text AS content,
         1 - (e.embedding <=> query_embedding) AS similarity,
-        e.created_at AS timestamp
+        e.created_at AS created_timestamp
     FROM public.quick_entry_embeddings e
     INNER JOIN public.quick_entry_logs l ON e.quick_entry_log_id = l.id
     WHERE
