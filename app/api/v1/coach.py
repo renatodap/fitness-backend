@@ -175,19 +175,21 @@ async def send_message(
     4. Save all messages to database
     """
     try:
-        user_id = current_user["id"]["id"]
+        user_id = current_user["id"]  # Fixed: was current_user["id"]["id"]
 
         # Get unified coach service
         coach_service = get_unified_coach_service()
 
         # Process message (auto-routing to chat or log mode)
+        # Note: For now, we don't support images/audio in this endpoint
+        # Those come through Quick Entry instead
         response = await coach_service.process_message(
             user_id=user_id,
             message=request.message,
             conversation_id=request.conversation_id,
-            has_image=request.has_image,
-            has_audio=request.has_audio,
-            image_urls=request.image_urls
+            image_base64=None,  # TODO: Support image uploads
+            audio_base64=None,  # TODO: Support audio uploads
+            metadata=None
         )
 
         return response
