@@ -39,6 +39,95 @@ router = APIRouter()
 
 
 # =====================================================
+# HEALTH CHECK / DEBUG ENDPOINT
+# =====================================================
+
+@router.get(
+    "/health",
+    summary="Coach service health check",
+    tags=["coach"]
+)
+async def coach_health():
+    """
+    Test if Coach service can initialize.
+    Returns detailed info about which services work/fail.
+    """
+    health_status = {
+        "status": "unknown",
+        "services": {},
+        "errors": []
+    }
+
+    try:
+        # Test Supabase
+        try:
+            from app.services.supabase_service import get_service_client
+            supabase = get_service_client()
+            health_status["services"]["supabase"] = "ok"
+        except Exception as e:
+            health_status["services"]["supabase"] = f"failed: {str(e)}"
+            health_status["errors"].append(f"Supabase: {str(e)}")
+
+        # Test Message Classifier
+        try:
+            from app.services.message_classifier_service import get_message_classifier
+            classifier = get_message_classifier()
+            health_status["services"]["message_classifier"] = "ok"
+        except Exception as e:
+            health_status["services"]["message_classifier"] = f"failed: {str(e)}"
+            health_status["errors"].append(f"MessageClassifier: {str(e)}")
+
+        # Test Quick Entry Service
+        try:
+            from app.services.quick_entry_service import get_quick_entry_service
+            quick_entry = get_quick_entry_service()
+            health_status["services"]["quick_entry"] = "ok"
+        except Exception as e:
+            health_status["services"]["quick_entry"] = f"failed: {str(e)}"
+            health_status["errors"].append(f"QuickEntry: {str(e)}")
+
+        # Test Multimodal Service
+        try:
+            from app.services.multimodal_embedding_service import get_multimodal_service
+            multimodal = get_multimodal_service()
+            health_status["services"]["multimodal_embedding"] = "ok"
+        except Exception as e:
+            health_status["services"]["multimodal_embedding"] = f"failed: {str(e)}"
+            health_status["errors"].append(f"MultimodalEmbedding: {str(e)}")
+
+        # Test Anthropic
+        try:
+            from app.config import get_settings
+            from anthropic import AsyncAnthropic
+            settings = get_settings()
+            anthropic = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+            health_status["services"]["anthropic"] = "ok"
+        except Exception as e:
+            health_status["services"]["anthropic"] = f"failed: {str(e)}"
+            health_status["errors"].append(f"Anthropic: {str(e)}")
+
+        # Test full UnifiedCoachService
+        try:
+            coach_service = get_unified_coach_service()
+            health_status["services"]["unified_coach"] = "ok"
+            health_status["status"] = "healthy"
+        except Exception as e:
+            health_status["services"]["unified_coach"] = f"failed: {str(e)}"
+            health_status["errors"].append(f"UnifiedCoach: {str(e)}")
+            health_status["status"] = "degraded"
+
+        if not health_status["errors"]:
+            health_status["status"] = "healthy"
+
+        return health_status
+
+    except Exception as e:
+        health_status["status"] = "unhealthy"
+        health_status["errors"].append(f"Critical: {str(e)}")
+        return health_status
+
+
+# =====================================================
 # ENDPOINT 1: Send Message (Chat or Log)
 # =====================================================
 
