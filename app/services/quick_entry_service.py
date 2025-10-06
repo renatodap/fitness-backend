@@ -838,8 +838,10 @@ Return JSON classification and data extraction."""
                 return {"success": True, "entry_id": result.data[0]["id"]}
 
             elif entry_type == "workout":
-                # Calculate volume load and muscle groups
+                # NEW SCHEMA: Save to activities + activity_exercises + activity_sets
                 exercises = data.get("exercises", [])
+
+                # Calculate volume load and muscle groups
                 volume_load = 0
                 muscle_groups = set()
 
@@ -862,36 +864,66 @@ Return JSON classification and data extraction."""
                     if any(word in exercise_name for word in ["curl", "bicep", "arm"]):
                         muscle_groups.add("arms")
 
-                # Add calculated fields to data for enrichment
-                data['volume_load'] = volume_load
-                data['muscle_groups'] = list(muscle_groups)
-
-                # Enrich workout data with progressive overload detection
-                enrichment = self.enrichment_service.enrich_workout(user_id, data)
-
-                workout_data = {
+                # 1. Create activity record
+                duration_min = data.get("duration_minutes", 0)
+                activity_data = {
                     "user_id": user_id,
-                    "duration_minutes": data.get("duration_minutes"),
-                    "notes": data.get("notes", f"Workout: {data.get('workout_name', 'Quick Workout')}"),
+                    "source": "workout_log",  # NEW: workout_log source type
+                    "activity_type": "strength",  # Workouts are strength training
+                    "name": data.get("workout_name", "Quick Workout"),
+                    "activity_name": data.get("workout_name", "Quick Workout"),
+                    "start_date": datetime.utcnow().isoformat(),
+                    "end_date": datetime.utcnow().isoformat(),
+                    "elapsed_time_seconds": int(duration_min * 60) if duration_min else 0,
+                    "duration_minutes": duration_min,
                     "rpe": data.get("rpe") or data.get("perceived_exertion"),
-                    "mood": data.get("mood"),
-                    "energy_level": data.get("energy_level"),
-                    "workout_rating": data.get("workout_rating"),
-                    "difficulty_rating": data.get("difficulty_rating"),
-                    # NEW: Quick entry fields from migration + enrichment
-                    "exercises": exercises,  # JSONB array
-                    "volume_load": volume_load if volume_load > 0 else None,
-                    "estimated_calories": data.get("estimated_calories"),
-                    "muscle_groups": list(muscle_groups),
-                    "progressive_overload_status": enrichment.get("progressive_overload_status"),
-                    "recovery_needed_hours": enrichment.get("recovery_needed_hours"),
-                    "tags": enrichment.get("tags", []),
-                    "started_at": datetime.utcnow().isoformat(),
-                    "completed_at": datetime.utcnow().isoformat()
+                    "notes": data.get("notes", original_text[:500]),
+                    "calories": data.get("estimated_calories"),
+                    "completed": True
                 }
 
-                result = self.supabase.table("workout_completions").insert(workout_data).execute()
-                return {"success": True, "entry_id": result.data[0]["id"]}
+                activity_result = self.supabase.table("activities").insert(activity_data).execute()
+                activity_id = activity_result.data[0]["id"]
+
+                # 2. Create activity_exercises and activity_sets for each exercise
+                for idx, exercise in enumerate(exercises):
+                    exercise_name = exercise.get("name", "Unknown Exercise")
+
+                    # Find or create exercise in exercises table
+                    exercise_id = await self._get_or_create_exercise_id(exercise_name)
+
+                    # Create activity_exercise record
+                    activity_exercise_data = {
+                        "activity_id": activity_id,
+                        "exercise_id": exercise_id,
+                        "order_index": idx + 1,
+                        "notes": exercise.get("note", None)
+                    }
+
+                    activity_exercise_result = self.supabase.table("activity_exercises").insert(activity_exercise_data).execute()
+                    activity_exercise_id = activity_exercise_result.data[0]["id"]
+
+                    # Create activity_sets for this exercise
+                    num_sets = exercise.get("sets", 3)
+                    reps = exercise.get("reps", 10) if isinstance(exercise.get("reps"), int) else 10
+                    weight_lbs = exercise.get("weight_lbs", 0)
+
+                    for set_num in range(1, num_sets + 1):
+                        activity_set_data = {
+                            "activity_exercise_id": activity_exercise_id,
+                            "set_number": set_num,
+                            "reps_completed": reps,
+                            "weight_lbs": weight_lbs,
+                            "weight_kg": round(weight_lbs * 0.453592, 2) if weight_lbs else None,
+                            "rpe": data.get("rpe"),
+                            "completed": True
+                        }
+
+                        self.supabase.table("activity_sets").insert(activity_set_data).execute()
+
+                logger.info(f"✅ Saved workout to NEW schema: activity_id={activity_id}, {len(exercises)} exercises")
+
+                return {"success": True, "entry_id": activity_id}
 
             elif entry_type == "note":
                 # Enrich note with sentiment analysis
@@ -1135,6 +1167,42 @@ Return JSON classification and data extraction."""
 
         except Exception as e:
             logger.error(f"❌ Image vectorization failed: {e}")
+
+    async def _get_or_create_exercise_id(self, exercise_name: str) -> str:
+        """
+        Find or create exercise in exercises table.
+
+        Args:
+            exercise_name: Name of the exercise (e.g., "Bench Press")
+
+        Returns:
+            UUID of the exercise
+        """
+        try:
+            # Try to find existing exercise (case-insensitive)
+            result = self.supabase.table("exercises").select("id").ilike("name", exercise_name).limit(1).execute()
+
+            if result.data and len(result.data) > 0:
+                return result.data[0]["id"]
+
+            # Exercise doesn't exist - create it
+            logger.info(f"[QuickEntry] Creating new exercise: {exercise_name}")
+
+            # Simple exercise creation (you can enhance this with exercise library API later)
+            exercise_data = {
+                "name": exercise_name,
+                "description": f"Exercise: {exercise_name}",
+                "category": "strength",  # Default category
+                "created_at": datetime.utcnow().isoformat()
+            }
+
+            create_result = self.supabase.table("exercises").insert(exercise_data).execute()
+            return create_result.data[0]["id"]
+
+        except Exception as e:
+            logger.error(f"Failed to get/create exercise '{exercise_name}': {e}")
+            # Return a default UUID if exercise lookup/creation fails (non-critical)
+            return str(uuid.uuid4())
 
     async def _get_semantic_context(
         self,
