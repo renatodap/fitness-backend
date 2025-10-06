@@ -32,7 +32,7 @@ from app.api.v1.schemas.unified_coach_schemas import (
 )
 from app.services.unified_coach_service import get_unified_coach_service
 from app.services.supabase_service import get_service_client
-from app.api.v1.dependencies import get_current_user
+from app.services.auth_service import get_current_user  # Use mock auth (same as quick_entry)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -70,7 +70,7 @@ router = APIRouter()
 )
 async def send_message(
     request: UnifiedMessageRequest,
-    current_user: str = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Main unified Coach endpoint - handles both chat and log detection.
@@ -86,7 +86,7 @@ async def send_message(
     4. Save all messages to database
     """
     try:
-        user_id = current_user
+        user_id = current_user["id"]["id"]
 
         # Get unified coach service
         coach_service = get_unified_coach_service()
@@ -149,7 +149,7 @@ async def send_message(
 )
 async def confirm_log(
     request: ConfirmLogRequest,
-    current_user: str = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Confirm and save a detected log.
@@ -162,7 +162,7 @@ async def confirm_log(
     5. Return success response
     """
     try:
-        user_id = current_user
+        user_id = current_user["id"]["id"]
 
         # Get unified coach service
         coach_service = get_unified_coach_service()
@@ -230,7 +230,7 @@ async def confirm_log(
     tags=["coach"]
 )
 async def get_conversations(
-    current_user: str = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     limit: int = Query(50, ge=1, le=100, description="Number of conversations to return"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     include_archived: bool = Query(False, description="Include archived conversations")
@@ -247,7 +247,7 @@ async def get_conversations(
     6. Return conversation list
     """
     try:
-        user_id = current_user
+        user_id = current_user["id"]
         supabase = get_service_client()
 
         # Build query
@@ -382,7 +382,7 @@ async def get_conversations(
 )
 async def get_conversation_messages(
     conversation_id: str,
-    current_user: str = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     limit: int = Query(50, ge=1, le=100, description="Number of messages to return"),
     offset: int = Query(0, ge=0, description="Offset for pagination")
 ):
@@ -398,7 +398,7 @@ async def get_conversation_messages(
     6. Return message list
     """
     try:
-        user_id = current_user
+        user_id = current_user["id"]
         supabase = get_service_client()
 
         # Verify conversation belongs to user
@@ -491,11 +491,11 @@ async def get_conversation_messages(
 )
 async def archive_conversation(
     conversation_id: str,
-    current_user: str = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Archive a conversation."""
     try:
-        user_id = current_user
+        user_id = current_user["id"]
         supabase = get_service_client()
 
         # Verify ownership and update
