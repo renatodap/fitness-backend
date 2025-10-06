@@ -174,31 +174,73 @@ async def send_message(
        - Vectorize both user message and AI response
     4. Save all messages to database
     """
+    logger.info(f"[COACH_ENDPOINT] Received message request")
+
     try:
-        user_id = current_user["id"]  # Fixed: was current_user["id"]["id"]
+        # STEP 1: Extract user ID with detailed logging
+        logger.info(f"[COACH_ENDPOINT] Current user data: {current_user}")
 
-        # Get unified coach service
-        coach_service = get_unified_coach_service()
+        if not current_user:
+            logger.error(f"[COACH_ENDPOINT] current_user is None")
+            raise HTTPException(status_code=401, detail="Authentication required")
 
-        # Process message (auto-routing to chat or log mode)
-        # Note: For now, we don't support images/audio in this endpoint
-        # Those come through Quick Entry instead
-        response = await coach_service.process_message(
-            user_id=user_id,
-            message=request.message,
-            conversation_id=request.conversation_id,
-            image_base64=None,  # TODO: Support image uploads
-            audio_base64=None,  # TODO: Support audio uploads
-            metadata=None
-        )
+        if "id" not in current_user:
+            logger.error(f"[COACH_ENDPOINT] current_user missing 'id' field. Keys: {current_user.keys()}")
+            raise HTTPException(status_code=401, detail="Invalid authentication token")
 
+        user_id = current_user["id"]
+        logger.info(f"[COACH_ENDPOINT] Extracted user_id: {user_id}")
+
+        # STEP 2: Validate request data
+        logger.info(f"[COACH_ENDPOINT] Request message: '{request.message[:100]}...' (length: {len(request.message)})")
+        logger.info(f"[COACH_ENDPOINT] Request conversation_id: {request.conversation_id}")
+
+        if not request.message or not request.message.strip():
+            logger.error(f"[COACH_ENDPOINT] Empty message received")
+            raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+        # STEP 3: Initialize coach service
+        logger.info(f"[COACH_ENDPOINT] Initializing unified coach service...")
+        try:
+            coach_service = get_unified_coach_service()
+            logger.info(f"[COACH_ENDPOINT] Coach service initialized successfully")
+        except Exception as svc_err:
+            logger.error(f"[COACH_ENDPOINT] Failed to initialize coach service: {svc_err}", exc_info=True)
+            raise HTTPException(
+                status_code=503,
+                detail="AI Coach service is temporarily unavailable. Please try again."
+            )
+
+        # STEP 4: Process message (auto-routing to chat or log mode)
+        logger.info(f"[COACH_ENDPOINT] Processing message for user {user_id}...")
+        try:
+            response = await coach_service.process_message(
+                user_id=user_id,
+                message=request.message,
+                conversation_id=request.conversation_id,
+                image_base64=None,  # TODO: Support image uploads
+                audio_base64=None,  # TODO: Support audio uploads
+                metadata=None
+            )
+            logger.info(f"[COACH_ENDPOINT] Message processed successfully. Mode: {response.get('mode')}")
+        except Exception as proc_err:
+            logger.error(f"[COACH_ENDPOINT] process_message failed: {proc_err}", exc_info=True)
+            raise
+
+        # STEP 5: Return response
+        logger.info(f"[COACH_ENDPOINT] Returning response to client")
         return response
 
+    except HTTPException:
+        # Re-raise HTTP exceptions (already logged)
+        raise
     except ValueError as e:
-        logger.error(f"Validation error in send_message: {e}")
+        logger.error(f"[COACH_ENDPOINT] Validation error: {e}", exc_info=True)
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error in send_message: {e}", exc_info=True)
+        logger.error(f"[COACH_ENDPOINT] CRITICAL UNHANDLED ERROR: {e}", exc_info=True)
+        logger.error(f"[COACH_ENDPOINT] Error type: {type(e).__name__}")
+        logger.error(f"[COACH_ENDPOINT] Error args: {e.args}")
         raise HTTPException(
             status_code=500,
             detail="Failed to process message. Please try again."

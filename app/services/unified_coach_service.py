@@ -75,73 +75,105 @@ class UnifiedCoachService:
                 "log_type": "meal" | "workout" | "measurement"
             }
         """
-        logger.info(f"[UnifiedCoach] Processing message for user {user_id}")
+        logger.info(f"[UnifiedCoach.process_message] START - user_id: {user_id}")
+        logger.info(f"[UnifiedCoach.process_message] Message length: {len(message)}, conversation_id: {conversation_id}")
 
-        # Create or reuse conversation
-        if not conversation_id:
-            # Create new conversation in database
-            conversation_id = await self._create_conversation(user_id)
-        else:
-            # Verify conversation exists
-            existing = self.supabase.table("coach_conversations")\
-                .select("id")\
-                .eq("id", conversation_id)\
-                .eq("user_id", user_id)\
-                .execute()
+        try:
+            # Create or reuse conversation
+            if not conversation_id:
+                # Create new conversation in database
+                logger.info(f"[UnifiedCoach.process_message] Creating new conversation for user {user_id}")
+                try:
+                    conversation_id = await self._create_conversation(user_id)
+                    logger.info(f"[UnifiedCoach.process_message] Created conversation: {conversation_id}")
+                except Exception as conv_err:
+                    logger.error(f"[UnifiedCoach.process_message] Failed to create conversation: {conv_err}", exc_info=True)
+                    raise
+            else:
+                # Verify conversation exists
+                logger.info(f"[UnifiedCoach.process_message] Verifying existing conversation: {conversation_id}")
+                try:
+                    existing = self.supabase.table("coach_conversations")\
+                        .select("id")\
+                        .eq("id", conversation_id)\
+                        .eq("user_id", user_id)\
+                        .execute()
 
-            if not existing.data:
-                # Conversation doesn't exist or doesn't belong to user
-                logger.warning(f"[UnifiedCoach] Conversation {conversation_id} not found, creating new one")
-                conversation_id = await self._create_conversation(user_id)
+                    if not existing.data:
+                        # Conversation doesn't exist or doesn't belong to user
+                        logger.warning(f"[UnifiedCoach.process_message] Conversation {conversation_id} not found, creating new one")
+                        conversation_id = await self._create_conversation(user_id)
+                    else:
+                        logger.info(f"[UnifiedCoach.process_message] Conversation verified: {conversation_id}")
+                except Exception as verify_err:
+                    logger.error(f"[UnifiedCoach.process_message] Failed to verify conversation: {verify_err}", exc_info=True)
+                    raise
 
-        # Save user message to database
-        user_message_id = await self._save_user_message(
-            user_id=user_id,
-            conversation_id=conversation_id,
-            content=message,
-            image_base64=image_base64,
-            audio_base64=audio_base64
-        )
+            # Save user message to database
+            logger.info(f"[UnifiedCoach.process_message] Saving user message to conversation {conversation_id}")
+            try:
+                user_message_id = await self._save_user_message(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    content=message,
+                    image_base64=image_base64,
+                    audio_base64=audio_base64
+                )
+                logger.info(f"[UnifiedCoach.process_message] User message saved: {user_message_id}")
+            except Exception as save_err:
+                logger.error(f"[UnifiedCoach.process_message] Failed to save user message: {save_err}", exc_info=True)
+                raise
 
-        # STEP 1: Classify message type
-        classification = await self.classifier.classify_message(
-            message=message,
-            has_image=image_base64 is not None,
-            has_audio=audio_base64 is not None
-        )
+            # STEP 1: Classify message type
+            logger.info(f"[UnifiedCoach.process_message] Classifying message...")
+            try:
+                classification = await self.classifier.classify_message(
+                    message=message,
+                    has_image=image_base64 is not None,
+                    has_audio=audio_base64 is not None
+                )
+                logger.info(f"[UnifiedCoach.process_message] Classification: is_log={classification['is_log']}, confidence={classification['confidence']}, log_type={classification.get('log_type')}")
+            except Exception as class_err:
+                logger.error(f"[UnifiedCoach.process_message] Classification failed: {class_err}", exc_info=True)
+                raise
 
-        logger.info(f"[UnifiedCoach] Classification: is_log={classification['is_log']}, confidence={classification['confidence']}")
+            # Check for manual override
+            if metadata and metadata.get('manual_type'):
+                logger.info(f"[UnifiedCoach.process_message] Manual override: {metadata['manual_type']}")
+                classification['is_log'] = True
+                classification['log_type'] = metadata['manual_type']
+                classification['confidence'] = 1.0
 
-        # Check for manual override
-        if metadata and metadata.get('manual_type'):
-            logger.info(f"[UnifiedCoach] Manual override: {metadata['manual_type']}")
-            classification['is_log'] = True
-            classification['log_type'] = metadata['manual_type']
-            classification['confidence'] = 1.0
+            # STEP 2: Route to appropriate handler
+            if classification['is_log'] and self.classifier.should_show_log_preview(classification):
+                # LOG MODE
+                logger.info(f"[UnifiedCoach.process_message] Routing to LOG MODE (type: {classification['log_type']})")
+                return await self._handle_log_mode(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    user_message_id=user_message_id,
+                    message=message,
+                    image_base64=image_base64,
+                    audio_base64=audio_base64,
+                    classification=classification,
+                    metadata=metadata
+                )
+            else:
+                # CHAT MODE
+                logger.info(f"[UnifiedCoach.process_message] Routing to CHAT MODE")
+                return await self._handle_chat_mode(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    user_message_id=user_message_id,
+                    message=message,
+                    image_base64=image_base64,
+                    classification=classification
+                )
 
-        # STEP 2: Route to appropriate handler
-        if classification['is_log'] and self.classifier.should_show_log_preview(classification):
-            # LOG MODE
-            return await self._handle_log_mode(
-                user_id=user_id,
-                conversation_id=conversation_id,
-                user_message_id=user_message_id,
-                message=message,
-                image_base64=image_base64,
-                audio_base64=audio_base64,
-                classification=classification,
-                metadata=metadata
-            )
-        else:
-            # CHAT MODE
-            return await self._handle_chat_mode(
-                user_id=user_id,
-                conversation_id=conversation_id,
-                user_message_id=user_message_id,
-                message=message,
-                image_base64=image_base64,
-                classification=classification
-            )
+        except Exception as e:
+            logger.error(f"[UnifiedCoach.process_message] CRITICAL ERROR: {e}", exc_info=True)
+            logger.error(f"[UnifiedCoach.process_message] Error type: {type(e).__name__}, args: {e.args}")
+            raise
 
     async def _handle_chat_mode(
         self,
@@ -162,12 +194,19 @@ class UnifiedCoachService:
         4. Vectorize both user message and AI response
         5. Return response
         """
-        logger.info(f"[UnifiedCoach] CHAT MODE for message: {user_message_id}")
+        logger.info(f"[UnifiedCoach._handle_chat_mode] START - user_message_id: {user_message_id}")
 
         try:
             # STEP 1: Build RAG context
-            logger.info(f"[UnifiedCoach] Building RAG context...")
-            rag_context = await self._build_rag_context(user_id, message)
+            logger.info(f"[UnifiedCoach._handle_chat_mode] Building RAG context for user {user_id}...")
+            try:
+                rag_context = await self._build_rag_context(user_id, message)
+                logger.info(f"[UnifiedCoach._handle_chat_mode] RAG context built: {len(rag_context)} chars")
+            except Exception as rag_err:
+                logger.error(f"[UnifiedCoach._handle_chat_mode] RAG context build failed: {rag_err}", exc_info=True)
+                # Use empty context if RAG fails (non-critical)
+                rag_context = "No previous user data available."
+                logger.warning(f"[UnifiedCoach._handle_chat_mode] Using empty RAG context due to error")
 
             # STEP 2: Generate AI response (Claude with streaming)
             system_prompt = f"""You are Wagner Coach, an expert AI fitness and nutrition coach.
@@ -180,49 +219,72 @@ Be encouraging, specific, and knowledgeable.
 Keep responses concise but helpful (2-4 paragraphs max).
 If you reference their data, be specific (e.g., "Based on your meal from Tuesday...")."""
 
+            logger.info(f"[UnifiedCoach._handle_chat_mode] Calling Claude API...")
+            logger.info(f"[UnifiedCoach._handle_chat_mode] System prompt length: {len(system_prompt)}")
+            logger.info(f"[UnifiedCoach._handle_chat_mode] User message length: {len(message)}")
+
             # Create message for Claude
             ai_response_text = ""
             response_chunks = []
+            tokens_used = 0
+            cost_usd = 0.0
 
-            # Use Claude streaming
-            async with self.anthropic.messages.stream(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=1000,
-                temperature=0.7,
-                system=system_prompt,
-                messages=[
-                    {"role": "user", "content": message}
-                ]
-            ) as stream:
-                async for text in stream.text_stream:
-                    ai_response_text += text
-                    response_chunks.append(text)
+            try:
+                # Use Claude streaming
+                async with self.anthropic.messages.stream(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=1000,
+                    temperature=0.7,
+                    system=system_prompt,
+                    messages=[
+                        {"role": "user", "content": message}
+                    ]
+                ) as stream:
+                    logger.info(f"[UnifiedCoach._handle_chat_mode] Claude stream started")
+                    async for text in stream.text_stream:
+                        ai_response_text += text
+                        response_chunks.append(text)
+                    logger.info(f"[UnifiedCoach._handle_chat_mode] Claude stream completed")
 
-            # Get usage stats
-            usage = await stream.get_final_message()
-            tokens_used = usage.usage.input_tokens + usage.usage.output_tokens
-            cost_usd = self._calculate_claude_cost(usage.usage.input_tokens, usage.usage.output_tokens)
+                # Get usage stats
+                logger.info(f"[UnifiedCoach._handle_chat_mode] Getting usage stats...")
+                usage = await stream.get_final_message()
+                tokens_used = usage.usage.input_tokens + usage.usage.output_tokens
+                cost_usd = self._calculate_claude_cost(usage.usage.input_tokens, usage.usage.output_tokens)
 
-            logger.info(f"[UnifiedCoach] AI response generated: {len(ai_response_text)} chars, {tokens_used} tokens, ${cost_usd:.6f}")
+                logger.info(f"[UnifiedCoach._handle_chat_mode] AI response generated: {len(ai_response_text)} chars, {tokens_used} tokens, ${cost_usd:.6f}")
+            except Exception as claude_err:
+                logger.error(f"[UnifiedCoach._handle_chat_mode] Claude API call failed: {claude_err}", exc_info=True)
+                logger.error(f"[UnifiedCoach._handle_chat_mode] Claude error type: {type(claude_err).__name__}")
+                raise
 
             # STEP 3: Save AI response to database
-            ai_message_id = await self._save_ai_message(
-                user_id=user_id,
-                conversation_id=conversation_id,
-                content=ai_response_text,
-                tokens_used=tokens_used,
-                cost_usd=cost_usd,
-                context_used={"rag_sources": "quick_entry_embeddings"}
-            )
+            logger.info(f"[UnifiedCoach._handle_chat_mode] Saving AI response to database...")
+            try:
+                ai_message_id = await self._save_ai_message(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    content=ai_response_text,
+                    tokens_used=tokens_used,
+                    cost_usd=cost_usd,
+                    context_used={"rag_sources": "quick_entry_embeddings"}
+                )
+                logger.info(f"[UnifiedCoach._handle_chat_mode] AI message saved: {ai_message_id}")
+            except Exception as save_err:
+                logger.error(f"[UnifiedCoach._handle_chat_mode] Failed to save AI message: {save_err}", exc_info=True)
+                raise
 
             # STEP 4: Vectorize both messages (async, non-blocking)
+            logger.info(f"[UnifiedCoach._handle_chat_mode] Vectorizing messages...")
             try:
                 await self._vectorize_message(user_id, user_message_id, message, "user")
                 await self._vectorize_message(user_id, ai_message_id, ai_response_text, "assistant")
-            except Exception as e:
-                logger.error(f"[UnifiedCoach] Vectorization failed (non-critical): {e}")
+                logger.info(f"[UnifiedCoach._handle_chat_mode] Messages vectorized successfully")
+            except Exception as vec_err:
+                logger.error(f"[UnifiedCoach._handle_chat_mode] Vectorization failed (non-critical): {vec_err}")
 
             # STEP 5: Return response
+            logger.info(f"[UnifiedCoach._handle_chat_mode] Returning chat response")
             return {
                 "mode": "chat",
                 "conversation_id": conversation_id,
@@ -234,7 +296,8 @@ If you reference their data, be specific (e.g., "Based on your meal from Tuesday
             }
 
         except Exception as e:
-            logger.error(f"[UnifiedCoach] Chat mode failed: {e}", exc_info=True)
+            logger.error(f"[UnifiedCoach._handle_chat_mode] CRITICAL ERROR: {e}", exc_info=True)
+            logger.error(f"[UnifiedCoach._handle_chat_mode] Error type: {type(e).__name__}, args: {e.args}")
             return {
                 "mode": "error",
                 "conversation_id": conversation_id,
