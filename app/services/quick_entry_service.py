@@ -904,22 +904,41 @@ Return JSON classification and data extraction."""
                     activity_exercise_id = activity_exercise_result.data[0]["id"]
 
                     # Create activity_sets for this exercise
-                    num_sets = exercise.get("sets", 3)
-                    reps = exercise.get("reps", 10) if isinstance(exercise.get("reps"), int) else 10
-                    weight_lbs = exercise.get("weight_lbs", 0)
+                    # Check if frontend sent detailed per-set data (from edit mode)
+                    sets_detail = exercise.get("sets_detail", [])
 
-                    for set_num in range(1, num_sets + 1):
-                        activity_set_data = {
-                            "activity_exercise_id": activity_exercise_id,
-                            "set_number": set_num,
-                            "reps_completed": reps,
-                            "weight_lbs": weight_lbs,
-                            "weight_kg": round(weight_lbs * 0.453592, 2) if weight_lbs else None,
-                            "rpe": data.get("rpe"),
-                            "completed": True
-                        }
+                    if sets_detail:
+                        # Use detailed per-set data from frontend
+                        for set_num, set_data in enumerate(sets_detail, start=1):
+                            activity_set_data = {
+                                "activity_exercise_id": activity_exercise_id,
+                                "set_number": set_num,
+                                "reps_completed": set_data.get("reps", 10),
+                                "weight_lbs": set_data.get("weight_lbs", 0),
+                                "weight_kg": round(set_data.get("weight_lbs", 0) * 0.453592, 2) if set_data.get("weight_lbs") else None,
+                                "rpe": data.get("rpe"),
+                                "completed": True
+                            }
 
-                        self.supabase.table("activity_sets").insert(activity_set_data).execute()
+                            self.supabase.table("activity_sets").insert(activity_set_data).execute()
+                    else:
+                        # Fallback to uniform sets (old behavior)
+                        num_sets = exercise.get("sets", 3)
+                        reps = exercise.get("reps", 10) if isinstance(exercise.get("reps"), int) else 10
+                        weight_lbs = exercise.get("weight_lbs", 0)
+
+                        for set_num in range(1, num_sets + 1):
+                            activity_set_data = {
+                                "activity_exercise_id": activity_exercise_id,
+                                "set_number": set_num,
+                                "reps_completed": reps,
+                                "weight_lbs": weight_lbs,
+                                "weight_kg": round(weight_lbs * 0.453592, 2) if weight_lbs else None,
+                                "rpe": data.get("rpe"),
+                                "completed": True
+                            }
+
+                            self.supabase.table("activity_sets").insert(activity_set_data).execute()
 
                 logger.info(f"✅ Saved workout to NEW schema: activity_id={activity_id}, {len(exercises)} exercises")
 
