@@ -99,6 +99,9 @@ class QuickEntryService:
         # Step 2: Classify and extract data
         manual_type = metadata.get('manual_type') if metadata else None
 
+        logger.info(f"[QuickEntry] Classifying text: '{extracted_text[:100]}'")
+        logger.info(f"[QuickEntry] Manual type: {manual_type}")
+
         if manual_type:
             classification = await self._classify_and_extract(
                 extracted_text,
@@ -112,6 +115,14 @@ class QuickEntryService:
                 user_id=user_id,
                 has_image=image_base64 is not None
             )
+
+        logger.info(f"[QuickEntry] Classification result: type={classification.get('type')}, confidence={classification.get('confidence')}")
+
+        # If classification failed, log the error details
+        if classification.get('type') == 'unknown' or classification.get('confidence', 0) == 0:
+            logger.error(f"[QuickEntry] ❌ Classification FAILED!")
+            logger.error(f"[QuickEntry] Validation errors: {classification.get('validation', {}).get('errors')}")
+            logger.error(f"[QuickEntry] Full classification: {classification}")
 
         # Inject user notes
         if metadata and 'notes' in metadata:
