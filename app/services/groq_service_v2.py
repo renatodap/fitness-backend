@@ -53,10 +53,14 @@ class GroqServiceV2:
     async def classify_and_extract(
         self,
         text: str,
-        force_type: Optional[str] = None
+        force_type: Optional[str] = None,
+        historical_pattern: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Ultra-accurate classification and extraction with UI-friendly output.
+
+        NOW WITH PATTERN-BASED ESTIMATION! Uses historical user data to make
+        smarter estimates based on actual behavior.
 
         Returns structured data optimized for frontend display:
         - primary_fields: Show by default
@@ -64,7 +68,10 @@ class GroqServiceV2:
         - validation: Errors and warnings
         - ui_hints: How to display fields
         """
-        logger.info(f"[GroqV2] Classifying with ultra-accurate extraction")
+        if historical_pattern:
+            logger.info(f"[GroqV2] Using historical pattern: {historical_pattern.get('sample_size')} similar logs")
+        else:
+            logger.info(f"[GroqV2] No historical pattern - using baseline estimation")
 
         if force_type:
             classification_instruction = f"""This is a **{force_type}** entry. Extract all relevant {force_type} data."""
@@ -81,13 +88,99 @@ class GroqServiceV2:
 
 {classification_instruction}
 
-ACCURACY RULES:
-1. NEVER guess nutrition data without portion sizes
-2. If portions missing, extract foods but set macros to null
-3. Break down combo foods (e.g., "burger" → bun, patty, cheese, etc.)
-4. Use standard units: oz, lbs, cups, grams, km, miles
-5. Set confidence based on data quality (vague input = low confidence)
-6. Provide helpful suggestions for improving data quality
+CRITICAL ESTIMATION RULES - WHERE TO DRAW THE LINE:
+
+1. **TIMESTAMP ESTIMATION** (ALWAYS REQUIRED - EVERY LOG NEEDS TIME):
+   - "ate chicken" → Current time (NOW)
+   - "had breakfast" → Today 7:30 AM
+   - "lunch was a burrito" → Today 12:30 PM
+   - "dinner last night" → Yesterday 6:30 PM
+   - "morning run" → Today 7:00 AM
+   - "after work workout" → Today 5:30 PM
+   - "snack earlier" → 2 hours ago
+   - If NO time context → use current time
+   - Format: ISO 8601 (e.g., "2025-10-05T12:30:00Z")
+
+2. **MEAL LOGS** - Estimate what's calculable, not what's unknowable:
+
+   ✅ ALWAYS ESTIMATE:
+   - `logged_at` - timestamp (use rules above)
+   - `meal_type` - infer from time: 6-10am=breakfast, 11am-2pm=lunch, 5-9pm=dinner, else=snack
+   - `calories`, `protein_g`, `carbs_g`, `fat_g` - IF food is named
+   - Food portions - assume typical (chicken 5oz, rice 1 cup, eggs 2-3)
+   - Micronutrients when calculable from portion
+
+   ❌ NEVER ESTIMATE/MAKE UP:
+   - Foods not mentioned ("chicken" doesn't mean "chicken with rice and broccoli")
+   - Cooking methods not mentioned (don't assume grilled vs fried)
+
+   Example: "ate chicken" → estimate 5oz grilled chicken breast, calculate macros from that
+   Example: "ate chicken" → DO NOT add rice, vegetables, or other foods
+
+3. **ACTIVITY LOGS** - Only estimate what's reasonable:
+
+   ✅ ALWAYS ESTIMATE:
+   - `start_date` - timestamp
+   - `activity_type` - extract from text
+   - `calories_burned` - IF you have duration (even estimated)
+
+   ⚠️ CONDITIONALLY ESTIMATE (only if reasonable):
+   - `duration_minutes` - ONLY if typical activity ("morning run" → ~35min is reasonable)
+   - `rpe` - ONLY if effort words present ("easy"→4, "hard"→8)
+   - `mood` - ONLY if mood words present ("felt great"→good)
+
+   ❌ NEVER ESTIMATE/MAKE UP:
+   - `distance_km` / `distance_miles` - too variable (could be 1km or 20km)
+   - `pace` - requires distance, don't make up
+   - `avg_heart_rate` - impossible to know
+   - Specific route or location
+
+   Example: "morning run" → timestamp 7am, duration ~35min, calories ~350 (based on duration)
+   Example: "morning run" → distance=null, pace=null (DON'T MAKE UP)
+
+4. **WORKOUT LOGS** - Only log what user actually said:
+
+   ✅ ALWAYS ESTIMATE:
+   - `started_at` - timestamp
+   - `completed_at` - IF you estimate duration
+   - `workout_name` - derive from context ("chest workout", "leg day")
+
+   ⚠️ CONDITIONALLY ESTIMATE:
+   - `duration_minutes` - ONLY if typical ("workout" → ~50min reasonable)
+   - `estimated_calories` - ONLY if you have duration
+   - `rpe` - ONLY if effort words present
+   - `muscle_groups` - ONLY if workout type clear ("chest workout"→["chest"])
+
+   ❌ NEVER ESTIMATE/MAKE UP:
+   - `exercises` array - DO NOT add exercises user didn't mention
+   - `sets`, `reps`, `weight_lbs` - DO NOT make up
+   - Specific exercise details not provided
+
+   Example: "did chest workout" → timestamp, duration ~50min, calories ~300, muscle_groups=["chest"]
+   Example: "did chest workout" → exercises=[] or null (DON'T ADD bench press, flyes, etc.)
+   Example: "bench pressed" → exercises=[{"name": "Bench Press"}] with sets/reps/weight ALL null
+
+5. **THE LINE - WHAT'S REASONABLE VS BULLSHIT**:
+
+   REASONABLE (based on standards/norms):
+   - Timestamps from context clues
+   - Food portions for named foods
+   - Macros calculated from portions
+   - Typical durations for common activities
+   - Calories from duration + activity type
+
+   BULLSHIT (too personal/variable):
+   - Distance for runs (too variable)
+   - Pace without distance+time
+   - Exercises user didn't mention
+   - Sets/reps/weights (impossible to know)
+   - Foods user didn't mention
+
+6. **CONFIDENCE LEVELS**:
+   - High (0.8-1.0): User provided specific data
+   - Medium (0.5-0.8): Reasonable portion/duration assumptions
+   - Low (0.3-0.5): Very vague, minimal estimates
+   - Use null for unknowable data, mark needs_clarification=true
 
 Return ONLY valid JSON:
 {{
@@ -178,53 +271,183 @@ OUTPUT:
   ]
 }}
 
-INPUT: "chicken and rice"
+INPUT: "ate chicken and rice"  (VAGUE - no time, no portions - STILL ESTIMATE EVERYTHING)
 OUTPUT:
 {{
   "type": "meal",
-  "confidence": 0.6,
+  "confidence": 0.5,
   "data": {{
     "primary_fields": {{
       "meal_name": "Chicken and rice",
       "meal_type": "lunch",
-      "calories": null,
-      "protein_g": null,
+      "logged_at": "2025-10-05T14:30:00Z",
+      "calories": 450,
+      "protein_g": 50,
       "foods": [
-        {{"name": "Chicken", "quantity": "not specified"}},
-        {{"name": "Rice", "quantity": "not specified"}}
+        {{"name": "Chicken breast", "quantity": "5 oz (assumed)"}},
+        {{"name": "Rice, cooked", "quantity": "1 cup (assumed)"}}
       ]
     }},
     "secondary_fields": {{
-      "carbs_g": null,
-      "fat_g": null,
-      "fiber_g": null,
-      "tags": ["needs-portions"]
+      "carbs_g": 45,
+      "fat_g": 6,
+      "fiber_g": 2,
+      "sugar_g": 0,
+      "sodium_mg": 200,
+      "foods_detailed": [
+        {{
+          "name": "Chicken breast",
+          "quantity": "5 oz (assumed)",
+          "calories": 235,
+          "protein_g": 44,
+          "carbs_g": 0,
+          "fat_g": 5
+        }},
+        {{
+          "name": "White rice, cooked",
+          "quantity": "1 cup (assumed)",
+          "calories": 205,
+          "protein_g": 4,
+          "carbs_g": 45,
+          "fat_g": 0.4
+        }}
+      ],
+      "tags": ["estimated-all", "needs-verification"]
     }},
     "estimated": true,
     "needs_clarification": true
   }},
   "validation": {{
     "errors": [],
-    "warnings": [],
-    "missing_critical": ["portion_sizes", "nutrition_data"]
+    "warnings": ["Time and portions assumed - no specific data provided"],
+    "missing_critical": ["exact_portions", "exact_time"]
   }},
   "suggestions": [
-    "Add portions for accurate tracking",
-    "Example: '6oz chicken, 1 cup rice'",
-    "Quick estimate: ~450 calories, ~50g protein (4-6oz chicken + 1 cup rice)"
+    "Estimated ~450 cal, ~50g protein (assumed 5oz chicken + 1 cup rice)",
+    "Time assumed to be current - specify if different",
+    "For accuracy: 'had 6oz chicken and 1 cup rice for lunch at 12pm'"
   ]
 }}
 
-WORKOUT EXAMPLE:
+INPUT: "had eggs for breakfast"  (time context + vague portions)
+OUTPUT:
+{{
+  "type": "meal",
+  "confidence": 0.6,
+  "data": {{
+    "primary_fields": {{
+      "meal_name": "Eggs",
+      "meal_type": "breakfast",
+      "logged_at": "2025-10-05T07:30:00Z",
+      "calories": 216,
+      "protein_g": 18,
+      "foods": [
+        {{"name": "Eggs (large)", "quantity": "3 eggs (assumed)"}}
+      ]
+    }},
+    "secondary_fields": {{
+      "carbs_g": 1.2,
+      "fat_g": 15,
+      "fiber_g": 0,
+      "sugar_g": 0.5,
+      "sodium_mg": 210,
+      "cholesterol_mg": 558,
+      "tags": ["breakfast", "high-protein", "estimated-portions"]
+    }},
+    "estimated": true,
+    "needs_clarification": true
+  }},
+  "validation": {{
+    "errors": [],
+    "warnings": ["Egg quantity assumed (3 eggs typical for breakfast)"],
+    "missing_critical": ["exact_egg_count"]
+  }},
+  "suggestions": [
+    "Time inferred as 7:30 AM (breakfast time)",
+    "Assumed 3 eggs - specify if different: '2 eggs' or '4 eggs'",
+    "Great protein choice for breakfast!"
+  ]
+}}
 
-INPUT: "bench press 4x8 @ 185lbs, incline db press 3x10 @ 70lbs"
+INPUT: "Chicken Margherita at Olive Garden"  (restaurant meal with known typical serving)
+OUTPUT:
+{{
+  "type": "meal",
+  "confidence": 0.85,
+  "data": {{
+    "primary_fields": {{
+      "meal_name": "Chicken Margherita at Olive Garden",
+      "meal_type": "dinner",
+      "calories": 870,
+      "protein_g": 62,
+      "foods": [
+        {{"name": "Grilled chicken breast", "quantity": "8-10 oz (estimated)"}},
+        {{"name": "Tomato bruschetta topping", "quantity": "~1/2 cup"}},
+        {{"name": "Mozzarella cheese", "quantity": "~2 oz"}},
+        {{"name": "Balsamic glaze", "quantity": "drizzle"}},
+        {{"name": "Parmesan-crusted zucchini", "quantity": "side"}}
+      ]
+    }},
+    "secondary_fields": {{
+      "carbs_g": 48,
+      "fat_g": 38,
+      "fiber_g": 5,
+      "sugar_g": 12,
+      "sodium_mg": 1580,
+      "foods_detailed": [
+        {{
+          "name": "Grilled chicken breast",
+          "quantity": "8-10 oz",
+          "calories": 400,
+          "protein_g": 50,
+          "carbs_g": 0,
+          "fat_g": 8
+        }},
+        {{
+          "name": "Mozzarella cheese",
+          "quantity": "2 oz",
+          "calories": 170,
+          "protein_g": 12,
+          "carbs_g": 2,
+          "fat_g": 13
+        }},
+        {{
+          "name": "Parmesan-crusted zucchini",
+          "quantity": "side",
+          "calories": 300,
+          "protein_g": 0,
+          "carbs_g": 46,
+          "fat_g": 17
+        }}
+      ],
+      "tags": ["restaurant-food", "italian", "high-protein", "estimated"]
+    }},
+    "estimated": true,
+    "needs_clarification": false
+  }},
+  "validation": {{
+    "errors": [],
+    "warnings": ["Nutrition estimated from Olive Garden menu data - actual portions may vary"],
+    "missing_critical": []
+  }},
+  "suggestions": [
+    "Solid protein choice!",
+    "Restaurant portions tend to be larger - estimate ~870 calories",
+    "For exact tracking, ask for nutrition info or weigh/measure leftovers"
+  ]
+}}
+
+WORKOUT EXAMPLES:
+
+INPUT: "bench press 4x8 @ 185lbs, incline db press 3x10 @ 70lbs"  (specific)
 OUTPUT:
 {{
   "type": "workout",
-  "confidence": 0.95,
+  "confidence": 0.9,
   "data": {{
     "primary_fields": {{
       "workout_name": "Chest Press Workout",
+      "started_at": "2025-10-05T14:30:00Z",
       "duration_minutes": 45,
       "exercises": [
         {{
@@ -241,49 +464,133 @@ OUTPUT:
           "weight_lbs": 70,
           "note": "70lbs per dumbbell"
         }}
-      ]
+      ],
+      "estimated_calories": 280
     }},
     "secondary_fields": {{
+      "completed_at": "2025-10-05T15:15:00Z",
       "volume_load": 8020,
       "muscle_groups": ["chest", "triceps", "shoulders"],
-      "estimated_calories": 250,
-      "rpe": null,
-      "tags": ["push", "upper-body"]
+      "rpe": 7,
+      "tags": ["push", "upper-body", "chest-day"]
     }},
-    "estimated": false,
+    "estimated": true,
     "needs_clarification": false
   }},
   "validation": {{
     "errors": [],
-    "warnings": [],
+    "warnings": ["Time assumed to be current"],
     "missing_critical": []
   }},
   "suggestions": [
     "Solid volume! 8,020 lbs total",
-    "Add RPE (effort 1-10) for better tracking"
+    "Time assumed current - add if different",
+    "RPE estimated at 7 - confirm effort level"
   ]
 }}
 
-ACTIVITY EXAMPLE:
+INPUT: "did chest workout this morning"  (VAGUE - don't make up exercises)
+OUTPUT:
+{{
+  "type": "workout",
+  "confidence": 0.5,
+  "data": {{
+    "primary_fields": {{
+      "workout_name": "Chest Workout",
+      "started_at": "2025-10-05T07:00:00Z",
+      "duration_minutes": 50,
+      "estimated_calories": 300
+    }},
+    "secondary_fields": {{
+      "completed_at": "2025-10-05T07:50:00Z",
+      "exercises": [],
+      "volume_load": null,
+      "muscle_groups": ["chest"],
+      "rpe": null,
+      "tags": ["upper-body", "chest", "morning"]
+    }},
+    "estimated": true,
+    "needs_clarification": true
+  }},
+  "validation": {{
+    "errors": [],
+    "warnings": ["No specific exercises mentioned - cannot estimate workout details"],
+    "missing_critical": ["exercises", "sets_reps", "weights"]
+  }},
+  "suggestions": [
+    "Time: 7:00 AM (morning) ✓",
+    "Duration: ~50min (estimated typical)",
+    "Calories: ~300 (based on duration)",
+    "Add exercises for tracking: 'chest workout: bench 185x8, incline press 70x10, flyes 30x12'"
+  ]
+}}
 
-INPUT: "ran 5 miles in 40 minutes"
+INPUT: "leg day after work, squats felt heavy"  (has ONE exercise mentioned)
+OUTPUT:
+{{
+  "type": "workout",
+  "confidence": 0.6,
+  "data": {{
+    "primary_fields": {{
+      "workout_name": "Leg Day",
+      "started_at": "2025-10-05T17:30:00Z",
+      "duration_minutes": 60,
+      "exercises": [
+        {{
+          "name": "Squats",
+          "sets": null,
+          "reps": null,
+          "weight_lbs": null,
+          "note": "Felt heavy"
+        }}
+      ],
+      "estimated_calories": 350
+    }},
+    "secondary_fields": {{
+      "completed_at": "2025-10-05T18:30:00Z",
+      "volume_load": null,
+      "muscle_groups": ["legs"],
+      "rpe": 8,
+      "mood": null,
+      "tags": ["legs", "lower-body", "after-work", "high-effort"]
+    }},
+    "estimated": true,
+    "needs_clarification": true
+  }},
+  "validation": {{
+    "errors": [],
+    "warnings": ["Only squats mentioned - other exercises unknown", "Sets/reps/weight not specified"],
+    "missing_critical": ["exercise_details", "other_exercises"]
+  }},
+  "suggestions": [
+    "Time: 5:30 PM (after work) ✓",
+    "Squats noted (felt heavy) ✓",
+    "RPE: 8 (inferred from 'felt heavy')",
+    "Add details: 'leg day: squats 225x5x4, RDL 185x8x3, leg press 450x12x3'"
+  ]
+}}
+
+ACTIVITY EXAMPLES:
+
+INPUT: "ran 5 miles in 40 minutes"  (specific data)
 OUTPUT:
 {{
   "type": "activity",
-  "confidence": 0.95,
+  "confidence": 0.9,
   "data": {{
     "primary_fields": {{
-      "activity_name": "Morning Run",
+      "activity_name": "Run",
       "activity_type": "running",
+      "start_date": "2025-10-05T14:30:00Z",
       "distance_miles": 5,
       "distance_km": 8.05,
       "duration_minutes": 40,
-      "pace": "8:00/mile (4:58/km)"
+      "pace": "8:00/mile (4:58/km)",
+      "calories_burned": 550
     }},
     "secondary_fields": {{
-      "calories_burned": 550,
-      "avg_heart_rate": null,
-      "rpe": null,
+      "rpe": 6,
+      "mood": "good",
       "tags": ["cardio", "running"]
     }},
     "estimated": true,
@@ -291,24 +598,153 @@ OUTPUT:
   }},
   "validation": {{
     "errors": [],
-    "warnings": ["Calories estimated based on average runner"],
+    "warnings": ["Time assumed to be current - specify if different"],
     "missing_critical": []
   }},
   "suggestions": [
     "Great pace! 8:00/mile",
-    "Add heart rate or RPE for better tracking"
+    "Add RPE (1-10) for effort tracking"
   ]
 }}
 
-IMPORTANT:
-- primary_fields = show by default
-- secondary_fields = show in "More details" section
-- Use null for unknown values (NEVER guess wildly)
-- Set needs_clarification=true if critical data missing
-- Provide actionable suggestions
+INPUT: "went for a run this morning"  (VAGUE - only estimate what's reasonable)
+OUTPUT:
+{{
+  "type": "activity",
+  "confidence": 0.5,
+  "data": {{
+    "primary_fields": {{
+      "activity_name": "Morning Run",
+      "activity_type": "running",
+      "start_date": "2025-10-05T07:00:00Z",
+      "duration_minutes": 35,
+      "calories_burned": 350
+    }},
+    "secondary_fields": {{
+      "distance_km": null,
+      "distance_miles": null,
+      "pace": null,
+      "rpe": null,
+      "mood": null,
+      "tags": ["cardio", "running", "morning", "duration-estimated"]
+    }},
+    "estimated": true,
+    "needs_clarification": true
+  }},
+  "validation": {{
+    "errors": [],
+    "warnings": ["Duration estimated as typical morning run (~35min)", "Distance not specified - too variable to estimate"],
+    "missing_critical": ["distance", "pace"]
+  }},
+  "suggestions": [
+    "Duration estimated ~35min (typical morning run)",
+    "Calories estimated ~350 based on duration",
+    "Add distance for better tracking: 'ran 5km' or 'ran for 3 miles'"
+  ]
+}}
+
+INPUT: "easy 10k after work"  (has distance, infer duration)
+OUTPUT:
+{{
+  "type": "activity",
+  "confidence": 0.7,
+  "data": {{
+    "primary_fields": {{
+      "activity_name": "Easy 10k Run",
+      "activity_type": "running",
+      "start_date": "2025-10-05T17:30:00Z",
+      "distance_km": 10,
+      "distance_miles": 6.2,
+      "duration_minutes": 65,
+      "calories_burned": 750
+    }},
+    "secondary_fields": {{
+      "pace": "6:30/km (10:29/mile)",
+      "rpe": 4,
+      "mood": null,
+      "tags": ["cardio", "running", "easy-pace", "evening"]
+    }},
+    "estimated": true,
+    "needs_clarification": true
+  }},
+  "validation": {{
+    "errors": [],
+    "warnings": ["Duration estimated based on 'easy' pace (~6:30/km)", "Pace calculated from estimated duration"],
+    "missing_critical": ["exact_duration"]
+  }},
+  "suggestions": [
+    "Distance: 10km (specified) ✓",
+    "Duration estimated ~65min for easy pace",
+    "RPE inferred as 4 from 'easy'",
+    "For exact pace, add actual time: 'easy 10k in 58 minutes'"
+  ]
+}}
+
+CRITICAL RULES - NEVER SKIP:
+1. **TIMESTAMPS ARE MANDATORY** - Every log MUST have a time
+   - Meals: logged_at (infer from meal_type or context)
+   - Activities: start_date
+   - Workouts: started_at (and completed_at if duration estimated)
+   - Measurements: measured_at
+   - Use time inference rules (breakfast→7:30am, lunch→12:30pm, "morning"→7am, etc)
+   - If NO context, use current time
+
+2. **ESTIMATE ONLY WHAT'S REASONABLE**:
+   - ✅ Timestamps, meal portions for named foods, typical durations, calories from duration
+   - ⚠️ Only estimate duration/RPE if context supports it
+   - ❌ NEVER make up: distances, paces, exercises not mentioned, sets/reps/weights, foods not mentioned
+
+3. **STRUCTURE**:
+   - primary_fields = show by default (most important data)
+   - secondary_fields = show in "More details" section (extra context)
+   - Use null for unknowable fields (distance, pace, specific exercises, etc.)
+
+4. **CONFIDENCE & GUIDANCE**:
+   - Set confidence honestly based on what user provided
+   - Set needs_clarification=true if critical data missing
+   - Provide actionable suggestions for what to add next time
 """
 
-        user_prompt = f"""Extract fitness data from this entry:
+        # Build user prompt with historical pattern if available
+        if historical_pattern and historical_pattern.get('sample_size', 0) >= 3:
+            pattern_context = f"""
+**HISTORICAL PATTERN DETECTED** ({historical_pattern['sample_size']} similar past logs):
+You can use this user's typical behavior to make SMARTER estimates:
+"""
+            if historical_pattern['type'] == 'activity':
+                if historical_pattern.get('duration_avg'):
+                    pattern_context += f"\n- Typical duration: {historical_pattern['duration_avg']:.0f} minutes"
+                if historical_pattern.get('distance_avg'):
+                    pattern_context += f"\n- Typical distance: {historical_pattern['distance_avg']:.1f} km"
+                if historical_pattern.get('calories_avg'):
+                    pattern_context += f"\n- Typical calories: {historical_pattern['calories_avg']:.0f}"
+                pattern_context += f"\n- Pattern confidence: {historical_pattern['confidence']:.2f}"
+                pattern_context += f"\n\nUse these values for estimation! User is consistent ({historical_pattern['sample_size']} similar logs)."
+
+            elif historical_pattern['type'] == 'workout':
+                if historical_pattern.get('duration_avg'):
+                    pattern_context += f"\n- Typical duration: {historical_pattern['duration_avg']:.0f} minutes"
+                if historical_pattern.get('common_exercises'):
+                    pattern_context += f"\n- Common exercises: {', '.join(historical_pattern['common_exercises'])}"
+                pattern_context += f"\n- Pattern confidence: {historical_pattern['confidence']:.2f}"
+                pattern_context += f"\n\nUse these patterns for estimation! User typically does these exercises."
+
+            elif historical_pattern['type'] == 'meal':
+                if historical_pattern.get('calories_avg'):
+                    pattern_context += f"\n- Typical calories: {historical_pattern['calories_avg']:.0f}"
+                if historical_pattern.get('protein_avg'):
+                    pattern_context += f"\n- Typical protein: {historical_pattern['protein_avg']:.0f}g"
+                pattern_context += f"\n- Pattern confidence: {historical_pattern['confidence']:.2f}"
+                pattern_context += f"\n\nUse these values! User typically eats this portion for this meal."
+
+            user_prompt = f"""{pattern_context}
+
+Extract fitness data from this entry:
+"{text}"
+
+Return structured JSON using historical patterns above for smarter estimates."""
+        else:
+            user_prompt = f"""Extract fitness data from this entry:
 
 "{text}"
 

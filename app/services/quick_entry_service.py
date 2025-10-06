@@ -102,12 +102,14 @@ class QuickEntryService:
         if manual_type:
             classification = await self._classify_and_extract(
                 extracted_text,
+                user_id=user_id,
                 has_image=image_base64 is not None,
                 force_type=manual_type
             )
         else:
             classification = await self._classify_and_extract(
                 extracted_text,
+                user_id=user_id,
                 has_image=image_base64 is not None
             )
 
@@ -276,6 +278,7 @@ class QuickEntryService:
             logger.info(f"Manual type override: {manual_type}")
             classification = await self._classify_and_extract(
                 extracted_text,
+                user_id=user_id,
                 has_image=image_base64 is not None,
                 force_type=manual_type
             )
@@ -283,6 +286,7 @@ class QuickEntryService:
             # Auto-detect
             classification = await self._classify_and_extract(
                 extracted_text,
+                user_id=user_id,
                 has_image=image_base64 is not None
             )
 
@@ -398,9 +402,118 @@ class QuickEntryService:
 
         return "\n\n".join(extracted_parts)
 
+    async def _get_historical_patterns(
+        self,
+        user_id: str,
+        text: str,
+        entry_type: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve historical patterns for similar past entries.
+
+        This enables SMART estimation based on user's actual behavior.
+        """
+        try:
+            # Search for similar past entries
+            similar_entries = await self.semantic_search.search_similar_entries(
+                user_id=user_id,
+                query_text=text,
+                source_type=entry_type,  # Filter by type if known
+                limit=15,  # Get more for pattern analysis
+                recency_weight=0.5,  # Prefer recent logs
+                similarity_threshold=0.65  # Lower threshold to find more matches
+            )
+
+            if not similar_entries or len(similar_entries) < 3:
+                # Not enough data for pattern
+                return None
+
+            # Extract patterns from similar entries
+            pattern = self._analyze_pattern(similar_entries, entry_type or "unknown")
+
+            logger.info(f"[QuickEntry] Found pattern: {pattern.get('sample_size')} similar logs, confidence {pattern.get('confidence'):.2f}")
+            return pattern
+
+        except Exception as e:
+            logger.warning(f"[QuickEntry] Pattern retrieval failed (non-critical): {e}")
+            return None
+
+    def _analyze_pattern(self, similar_entries: List[Dict], entry_type: str) -> Dict[str, Any]:
+        """Extract statistical patterns from similar past logs."""
+
+        sample_size = len(similar_entries)
+
+        if entry_type == "activity":
+            # Extract activity patterns
+            durations = [e['metadata'].get('duration_minutes') for e in similar_entries
+                        if e['metadata'].get('duration_minutes')]
+            distances = [e['metadata'].get('distance_km') for e in similar_entries
+                        if e['metadata'].get('distance_km')]
+            calories = [e['metadata'].get('calories_burned') for e in similar_entries
+                       if e['metadata'].get('calories_burned')]
+
+            pattern = {
+                "sample_size": sample_size,
+                "type": "activity",
+                "duration_avg": sum(durations) / len(durations) if durations else None,
+                "distance_avg": sum(distances) / len(distances) if distances else None,
+                "calories_avg": sum(calories) / len(calories) if calories else None,
+                "consistency": len(durations) / sample_size if durations else 0,
+                "confidence": min(0.95, 0.5 + (sample_size / 20) * 0.45)
+            }
+
+        elif entry_type == "workout":
+            # Extract workout patterns
+            durations = [e['metadata'].get('duration_minutes') for e in similar_entries
+                        if e['metadata'].get('duration_minutes')]
+            exercises_lists = [e['metadata'].get('exercises', []) for e in similar_entries]
+
+            # Find common exercises
+            all_exercise_names = []
+            for ex_list in exercises_lists:
+                if isinstance(ex_list, list):
+                    all_exercise_names.extend([ex.get('name') for ex in ex_list if ex.get('name')])
+
+            pattern = {
+                "sample_size": sample_size,
+                "type": "workout",
+                "duration_avg": sum(durations) / len(durations) if durations else None,
+                "common_exercises": list(set(all_exercise_names))[:5],  # Top 5 most common
+                "consistency": len(durations) / sample_size if durations else 0,
+                "confidence": min(0.95, 0.5 + (sample_size / 20) * 0.45)
+            }
+
+        elif entry_type == "meal":
+            # Extract meal patterns
+            calories_list = [e['metadata'].get('calories') for e in similar_entries
+                           if e['metadata'].get('calories')]
+            proteins = [e['metadata'].get('protein_g') for e in similar_entries
+                       if e['metadata'].get('protein_g')]
+            foods_lists = [e['metadata'].get('foods', []) for e in similar_entries]
+
+            pattern = {
+                "sample_size": sample_size,
+                "type": "meal",
+                "calories_avg": sum(calories_list) / len(calories_list) if calories_list else None,
+                "protein_avg": sum(proteins) / len(proteins) if proteins else None,
+                "consistency": len(calories_list) / sample_size if calories_list else 0,
+                "confidence": min(0.95, 0.5 + (sample_size / 20) * 0.45)
+            }
+
+        else:
+            # Generic pattern
+            pattern = {
+                "sample_size": sample_size,
+                "type": entry_type,
+                "confidence": min(0.95, 0.5 + (sample_size / 20) * 0.45)
+            }
+
+        return pattern
+
     async def _classify_and_extract(
         self,
         text: str,
+        user_id: str,
         has_image: bool = False,
         force_type: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -410,12 +523,22 @@ class QuickEntryService:
         OPTIMIZED: Single FREE LLM call using DeepSeek V3 or Llama-4 Scout
         Handles ALL entry types: meal, activity, workout, note, measurement
 
+        NOW WITH PATTERN-BASED ESTIMATION for returning users!
+
         Args:
             text: The text to classify
+            user_id: User ID for pattern retrieval
             has_image: Whether an image was included
             force_type: Override auto-detection and force a specific type
         """
         logger.info(f"[QuickEntry] Classifying entry with FREE model (force_type={force_type})")
+
+        # STEP 1: Retrieve historical patterns
+        historical_pattern = await self._get_historical_patterns(
+            user_id=user_id,
+            text=text,
+            entry_type=force_type
+        )
 
         # Build classification instruction
         if force_type:
@@ -547,9 +670,11 @@ Return JSON classification and data extraction."""
 
         try:
             # USE GROQ for ultra-fast, ultra-cheap classification
+            # NOW WITH HISTORICAL PATTERNS for smart estimation!
             result = await self.groq_service.classify_and_extract(
                 text=text,
-                force_type=force_type
+                force_type=force_type,
+                historical_pattern=historical_pattern  # Pass pattern data
             )
 
             logger.info(f"[QuickEntry] Classified as: {result.get('type')} ({result.get('confidence', 0):.2f})")
@@ -576,7 +701,21 @@ Return JSON classification and data extraction."""
         Save entry to appropriate database table based on type.
         """
         entry_type = classification["type"]
-        data = classification.get("data", {})
+        raw_data = classification.get("data", {})
+
+        # Handle both old flat structure and new nested structure from Groq V2
+        # Flatten primary_fields and secondary_fields into single data dict
+        data = {}
+        if "primary_fields" in raw_data:
+            # New Groq V2 structure - merge primary and secondary fields
+            data.update(raw_data.get("primary_fields", {}))
+            data.update(raw_data.get("secondary_fields", {}))
+            # Preserve top-level flags
+            data["estimated"] = raw_data.get("estimated", True)
+            data["needs_clarification"] = raw_data.get("needs_clarification", False)
+        else:
+            # Old flat structure
+            data = raw_data
 
         try:
             if entry_type == "meal":
