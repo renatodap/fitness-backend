@@ -164,7 +164,7 @@ CRITICAL ESTIMATION RULES - WHERE TO DRAW THE LINE:
 
    Example: "did chest workout" → timestamp, duration ~50min, calories ~300, muscle_groups=["chest"]
    Example: "did chest workout" → exercises=[] or null (DON'T ADD bench press, flyes, etc.)
-   Example: "bench pressed" → exercises=[{"name": "Bench Press"}] with sets/reps/weight ALL null
+   Example: "bench pressed" → exercises=[{{"name": "Bench Press"}}] with sets/reps/weight ALL null
 
 5. **THE LINE - WHAT'S REASONABLE VS BULLSHIT**:
 
