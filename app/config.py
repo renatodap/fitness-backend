@@ -28,7 +28,8 @@ class Settings(BaseSettings):
     # API Settings
     API_V1_PREFIX: str = "/api/v1"
     # CORS can be a comma-separated string from env or list
-    CORS_ORIGINS: str = "http://localhost:3000,https://www.sharpened.me,https://sharpened.me"
+    # Add your frontend domains here (localhost for dev, Vercel for production)
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:3005,https://www.sharpened.me,https://sharpened.me,https://wagner-coach-clean.vercel.app,https://wagner-coach.vercel.app"
     ALLOW_ALL_ORIGINS: bool = False  # SECURITY: Set to False in production!
 
     @property
