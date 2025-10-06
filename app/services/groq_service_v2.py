@@ -45,9 +45,15 @@ class GroqServiceV2:
     """
 
     def __init__(self):
+        if not settings.GROQ_API_KEY:
+            logger.error("[GroqV2] ❌ GROQ_API_KEY not set in environment!")
+            raise ValueError("GROQ_API_KEY environment variable is required")
+
+        logger.info(f"[GroqV2] Initializing with API key: {settings.GROQ_API_KEY[:10]}...")
         self.client = OpenAI(
             api_key=settings.GROQ_API_KEY,
-            base_url="https://api.groq.com/openai/v1"
+            base_url="https://api.groq.com/openai/v1",
+            timeout=30.0  # 30 second timeout
         )
 
     async def classify_and_extract(
@@ -781,6 +787,7 @@ Return structured JSON with primary_fields (show by default) and secondary_field
         except json.JSONDecodeError as e:
             logger.error(f"[GroqV2] ❌ JSON parsing failed: {e}")
             logger.error(f"[GroqV2] Raw response was: {raw_content if 'raw_content' in locals() else 'No response'}")
+            error_msg = f"AI response parsing failed: {str(e)}"
             return {
                 "type": "unknown",
                 "confidence": 0.0,
@@ -791,16 +798,23 @@ Return structured JSON with primary_fields (show by default) and secondary_field
                     "needs_clarification": True
                 },
                 "validation": {
-                    "errors": [f"JSON parsing error: {str(e)}"],
+                    "errors": [error_msg],
                     "warnings": [],
                     "missing_critical": ["all_data"]
                 },
-                "suggestions": ["System error - try again", "Contact support if issue persists"]
+                "suggestions": [
+                    f"⚠️ System Error: {error_msg}",
+                    "Try again or contact support"
+                ]
             }
         except Exception as e:
             logger.error(f"[GroqV2] ❌ API call failed: {type(e).__name__}: {e}")
             import traceback
             logger.error(f"[GroqV2] Traceback: {traceback.format_exc()}")
+
+            # Show the actual error to help debug
+            error_msg = f"{type(e).__name__}: {str(e)}"
+
             return {
                 "type": "unknown",
                 "confidence": 0.0,
@@ -811,11 +825,15 @@ Return structured JSON with primary_fields (show by default) and secondary_field
                     "needs_clarification": True
                 },
                 "validation": {
-                    "errors": [f"API error: {type(e).__name__}"],
+                    "errors": [error_msg],
                     "warnings": [],
                     "missing_critical": ["all_data"]
                 },
-                "suggestions": ["System error - try again", "Check your connection"]
+                "suggestions": [
+                    f"⚠️ API Error: {error_msg}",
+                    "Check backend logs for details",
+                    "Verify Groq API key is set in environment"
+                ]
             }
 
     async def analyze_image(
