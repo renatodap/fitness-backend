@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     # CORS can be a comma-separated string from env or list
     # Add your frontend domains here (localhost for dev, Vercel for production)
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:3005,https://www.sharpened.me,https://sharpened.me,https://wagner-coach-clean.vercel.app,https://wagner-coach.vercel.app"
-    ALLOW_ALL_ORIGINS: bool = False  # SECURITY: Set to False in production!
+    ALLOW_ALL_ORIGINS: bool = True  # TEMPORARY: Allow all origins during development (set to False + configure CORS_ORIGINS in production!)
 
     @property
     def cors_origins_list(self) -> list[str]:
