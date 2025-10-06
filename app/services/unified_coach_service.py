@@ -283,24 +283,35 @@ If you reference their data, be specific (e.g., "Based on your meal from Tuesday
             except Exception as vec_err:
                 logger.error(f"[UnifiedCoach._handle_chat_mode] Vectorization failed (non-critical): {vec_err}")
 
-            # STEP 5: Return response
+            # STEP 5: Return response (matching UnifiedMessageResponse schema)
             logger.info(f"[UnifiedCoach._handle_chat_mode] Returning chat response")
             return {
-                "mode": "chat",
+                "success": True,
                 "conversation_id": conversation_id,
-                "user_message_id": user_message_id,
-                "ai_message_id": ai_message_id,
-                "response": ai_response_text,
+                "message_id": ai_message_id,  # The AI's message ID
+                "is_log_preview": False,
+                "message": ai_response_text,  # The AI response text
+                "log_preview": None,
+                "rag_context": None,  # TODO: Add RAG context stats
                 "tokens_used": tokens_used,
-                "cost_usd": cost_usd
+                "cost_usd": cost_usd,
+                "error": None
             }
 
         except Exception as e:
             logger.error(f"[UnifiedCoach._handle_chat_mode] CRITICAL ERROR: {e}", exc_info=True)
             logger.error(f"[UnifiedCoach._handle_chat_mode] Error type: {type(e).__name__}, args: {e.args}")
+            # Return error response matching schema
             return {
-                "mode": "error",
+                "success": False,
                 "conversation_id": conversation_id,
+                "message_id": user_message_id,  # Return the user message ID on error
+                "is_log_preview": False,
+                "message": None,
+                "log_preview": None,
+                "rag_context": None,
+                "tokens_used": None,
+                "cost_usd": None,
                 "error": "Failed to generate response. Please try again."
             }
 
@@ -355,22 +366,42 @@ If you reference their data, be specific (e.g., "Based on your meal from Tuesday
 
             logger.info(f"[UnifiedCoach] Log preview created: {preview_result['entry_type']}")
 
+            # Build LogPreview object matching schema
+            from app.api.v1.schemas.unified_coach_schemas import LogPreview, LogType
+
+            log_preview = LogPreview(
+                log_type=LogType(preview_result["entry_type"]),
+                confidence=preview_result["confidence"],
+                data=preview_result["data"],
+                reasoning=preview_result.get("reasoning", "AI detected this as a log entry"),
+                summary=preview_result.get("summary", f"{preview_result['entry_type'].title()} entry detected")
+            )
+
             return {
-                "mode": "log_preview",
+                "success": True,
                 "conversation_id": conversation_id,
-                "user_message_id": user_message_id,
-                "log_type": preview_result["entry_type"],
-                "log_preview": preview_result["data"],
-                "confidence": preview_result["confidence"],
-                "suggestions": preview_result.get("suggestions", []),
-                "extracted_text": preview_result.get("extracted_text")
+                "message_id": user_message_id,  # The user's message ID
+                "is_log_preview": True,
+                "message": None,
+                "log_preview": log_preview.model_dump(),  # Convert to dict
+                "rag_context": None,
+                "tokens_used": None,
+                "cost_usd": None,
+                "error": None
             }
 
         except Exception as e:
             logger.error(f"[UnifiedCoach] Log mode failed: {e}", exc_info=True)
             return {
-                "mode": "error",
+                "success": False,
                 "conversation_id": conversation_id,
+                "message_id": user_message_id,
+                "is_log_preview": False,
+                "message": None,
+                "log_preview": None,
+                "rag_context": None,
+                "tokens_used": None,
+                "cost_usd": None,
                 "error": "Failed to process log. Please try again."
             }
 
