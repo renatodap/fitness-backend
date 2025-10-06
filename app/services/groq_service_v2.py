@@ -783,16 +783,29 @@ Return structured JSON with primary_fields (show by default) and secondary_field
             try:
                 result = json.loads(raw_content)
             except json.JSONDecodeError as json_err:
-                logger.error(f"[GroqV2] JSON parse error: {json_err}")
-                logger.error(f"[GroqV2] Problematic JSON: {raw_content}")
+                logger.error(f"[GroqV2] ❌ JSON parse error: {json_err}")
+                logger.error(f"[GroqV2] ❌ Error position: line {json_err.lineno}, column {json_err.colno}")
+                logger.error(f"[GroqV2] ❌ Problematic JSON (full):\n{raw_content}")
+
                 # Try to extract JSON from markdown code blocks if present
-                if "```json" in raw_content:
-                    json_start = raw_content.find("```json") + 7
+                if "```json" in raw_content or "```" in raw_content:
+                    logger.info(f"[GroqV2] 🔧 Attempting to extract JSON from markdown...")
+                    json_start = raw_content.find("```json")
+                    if json_start != -1:
+                        json_start += 7
+                    else:
+                        json_start = raw_content.find("```") + 3
+
                     json_end = raw_content.find("```", json_start)
-                    raw_content = raw_content[json_start:json_end].strip()
-                    logger.info(f"[GroqV2] Extracted JSON from markdown: {raw_content[:200]}")
-                    result = json.loads(raw_content)
+                    if json_end != -1:
+                        raw_content = raw_content[json_start:json_end].strip()
+                        logger.info(f"[GroqV2] 🔧 Extracted JSON: {raw_content[:200]}...")
+                        result = json.loads(raw_content)
+                    else:
+                        logger.error(f"[GroqV2] ❌ Could not find closing ``` in markdown")
+                        raise
                 else:
+                    logger.error(f"[GroqV2] ❌ Not markdown format, raising original error")
                     raise
 
             # Override type if forced

@@ -729,7 +729,9 @@ Return JSON classification and data extraction."""
             return result
 
         except Exception as e:
-            logger.error(f"Classification failed: {e}")
+            logger.error(f"❌ Classification failed: {type(e).__name__}: {e}")
+            import traceback
+            logger.error(f"❌ Full traceback:\n{traceback.format_exc()}")
             return {
                 "type": "unknown",
                 "confidence": 0.0,
