@@ -17,6 +17,7 @@ from app.services.message_classifier_service import get_message_classifier
 from app.services.quick_entry_service import get_quick_entry_service
 from app.services.supabase_service import get_service_client
 from app.services.multimodal_embedding_service import get_multimodal_service
+from app.services.agentic_rag_service import get_agentic_rag_service
 from anthropic import AsyncAnthropic
 from app.config import get_settings
 
@@ -41,6 +42,7 @@ class UnifiedCoachService:
         self.classifier = get_message_classifier()
         self.quick_entry = get_quick_entry_service()
         self.embedding_service = get_multimodal_service()
+        self.agentic_rag = get_agentic_rag_service()  # NEW: Agentic RAG service
         self.anthropic = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
     async def process_message(
@@ -197,11 +199,20 @@ class UnifiedCoachService:
         logger.info(f"[UnifiedCoach._handle_chat_mode] START - user_message_id: {user_message_id}")
 
         try:
-            # STEP 1: Build RAG context
+            # STEP 1: Build RAG context using AGENTIC RAG SERVICE
             logger.info(f"[UnifiedCoach._handle_chat_mode] Building RAG context for user {user_id}...")
             try:
-                rag_context = await self._build_rag_context(user_id, message)
-                logger.info(f"[UnifiedCoach._handle_chat_mode] RAG context built: {len(rag_context)} chars")
+                rag_result = await self.agentic_rag.build_context(
+                    user_id=user_id,
+                    query=message,
+                    max_tokens=3000,
+                    include_conversation_history=True
+                )
+                rag_context = rag_result["context_string"]
+                logger.info(
+                    f"[UnifiedCoach._handle_chat_mode] RAG context built: {len(rag_context)} chars, "
+                    f"sources: {rag_result['sources_used']}, stats: {rag_result['stats']}"
+                )
             except Exception as rag_err:
                 logger.error(f"[UnifiedCoach._handle_chat_mode] RAG context build failed: {rag_err}", exc_info=True)
                 # Use empty context if RAG fails (non-critical)
@@ -589,191 +600,8 @@ Now respond to the user with this energy and specificity."""
                 "total": 0
             }
 
-    async def _build_rag_context(self, user_id: str, query: str, max_tokens: int = 3000) -> str:
-        """
-        Build comprehensive RAG context using HYBRID SEARCH.
-
-        Strategy:
-        1. Semantic search (embedding similarity)
-        2. Recency boost (recent entries weighted higher)
-        3. Diversity (avoid redundant results)
-        4. Re-ranking by final score
-
-        Returns formatted context string optimized for Claude.
-        """
-        try:
-            # Generate query embedding
-            query_embedding = await self.embedding_service.embed_text(query)
-            embedding_list = query_embedding.tolist() if hasattr(query_embedding, 'tolist') else query_embedding
-
-            # SEARCH MULTIPLE SOURCES (get more candidates for re-ranking)
-            quick_entries = await self.supabase.rpc(
-                "search_quick_entry_embeddings",
-                {
-                    "query_embedding": embedding_list,
-                    "user_id_filter": user_id,
-                    "match_threshold": 0.5,  # Lower threshold to get more candidates
-                    "match_count": 20  # Get 20 candidates, then re-rank
-                }
-            ).execute()
-
-            # Also get RECENT entries for temporal context
-            recent_entries = await self.supabase.table("quick_entry_logs")\
-                .select("*")\
-                .eq("user_id", user_id)\
-                .order("logged_at", desc=True)\
-                .limit(10)\
-                .execute()
-
-            # HYBRID SCORING: Combine similarity + recency + diversity
-            scored_results = []
-
-            if quick_entries.data:
-                for entry in quick_entries.data:
-                    similarity_score = entry.get('similarity', 0.7)  # From pgvector
-                    recency_score = self._calculate_recency_score(
-                        entry.get('logged_at') or entry.get('created_at')
-                    )
-                    diversity_score = self._calculate_diversity_score(entry, scored_results)
-
-                    final_score = (
-                        similarity_score * 0.5 +      # 50% similarity
-                        recency_score * 0.3 +         # 30% recency
-                        diversity_score * 0.2         # 20% diversity
-                    )
-
-                    scored_results.append({
-                        "entry": entry,
-                        "score": final_score,
-                        "similarity": similarity_score,
-                        "recency": recency_score,
-                        "source": "quick_entry"
-                    })
-
-            # Sort by score and take top 10
-            scored_results.sort(key=lambda x: x['score'], reverse=True)
-            top_results = scored_results[:10]
-
-            # BUILD CONTEXT STRING with source attribution
-            context_parts = []
-            context_parts.append("=== USER'S RELEVANT DATA ===\n")
-
-            for i, result in enumerate(top_results, 1):
-                entry = result['entry']
-                classification = entry.get('source_classification', 'entry')
-                summary = entry.get('content_summary', entry.get('content_text', '')[:150])
-                logged_at = entry.get('logged_at', entry.get('created_at'))
-
-                context_parts.append(
-                    f"{i}. [{classification.upper()} - {self._format_relative_time(logged_at)}]\n"
-                    f"   {summary}\n"
-                )
-
-            # Add recent activity summary (always include for temporal context)
-            if recent_entries.data:
-                context_parts.append("\n=== RECENT ACTIVITY (Last 7 Days) ===")
-                context_parts.append(self._summarize_recent_activity(recent_entries.data))
-
-            full_context = "\n".join(context_parts)
-
-            # Truncate to max_tokens if needed (rough estimate: 4 chars = 1 token)
-            max_chars = max_tokens * 4
-            if len(full_context) > max_chars:
-                full_context = full_context[:max_chars] + "\n\n[Context truncated due to length]"
-
-            if not top_results:
-                return "No previous user data available."
-
-            return full_context
-
-        except Exception as e:
-            logger.error(f"[UnifiedCoach] RAG context building failed: {e}", exc_info=True)
-            return "Unable to retrieve user history."
-
-    def _calculate_recency_score(self, timestamp: str) -> float:
-        """
-        Calculate recency score (1.0 for today, decays to 0.1 for 30+ days ago).
-        Uses exponential decay with 3-day half-life.
-        """
-        if not timestamp:
-            return 0.1
-
-        try:
-            now = datetime.utcnow()
-            entry_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00').replace('+00:00', ''))
-            days_ago = (now - entry_time).total_seconds() / 86400
-
-            # Exponential decay with 3-day half-life
-            return max(0.1, 1.0 / (1 + days_ago / 3))
-        except Exception as e:
-            logger.warning(f"Failed to calculate recency score: {e}")
-            return 0.5
-
-    def _calculate_diversity_score(self, entry: dict, existing_results: list) -> float:
-        """
-        Penalize entries that are too similar to already-selected results.
-        Promotes variety in RAG context.
-        """
-        if not existing_results:
-            return 1.0
-
-        entry_type = entry.get('source_classification', 'unknown')
-
-        # Count how many existing results share this type
-        same_type_count = sum(
-            1 for r in existing_results
-            if r['entry'].get('source_classification') == entry_type
-        )
-
-        # Penalize if we already have 3+ of this type
-        if same_type_count >= 3:
-            return 0.3
-        elif same_type_count >= 2:
-            return 0.6
-        else:
-            return 1.0
-
-    def _format_relative_time(self, timestamp: str) -> str:
-        """Format timestamp as relative time (e.g., '2 hours ago', 'yesterday')."""
-        if not timestamp:
-            return "unknown time"
-
-        try:
-            now = datetime.utcnow()
-            entry_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00').replace('+00:00', ''))
-            delta = now - entry_time
-
-            if delta.days == 0:
-                hours = delta.seconds // 3600
-                if hours == 0:
-                    minutes = delta.seconds // 60
-                    return f"{minutes}min ago" if minutes > 0 else "just now"
-                return f"{hours}h ago"
-            elif delta.days == 1:
-                return "yesterday"
-            elif delta.days < 7:
-                return f"{delta.days}d ago"
-            else:
-                return f"{delta.days // 7}w ago"
-        except Exception as e:
-            logger.warning(f"Failed to format relative time: {e}")
-            return "recently"
-
-    def _summarize_recent_activity(self, entries: list) -> str:
-        """Generate quick summary of recent activity by type."""
-        if not entries:
-            return "No activity logged in past 7 days."
-
-        by_type = {}
-        for entry in entries:
-            entry_type = entry.get('source_classification', 'other')
-            by_type.setdefault(entry_type, []).append(entry)
-
-        summary_parts = []
-        for entry_type, items in by_type.items():
-            summary_parts.append(f"- {len(items)} {entry_type}(s)")
-
-        return "\n".join(summary_parts)
+    # OLD RAG METHOD REMOVED - Now using AgenticRAGService
+    # See app/services/agentic_rag_service.py for new implementation
 
     async def _create_conversation(self, user_id: str) -> str:
         """
