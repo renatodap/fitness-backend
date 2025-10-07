@@ -70,7 +70,7 @@ async def verify_token(
 
 async def get_current_user(
     authorization: str = Header(...)
-) -> str:
+) -> dict:
     """
     FastAPI dependency for required authentication.
 
@@ -78,7 +78,7 @@ async def get_current_user(
         authorization: Authorization header (Bearer <token>)
 
     Returns:
-        str: User ID
+        dict: User information with 'user_id' and optional 'email'
 
     Raises:
         HTTPException: 401 if not authenticated
@@ -106,7 +106,10 @@ async def get_current_user(
                 detail="Token missing 'sub' claim",
             )
 
-        return user_id
+        return {
+            "user_id": user_id,
+            "email": payload.get("email")
+        }
 
     except JWTError as e:
         raise HTTPException(

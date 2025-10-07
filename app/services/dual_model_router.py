@@ -188,7 +188,8 @@ class DualModelRouter:
             print("[DualRouter] WARNING: OpenRouter API key not found")
 
         if not self.groq and not self.openrouter:
-            raise ValueError("At least one API key (GROQ_API_KEY or OPENROUTER_API_KEY) is required")
+            print("[DualRouter] WARNING: No valid API keys found. AI features will not work.")
+            # Don't raise error - allow the app to start for non-AI endpoints
 
     def _select_model(self, config: TaskConfig) -> ModelSelection:
         """Select the best provider and model for the task"""
