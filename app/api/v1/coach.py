@@ -308,24 +308,43 @@ async def confirm_log(
 
     FLOW:
     1. Validate conversation belongs to user
-    2. Save structured log to database
-    3. Update quick_entry_logs with linked IDs
-    4. Add success message to conversation
-    5. Return success response
+    2. Extract original_text from user message
+    3. Save structured log to database
+    4. Update quick_entry_logs with linked IDs
+    5. Add success message to conversation
+    6. Return success response
     """
     try:
-        user_id = current_user["id"]  # Fixed: was current_user["id"]["id"]
+        user_id = current_user["id"]
+        supabase = get_service_client()
+
+        # Extract original_text from user message
+        original_text = ""
+        if request.user_message_id:
+            try:
+                msg_response = supabase.table("coach_messages") \
+                    .select("content") \
+                    .eq("id", request.user_message_id) \
+                    .limit(1) \
+                    .execute()
+
+                if msg_response.data:
+                    original_text = msg_response.data[0].get("content", "")
+            except Exception as e:
+                logger.warning(f"Could not fetch original message: {e}")
+                # Continue with empty string - non-critical
 
         # Get unified coach service
         coach_service = get_unified_coach_service()
 
-        # Confirm and save log
+        # Confirm and save log with all required parameters
         response = await coach_service.confirm_log(
             user_id=user_id,
             conversation_id=request.conversation_id,
-            log_data=request.log_data,
+            user_message_id=request.user_message_id,
             log_type=request.log_type.value,
-            user_message_id=request.user_message_id
+            log_data=request.log_data,
+            original_text=original_text
         )
 
         return response

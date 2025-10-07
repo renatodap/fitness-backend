@@ -51,7 +51,7 @@ class MealLoggingService:
         food_items: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """
-        Create new meal log with foods.
+        Create new meal log with foods using relational meal_foods table.
 
         Args:
             user_id: User ID
@@ -71,17 +71,38 @@ class MealLoggingService:
             food_ids = [item["food_id"] for item in food_items]
             foods_data = await self._fetch_foods(food_ids)
 
-            # Step 2: Calculate nutrition for each food item
-            foods_with_nutrition = []
-            total_calories = 0.0
-            total_protein = 0.0
-            total_carbs = 0.0
-            total_fat = 0.0
-            total_fiber = 0.0
-            total_sugar = 0.0
-            total_sodium = 0.0
+            # Step 2: Create meal log WITHOUT foods (will be in meal_foods table)
+            meal_data = {
+                "user_id": user_id,
+                "name": name,
+                "category": category,
+                "logged_at": logged_at,
+                "notes": notes,
+                "source": "manual",
+                "estimated": False,
+                "ai_extracted": False,
+                # Totals will be auto-calculated by triggers
+                "total_calories": 0,
+                "total_protein_g": 0,
+                "total_carbs_g": 0,
+                "total_fat_g": 0,
+                "total_fiber_g": 0,
+                "total_sugar_g": 0,
+                "total_sodium_mg": 0,
+                "created_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat()
+            }
 
-            for idx, item in enumerate(food_items):
+            response = self.supabase.table("meal_logs").insert(meal_data).execute()
+            created_meal = response.data[0]
+            meal_id = created_meal["id"]
+
+            logger.info(f"✅ Created meal_log: {meal_id}")
+
+            # Step 3: Insert foods into meal_foods table
+            meal_foods_records = []
+
+            for item in food_items:
                 food_id = item["food_id"]
                 quantity = item["quantity"]
                 unit = item["unit"]
@@ -99,56 +120,27 @@ class MealLoggingService:
                     unit=unit
                 )
 
-                # Build food item for JSONB
-                food_item = {
+                # Build meal_foods record
+                meal_food_record = {
+                    "meal_log_id": meal_id,
                     "food_id": food_id,
-                    "name": food_data["name"],
-                    "brand": food_data.get("brand_name"),
                     "quantity": quantity,
                     "unit": unit,
-                    "serving_size": food_data["serving_size"],
-                    "serving_unit": food_data["serving_unit"],
-                    **scaled_nutrition,
-                    "order": idx + 1
+                    "calories": round(scaled_nutrition.get("calories", 0), 1),
+                    "protein_g": round(scaled_nutrition.get("protein_g", 0), 1),
+                    "carbs_g": round(scaled_nutrition.get("carbs_g", 0), 1),
+                    "fat_g": round(scaled_nutrition.get("fat_g", 0), 1),
+                    "fiber_g": round(scaled_nutrition.get("fiber_g", 0), 1),
+                    "sugar_g": round(scaled_nutrition.get("sugar_g", 0), 1),
+                    "sodium_mg": round(scaled_nutrition.get("sodium_mg", 0), 1),
                 }
 
-                foods_with_nutrition.append(food_item)
+                meal_foods_records.append(meal_food_record)
 
-                # Accumulate totals
-                total_calories += scaled_nutrition.get("calories", 0)
-                total_protein += scaled_nutrition.get("protein_g", 0)
-                total_carbs += scaled_nutrition.get("carbs_g", 0)
-                total_fat += scaled_nutrition.get("fat_g", 0)
-                total_fiber += scaled_nutrition.get("fiber_g", 0)
-                total_sugar += scaled_nutrition.get("sugar_g", 0)
-                total_sodium += scaled_nutrition.get("sodium_mg", 0)
-
-            # Step 3: Create meal log in database
-            meal_data = {
-                "user_id": user_id,
-                "name": name,
-                "category": category,
-                "logged_at": logged_at,
-                "notes": notes,
-                "foods": foods_with_nutrition,
-                "source": "manual",
-                "total_calories": round(total_calories, 1),
-                "total_protein_g": round(total_protein, 1),
-                "total_carbs_g": round(total_carbs, 1),
-                "total_fat_g": round(total_fat, 1),
-                "total_fiber_g": round(total_fiber, 1),
-                "total_sugar_g": round(total_sugar, 1),
-                "total_sodium_mg": round(total_sodium, 1),
-                "estimated": False,
-                "ai_extracted": False,
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat()
-            }
-
-            response = self.supabase.table("meal_logs").insert(meal_data).execute()
-            created_meal = response.data[0]
-
-            logger.info(f"✅ Created meal: {created_meal['id']}")
+            # Batch insert meal_foods
+            if meal_foods_records:
+                self.supabase.table("meal_foods").insert(meal_foods_records).execute()
+                logger.info(f"✅ Inserted {len(meal_foods_records)} meal_foods records")
 
             # Step 4: Track food popularity
             for food_id in food_ids:
@@ -157,7 +149,8 @@ class MealLoggingService:
                 except:
                     pass  # Non-critical
 
-            return created_meal
+            # Step 5: Fetch complete meal with foods joined
+            return await self.get_meal_by_id(meal_id, user_id)
 
         except Exception as e:
             logger.error(f"Create meal failed: {e}", exc_info=True)
@@ -170,7 +163,7 @@ class MealLoggingService:
         updates: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Update existing meal.
+        Update existing meal using relational meal_foods table.
 
         Args:
             meal_id: Meal ID
@@ -183,31 +176,34 @@ class MealLoggingService:
         try:
             logger.info(f"Updating meal: meal_id={meal_id}, user_id={user_id}")
 
-            # If foods are being updated, recalculate nutrition
-            if "foods" in updates:
-                food_items = updates["foods"]
+            # Extract foods if being updated
+            food_items = updates.pop("foods", None)
+
+            # If foods are being updated, replace meal_foods records
+            if food_items is not None:
+                logger.info(f"Updating foods for meal {meal_id}")
+
+                # Delete existing meal_foods (triggers will auto-update totals to 0)
+                self.supabase.table("meal_foods") \
+                    .delete() \
+                    .eq("meal_log_id", meal_id) \
+                    .execute()
 
                 # Fetch food data
                 food_ids = [item["food_id"] for item in food_items]
                 foods_data = await self._fetch_foods(food_ids)
 
-                # Calculate nutrition for each food
-                foods_with_nutrition = []
-                total_calories = 0.0
-                total_protein = 0.0
-                total_carbs = 0.0
-                total_fat = 0.0
-                total_fiber = 0.0
-                total_sugar = 0.0
-                total_sodium = 0.0
+                # Insert new meal_foods records
+                meal_foods_records = []
 
-                for idx, item in enumerate(food_items):
+                for item in food_items:
                     food_id = item["food_id"]
                     quantity = item["quantity"]
                     unit = item["unit"]
 
                     food_data = foods_data.get(food_id)
                     if not food_data:
+                        logger.warning(f"Food not found: {food_id}")
                         continue
 
                     scaled_nutrition = self._scale_nutrition(
@@ -216,52 +212,43 @@ class MealLoggingService:
                         unit=unit
                     )
 
-                    food_item = {
+                    meal_food_record = {
+                        "meal_log_id": meal_id,
                         "food_id": food_id,
-                        "name": food_data["name"],
-                        "brand": food_data.get("brand_name"),
                         "quantity": quantity,
                         "unit": unit,
-                        "serving_size": food_data["serving_size"],
-                        "serving_unit": food_data["serving_unit"],
-                        **scaled_nutrition,
-                        "order": idx + 1
+                        "calories": round(scaled_nutrition.get("calories", 0), 1),
+                        "protein_g": round(scaled_nutrition.get("protein_g", 0), 1),
+                        "carbs_g": round(scaled_nutrition.get("carbs_g", 0), 1),
+                        "fat_g": round(scaled_nutrition.get("fat_g", 0), 1),
+                        "fiber_g": round(scaled_nutrition.get("fiber_g", 0), 1),
+                        "sugar_g": round(scaled_nutrition.get("sugar_g", 0), 1),
+                        "sodium_mg": round(scaled_nutrition.get("sodium_mg", 0), 1),
                     }
 
-                    foods_with_nutrition.append(food_item)
+                    meal_foods_records.append(meal_food_record)
 
-                    total_calories += scaled_nutrition.get("calories", 0)
-                    total_protein += scaled_nutrition.get("protein_g", 0)
-                    total_carbs += scaled_nutrition.get("carbs_g", 0)
-                    total_fat += scaled_nutrition.get("fat_g", 0)
-                    total_fiber += scaled_nutrition.get("fiber_g", 0)
-                    total_sugar += scaled_nutrition.get("sugar_g", 0)
-                    total_sodium += scaled_nutrition.get("sodium_mg", 0)
+                # Insert new foods (triggers will auto-update totals)
+                if meal_foods_records:
+                    self.supabase.table("meal_foods").insert(meal_foods_records).execute()
+                    logger.info(f"✅ Updated {len(meal_foods_records)} meal_foods records")
 
-                # Update foods and totals
-                updates["foods"] = foods_with_nutrition
-                updates["total_calories"] = round(total_calories, 1)
-                updates["total_protein_g"] = round(total_protein, 1)
-                updates["total_carbs_g"] = round(total_carbs, 1)
-                updates["total_fat_g"] = round(total_fat, 1)
-                updates["total_fiber_g"] = round(total_fiber, 1)
-                updates["total_sugar_g"] = round(total_sugar, 1)
-                updates["total_sodium_mg"] = round(total_sodium, 1)
+            # Update meal_logs if there are other field updates
+            if updates:
+                updates["updated_at"] = datetime.utcnow().isoformat()
 
-            # Add updated_at
-            updates["updated_at"] = datetime.utcnow().isoformat()
+                response = self.supabase.table("meal_logs") \
+                    .update(updates) \
+                    .eq("id", meal_id) \
+                    .eq("user_id", user_id) \
+                    .execute()
 
-            # Update in database
-            response = self.supabase.table("meal_logs") \
-                .update(updates) \
-                .eq("id", meal_id) \
-                .eq("user_id", user_id) \
-                .execute()
+                if not response.data:
+                    raise ValueError(f"Meal not found or unauthorized: {meal_id}")
 
-            if not response.data:
-                raise ValueError(f"Meal not found or unauthorized: {meal_id}")
+            # Fetch complete updated meal with foods
+            updated_meal = await self.get_meal_by_id(meal_id, user_id)
 
-            updated_meal = response.data[0]
             logger.info(f"✅ Updated meal: {meal_id}")
 
             return updated_meal
@@ -316,7 +303,7 @@ class MealLoggingService:
         offset: int = 0
     ) -> Dict[str, Any]:
         """
-        Get user's meal logs with filtering.
+        Get user's meal logs with filtering and foods from meal_foods table.
 
         Args:
             user_id: User ID
@@ -354,6 +341,44 @@ class MealLoggingService:
             meals = response.data if response.data else []
             total = response.count if response.count else 0
 
+            # For each meal, fetch foods from meal_foods table
+            for meal in meals:
+                meal_id = meal["id"]
+
+                # Get meal_foods with food details joined
+                meal_foods_response = self.supabase.table("meal_foods") \
+                    .select("*, foods_enhanced(id, name, brand_name, serving_size, serving_unit)") \
+                    .eq("meal_log_id", meal_id) \
+                    .order("created_at") \
+                    .execute()
+
+                # Build foods array
+                foods = []
+                for idx, mf in enumerate(meal_foods_response.data, 1):
+                    food_info = mf.get("foods_enhanced", {})
+
+                    food_item = {
+                        "food_id": mf["food_id"],
+                        "name": food_info.get("name", "Unknown Food"),
+                        "brand": food_info.get("brand_name"),
+                        "quantity": mf["quantity"],
+                        "unit": mf["unit"],
+                        "serving_size": food_info.get("serving_size", 1),
+                        "serving_unit": food_info.get("serving_unit", "serving"),
+                        "calories": mf["calories"],
+                        "protein_g": mf["protein_g"],
+                        "carbs_g": mf["carbs_g"],
+                        "fat_g": mf["fat_g"],
+                        "fiber_g": mf["fiber_g"],
+                        "sugar_g": mf.get("sugar_g"),
+                        "sodium_mg": mf.get("sodium_mg"),
+                        "order": idx
+                    }
+                    foods.append(food_item)
+
+                # Add foods to meal
+                meal["foods"] = foods
+
             logger.info(f"Found {len(meals)} meals (total: {total})")
 
             return {
@@ -373,18 +398,19 @@ class MealLoggingService:
         user_id: str
     ) -> Dict[str, Any]:
         """
-        Get single meal by ID.
+        Get single meal by ID with foods from meal_foods table.
 
         Args:
             meal_id: Meal ID
             user_id: User ID
 
         Returns:
-            Meal data
+            Meal data with foods array
         """
         try:
             logger.info(f"Getting meal: meal_id={meal_id}, user_id={user_id}")
 
+            # Get meal log
             response = self.supabase.table("meal_logs") \
                 .select("*") \
                 .eq("id", meal_id) \
@@ -396,7 +422,42 @@ class MealLoggingService:
                 raise ValueError(f"Meal not found or unauthorized: {meal_id}")
 
             meal = response.data[0]
-            logger.info(f"Found meal: {meal_id}")
+
+            # Get meal_foods with food details joined
+            meal_foods_response = self.supabase.table("meal_foods") \
+                .select("*, foods_enhanced(id, name, brand_name, serving_size, serving_unit)") \
+                .eq("meal_log_id", meal_id) \
+                .order("created_at") \
+                .execute()
+
+            # Build foods array for API response (matching FoodItem schema)
+            foods = []
+            for idx, mf in enumerate(meal_foods_response.data, 1):
+                food_info = mf.get("foods_enhanced", {})
+
+                food_item = {
+                    "food_id": mf["food_id"],
+                    "name": food_info.get("name", "Unknown Food"),
+                    "brand": food_info.get("brand_name"),
+                    "quantity": mf["quantity"],
+                    "unit": mf["unit"],
+                    "serving_size": food_info.get("serving_size", 1),
+                    "serving_unit": food_info.get("serving_unit", "serving"),
+                    "calories": mf["calories"],
+                    "protein_g": mf["protein_g"],
+                    "carbs_g": mf["carbs_g"],
+                    "fat_g": mf["fat_g"],
+                    "fiber_g": mf["fiber_g"],
+                    "sugar_g": mf.get("sugar_g"),
+                    "sodium_mg": mf.get("sodium_mg"),
+                    "order": idx
+                }
+                foods.append(food_item)
+
+            # Add foods to meal
+            meal["foods"] = foods
+
+            logger.info(f"Found meal: {meal_id} with {len(foods)} foods")
 
             return meal
 
