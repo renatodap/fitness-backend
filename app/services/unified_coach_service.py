@@ -426,7 +426,9 @@ Now respond to the user with this energy and specificity."""
                 confidence=preview_result["confidence"],
                 data=preview_result["data"],
                 reasoning=preview_result.get("reasoning", "AI detected this as a log entry"),
-                summary=preview_result.get("summary", f"{preview_result['entry_type'].title()} entry detected")
+                summary=preview_result.get("summary", f"{preview_result['entry_type'].title()} entry detected"),
+                validation=preview_result.get("validation"),
+                suggestions=preview_result.get("suggestions", [])
             )
 
             return {

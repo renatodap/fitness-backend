@@ -184,6 +184,11 @@ class QuickEntryService:
             "entry_type": classification["type"],
             "confidence": classification.get("confidence", 0.0),
             "data": classification.get("data", {}),
+            "validation": classification.get("validation", {
+                "errors": [],
+                "warnings": [],
+                "missing_critical": []
+            }),
             "suggestions": classification.get("suggestions", []),
             "extracted_text": extracted_text[:500]
         }
