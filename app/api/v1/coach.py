@@ -17,6 +17,7 @@ import logging
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 
 from app.api.v1.schemas.unified_coach_schemas import (
     UnifiedMessageRequest,
@@ -357,6 +358,107 @@ async def confirm_log(
         raise HTTPException(
             status_code=500,
             detail="Failed to save log. Please try again."
+        )
+
+
+# =====================================================
+# ENDPOINT 2b: Cancel Detected Log
+# =====================================================
+
+class CancelLogRequest(BaseModel):
+    """Request to cancel a detected log."""
+    conversation_id: str = Field(..., description="Conversation ID")
+    user_message_id: str = Field(..., description="User message ID that triggered detection")
+
+
+@router.post(
+    "/cancel-log",
+    summary="Cancel a detected log",
+    description="""
+    When user cancels a detected log (e.g., from meal preview page).
+
+    This endpoint:
+    1. Adds an assistant message acknowledging the cancellation
+    2. Keeps conversation flowing naturally
+    3. Returns success status
+
+    **Example:**
+    ```json
+    {
+      "conversation_id": "123e4567...",
+      "user_message_id": "456e7890..."
+    }
+    ```
+    """,
+    tags=["coach"]
+)
+async def cancel_log(
+    request: CancelLogRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Cancel a detected log and add coach acknowledgment message.
+
+    FLOW:
+    1. Validate conversation belongs to user
+    2. Add assistant message: "No problem! I won't log that meal..."
+    3. Return success
+    """
+    try:
+        user_id = current_user["id"]
+        supabase = get_service_client()
+
+        # Verify conversation belongs to user
+        conv_check = (
+            supabase.table("coach_conversations")
+            .select("id")
+            .eq("id", request.conversation_id)
+            .eq("user_id", user_id)
+            .single()
+            .execute()
+        )
+
+        if not conv_check.data:
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation not found or access denied"
+            )
+
+        # Add assistant cancellation message
+        assistant_message = "No problem! I won't log that meal. Let me know if you change your mind or if there's anything else I can help you with. 💪"
+
+        message_id = supabase.table("coach_messages").insert({
+            "conversation_id": request.conversation_id,
+            "role": "assistant",
+            "content": assistant_message,
+            "message_type": "chat",
+            "is_vectorized": False
+        }).execute().data[0]["id"]
+
+        # Update conversation last_message_at
+        supabase.table("coach_conversations").update({
+            "last_message_at": "now()",
+            "message_count": supabase.table("coach_conversations")
+                .select("message_count")
+                .eq("id", request.conversation_id)
+                .single()
+                .execute()
+                .data["message_count"] + 1
+        }).eq("id", request.conversation_id).execute()
+
+        return {
+            "success": True,
+            "message": assistant_message,
+            "message_id": message_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in cancel_log: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to cancel log. Please try again."
         )
 
 
