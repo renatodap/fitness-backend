@@ -3,6 +3,13 @@
 -- Includes complete nutrition data for meal logging
 
 -- ============================================================================
+-- ENABLE REQUIRED EXTENSIONS FIRST
+-- ============================================================================
+
+-- Enable pg_trgm extension for trigram similarity search
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- ============================================================================
 -- SEED COMMON PROTEINS
 -- ============================================================================
 
@@ -153,12 +160,9 @@ WHERE search_vector IS NULL;
 CREATE INDEX IF NOT EXISTS idx_foods_enhanced_search_vector
 ON public.foods_enhanced USING GIN(search_vector);
 
--- Create index for name search
+-- Create index for name search (pg_trgm extension already enabled at top)
 CREATE INDEX IF NOT EXISTS idx_foods_enhanced_name_trgm
 ON public.foods_enhanced USING GIN(name gin_trgm_ops);
-
--- Enable pg_trgm extension if not already enabled
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- ============================================================================
 -- VERIFICATION

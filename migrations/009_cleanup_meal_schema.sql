@@ -261,22 +261,17 @@ CREATE TRIGGER trigger_meal_logs_update_daily_summary
   EXECUTE FUNCTION trigger_update_daily_summary();
 
 -- ============================================================================
--- ADD UNIQUE CONSTRAINT WHERE MISSING
+-- ADD UNIQUE CONSTRAINTS/INDEXES WHERE MISSING
 -- ============================================================================
 
 -- Ensure user can't have duplicate active nutrition goals
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conname = 'nutrition_goals_user_active_unique'
-  ) THEN
-    ALTER TABLE public.nutrition_goals
-    ADD CONSTRAINT nutrition_goals_user_active_unique
-    UNIQUE (user_id, is_active)
-    WHERE (is_active = true);
-  END IF;
-END $$;
+-- Use partial unique index (not constraint) for conditional uniqueness
+CREATE UNIQUE INDEX IF NOT EXISTS idx_nutrition_goals_user_active_unique
+ON public.nutrition_goals (user_id)
+WHERE (is_active = true);
+
+COMMENT ON INDEX idx_nutrition_goals_user_active_unique IS
+'Ensures each user can only have one active nutrition goal at a time';
 
 -- Ensure daily_nutrition_summaries has unique constraint on user_id + date
 DO $$
