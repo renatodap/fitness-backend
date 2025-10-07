@@ -129,8 +129,10 @@ Message: "{message}"
 Return JSON classification."""
 
         try:
-            # Call Groq with structured output
-            response = await self.groq_service.chat_completion(
+            # Call Groq client directly for classification
+            import json
+            response = self.groq_service.client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
@@ -140,8 +142,8 @@ Return JSON classification."""
             )
 
             # Parse JSON response
-            import json
-            classification = json.loads(response)
+            response_text = response.choices[0].message.content.strip()
+            classification = json.loads(response_text)
 
             logger.info(f"[Classifier] Result: is_log={classification['is_log']}, confidence={classification['confidence']}")
 

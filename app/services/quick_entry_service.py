@@ -184,6 +184,11 @@ class QuickEntryService:
             "entry_type": classification["type"],
             "confidence": classification.get("confidence", 0.0),
             "data": classification.get("data", {}),
+            "validation": classification.get("validation", {
+                "errors": [],
+                "warnings": [],
+                "missing_critical": []
+            }),
             "suggestions": classification.get("suggestions", []),
             "extracted_text": extracted_text[:500]
         }
@@ -627,9 +632,36 @@ MEAL example:
     "meal_name": "Grilled chicken with rice and broccoli",
     "meal_type": "lunch",
     "foods": [
-      {{"name": "Grilled chicken breast", "quantity": "6 oz"}},
-      {{"name": "Brown rice", "quantity": "1 cup"}},
-      {{"name": "Steamed broccoli", "quantity": "2 cups"}}
+      {{
+        "name": "Grilled chicken breast",
+        "quantity": "6 oz",
+        "servings": 1.0,
+        "calories": 250,
+        "protein_g": 42,
+        "carbs_g": 0,
+        "fat_g": 6,
+        "fiber_g": 0
+      }},
+      {{
+        "name": "Brown rice",
+        "quantity": "1 cup",
+        "servings": 1.0,
+        "calories": 160,
+        "protein_g": 3,
+        "carbs_g": 35,
+        "fat_g": 1,
+        "fiber_g": 4
+      }},
+      {{
+        "name": "Steamed broccoli",
+        "quantity": "2 cups",
+        "servings": 1.0,
+        "calories": 40,
+        "protein_g": 0,
+        "carbs_g": 5,
+        "fat_g": 1,
+        "fiber_g": 2
+      }}
     ],
     "calories": 450,
     "protein_g": 45,

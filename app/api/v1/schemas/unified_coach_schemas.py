@@ -170,6 +170,18 @@ class LogPreview(BaseModel):
         description="Human-readable summary (e.g., '450 calories, 35g protein')"
     )
 
+    # Validation feedback
+    validation: Optional[Dict[str, List[str]]] = Field(
+        None,
+        description="Validation errors, warnings, and missing critical fields"
+    )
+
+    # AI suggestions
+    suggestions: List[str] = Field(
+        default_factory=list,
+        description="Helpful suggestions from AI (e.g., 'Add portion sizes for accuracy')"
+    )
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -184,7 +196,13 @@ class LogPreview(BaseModel):
                     "foods": ["eggs", "oatmeal", "banana"]
                 },
                 "reasoning": "Past tense eating with specific foods and implicit quantities",
-                "summary": "Breakfast: 450 calories, 35g protein, 40g carbs, 15g fats"
+                "summary": "Breakfast: 450 calories, 35g protein, 40g carbs, 15g fats",
+                "validation": {
+                    "errors": [],
+                    "warnings": ["Some portions were estimated"],
+                    "missing_critical": []
+                },
+                "suggestions": ["Add specific portion sizes for better tracking"]
             }
         }
 

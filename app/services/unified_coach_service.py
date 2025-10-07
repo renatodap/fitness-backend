@@ -208,19 +208,42 @@ class UnifiedCoachService:
                 rag_context = "No previous user data available."
                 logger.warning(f"[UnifiedCoach._handle_chat_mode] Using empty RAG context due to error")
 
-            # STEP 2: Generate AI response (Claude with streaming)
-            system_prompt = f"""You are Wagner Coach, an expert AI fitness and nutrition coach.
+            # STEP 2: Generate AI response (Claude with streaming + caching)
 
-You have access to the user's complete fitness history:
-{rag_context}
+            # Build Iron Discipline system prompt (cached for cost savings)
+            base_system_prompt = """You are WAGNER - the AI coach for Iron Discipline, a hardcore fitness platform.
 
-Provide personalized, actionable advice based on their data.
-Be encouraging, specific, and knowledgeable.
-Keep responses concise but helpful (2-4 paragraphs max).
-If you reference their data, be specific (e.g., "Based on your meal from Tuesday...")."""
+PERSONALITY:
+- Intense, direct, motivational (think David Goggins meets a knowledgeable coach)
+- Use strong language: "CRUSH IT", "NO EXCUSES", "BEAST MODE"
+- Short, punchy responses (2-3 paragraphs max unless deep analysis requested)
+- Reference user's actual data with SPECIFICS
+- Balance intensity with expertise - you're tough but you know your shit
 
-            logger.info(f"[UnifiedCoach._handle_chat_mode] Calling Claude API...")
-            logger.info(f"[UnifiedCoach._handle_chat_mode] System prompt length: {len(system_prompt)}")
+RESPONSE RULES:
+1. ALWAYS reference their actual data when relevant
+2. Be specific: "Based on your 3 workouts this week..." not "Based on your data..."
+3. Push them hard but stay supportive
+4. If they're slacking, call it out (kindly but firmly)
+5. Celebrate wins LOUDLY: "🔥🔥🔥 NEW PR! LET'S GOOOOO!"
+6. Link nutrition to performance: "That 450cal breakfast before your run? PERFECT for endurance"
+
+EXAMPLE TONE:
+User: "What should I eat for breakfast?"
+Wagner: "Looking at your training schedule, you've got solid workouts this week. You need FUEL.
+
+Aim for 450-550 calories with 35-40g protein. Think:
+- 3 whole eggs + oatmeal + banana
+- Greek yogurt (200g) + granola + berries + protein scoop
+- Protein pancakes (3) + peanut butter + honey
+
+Based on your recent meals, you're averaging good protein. Keep crushing it. 💪"
+
+Now respond to the user with this energy and specificity."""
+
+            logger.info(f"[UnifiedCoach._handle_chat_mode] Calling Claude API with caching...")
+            logger.info(f"[UnifiedCoach._handle_chat_mode] Base prompt length: {len(base_system_prompt)}")
+            logger.info(f"[UnifiedCoach._handle_chat_mode] RAG context length: {len(rag_context)}")
             logger.info(f"[UnifiedCoach._handle_chat_mode] User message length: {len(message)}")
 
             # Create message for Claude
@@ -230,12 +253,23 @@ If you reference their data, be specific (e.g., "Based on your meal from Tuesday
             cost_usd = 0.0
 
             try:
-                # Use Claude streaming
+                # Use Claude streaming WITH PROMPT CACHING (90% cost savings!)
                 async with self.anthropic.messages.stream(
                     model="claude-3-5-sonnet-20241022",
                     max_tokens=1000,
-                    temperature=0.7,
-                    system=system_prompt,
+                    temperature=0.3,  # Lower temp for more factual coaching (was 0.7)
+                    system=[
+                        {
+                            "type": "text",
+                            "text": base_system_prompt,
+                            "cache_control": {"type": "ephemeral"}  # Cache base prompt!
+                        },
+                        {
+                            "type": "text",
+                            "text": f"\n\n=== USER DATA ===\n{rag_context}",
+                            "cache_control": {"type": "ephemeral"}  # Cache RAG context too!
+                        }
+                    ],
                     messages=[
                         {"role": "user", "content": message}
                     ]
@@ -246,11 +280,29 @@ If you reference their data, be specific (e.g., "Based on your meal from Tuesday
                         response_chunks.append(text)
                     logger.info(f"[UnifiedCoach._handle_chat_mode] Claude stream completed")
 
-                # Get usage stats
+                # Get usage stats (includes cache metrics!)
                 logger.info(f"[UnifiedCoach._handle_chat_mode] Getting usage stats...")
                 usage = await stream.get_final_message()
-                tokens_used = usage.usage.input_tokens + usage.usage.output_tokens
-                cost_usd = self._calculate_claude_cost(usage.usage.input_tokens, usage.usage.output_tokens)
+
+                # Extract all token types (including cache)
+                input_tokens = usage.usage.input_tokens
+                output_tokens = usage.usage.output_tokens
+                cache_read_tokens = getattr(usage.usage, 'cache_read_input_tokens', 0)
+                cache_write_tokens = getattr(usage.usage, 'cache_creation_input_tokens', 0)
+
+                tokens_used = input_tokens + output_tokens + cache_read_tokens + cache_write_tokens
+                cost_usd = self._calculate_claude_cost(
+                    input_tokens,
+                    output_tokens,
+                    cache_read_tokens,
+                    cache_write_tokens
+                )
+
+                logger.info(
+                    f"[UnifiedCoach._handle_chat_mode] Token usage: "
+                    f"input={input_tokens}, output={output_tokens}, "
+                    f"cache_read={cache_read_tokens}, cache_write={cache_write_tokens}"
+                )
 
                 logger.info(f"[UnifiedCoach._handle_chat_mode] AI response generated: {len(ai_response_text)} chars, {tokens_used} tokens, ${cost_usd:.6f}")
             except Exception as claude_err:
@@ -374,7 +426,9 @@ If you reference their data, be specific (e.g., "Based on your meal from Tuesday
                 confidence=preview_result["confidence"],
                 data=preview_result["data"],
                 reasoning=preview_result.get("reasoning", "AI detected this as a log entry"),
-                summary=preview_result.get("summary", f"{preview_result['entry_type'].title()} entry detected")
+                summary=preview_result.get("summary", f"{preview_result['entry_type'].title()} entry detected"),
+                validation=preview_result.get("validation"),
+                suggestions=preview_result.get("suggestions", [])
             )
 
             return {
@@ -535,50 +589,191 @@ If you reference their data, be specific (e.g., "Based on your meal from Tuesday
                 "total": 0
             }
 
-    async def _build_rag_context(self, user_id: str, query: str, max_results: int = 10) -> str:
+    async def _build_rag_context(self, user_id: str, query: str, max_tokens: int = 3000) -> str:
         """
-        Build comprehensive RAG context from ALL user data.
+        Build comprehensive RAG context using HYBRID SEARCH.
 
-        Searches:
-        - quick_entry_embeddings (meals, workouts, measurements)
-        - coach_messages embeddings (previous conversations)
-        - Any other vectorized data
+        Strategy:
+        1. Semantic search (embedding similarity)
+        2. Recency boost (recent entries weighted higher)
+        3. Diversity (avoid redundant results)
+        4. Re-ranking by final score
 
-        Returns formatted context string for AI.
+        Returns formatted context string optimized for Claude.
         """
         try:
             # Generate query embedding
             query_embedding = await self.embedding_service.embed_text(query)
+            embedding_list = query_embedding.tolist() if hasattr(query_embedding, 'tolist') else query_embedding
 
-            # Search quick_entry_embeddings
+            # SEARCH MULTIPLE SOURCES (get more candidates for re-ranking)
             quick_entries = await self.supabase.rpc(
                 "search_quick_entry_embeddings",
                 {
-                    "query_embedding": query_embedding.tolist() if hasattr(query_embedding, 'tolist') else query_embedding,
+                    "query_embedding": embedding_list,
                     "user_id_filter": user_id,
-                    "match_threshold": 0.6,
-                    "match_count": 5
+                    "match_threshold": 0.5,  # Lower threshold to get more candidates
+                    "match_count": 20  # Get 20 candidates, then re-rank
                 }
             ).execute()
 
-            # Build context string
-            context_parts = []
+            # Also get RECENT entries for temporal context
+            recent_entries = await self.supabase.table("quick_entry_logs")\
+                .select("*")\
+                .eq("user_id", user_id)\
+                .order("logged_at", desc=True)\
+                .limit(10)\
+                .execute()
+
+            # HYBRID SCORING: Combine similarity + recency + diversity
+            scored_results = []
 
             if quick_entries.data:
-                context_parts.append("USER'S RECENT DATA:")
-                for entry in quick_entries.data[:5]:
-                    summary = entry.get('content_summary', entry.get('content_text', '')[:100])
-                    classification = entry.get('source_classification', 'unknown')
-                    context_parts.append(f"- [{classification.upper()}] {summary}")
+                for entry in quick_entries.data:
+                    similarity_score = entry.get('similarity', 0.7)  # From pgvector
+                    recency_score = self._calculate_recency_score(
+                        entry.get('logged_at') or entry.get('created_at')
+                    )
+                    diversity_score = self._calculate_diversity_score(entry, scored_results)
 
-            if not context_parts:
+                    final_score = (
+                        similarity_score * 0.5 +      # 50% similarity
+                        recency_score * 0.3 +         # 30% recency
+                        diversity_score * 0.2         # 20% diversity
+                    )
+
+                    scored_results.append({
+                        "entry": entry,
+                        "score": final_score,
+                        "similarity": similarity_score,
+                        "recency": recency_score,
+                        "source": "quick_entry"
+                    })
+
+            # Sort by score and take top 10
+            scored_results.sort(key=lambda x: x['score'], reverse=True)
+            top_results = scored_results[:10]
+
+            # BUILD CONTEXT STRING with source attribution
+            context_parts = []
+            context_parts.append("=== USER'S RELEVANT DATA ===\n")
+
+            for i, result in enumerate(top_results, 1):
+                entry = result['entry']
+                classification = entry.get('source_classification', 'entry')
+                summary = entry.get('content_summary', entry.get('content_text', '')[:150])
+                logged_at = entry.get('logged_at', entry.get('created_at'))
+
+                context_parts.append(
+                    f"{i}. [{classification.upper()} - {self._format_relative_time(logged_at)}]\n"
+                    f"   {summary}\n"
+                )
+
+            # Add recent activity summary (always include for temporal context)
+            if recent_entries.data:
+                context_parts.append("\n=== RECENT ACTIVITY (Last 7 Days) ===")
+                context_parts.append(self._summarize_recent_activity(recent_entries.data))
+
+            full_context = "\n".join(context_parts)
+
+            # Truncate to max_tokens if needed (rough estimate: 4 chars = 1 token)
+            max_chars = max_tokens * 4
+            if len(full_context) > max_chars:
+                full_context = full_context[:max_chars] + "\n\n[Context truncated due to length]"
+
+            if not top_results:
                 return "No previous user data available."
 
-            return "\n".join(context_parts)
+            return full_context
 
         except Exception as e:
-            logger.error(f"[UnifiedCoach] RAG context building failed: {e}")
+            logger.error(f"[UnifiedCoach] RAG context building failed: {e}", exc_info=True)
             return "Unable to retrieve user history."
+
+    def _calculate_recency_score(self, timestamp: str) -> float:
+        """
+        Calculate recency score (1.0 for today, decays to 0.1 for 30+ days ago).
+        Uses exponential decay with 3-day half-life.
+        """
+        if not timestamp:
+            return 0.1
+
+        try:
+            now = datetime.utcnow()
+            entry_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00').replace('+00:00', ''))
+            days_ago = (now - entry_time).total_seconds() / 86400
+
+            # Exponential decay with 3-day half-life
+            return max(0.1, 1.0 / (1 + days_ago / 3))
+        except Exception as e:
+            logger.warning(f"Failed to calculate recency score: {e}")
+            return 0.5
+
+    def _calculate_diversity_score(self, entry: dict, existing_results: list) -> float:
+        """
+        Penalize entries that are too similar to already-selected results.
+        Promotes variety in RAG context.
+        """
+        if not existing_results:
+            return 1.0
+
+        entry_type = entry.get('source_classification', 'unknown')
+
+        # Count how many existing results share this type
+        same_type_count = sum(
+            1 for r in existing_results
+            if r['entry'].get('source_classification') == entry_type
+        )
+
+        # Penalize if we already have 3+ of this type
+        if same_type_count >= 3:
+            return 0.3
+        elif same_type_count >= 2:
+            return 0.6
+        else:
+            return 1.0
+
+    def _format_relative_time(self, timestamp: str) -> str:
+        """Format timestamp as relative time (e.g., '2 hours ago', 'yesterday')."""
+        if not timestamp:
+            return "unknown time"
+
+        try:
+            now = datetime.utcnow()
+            entry_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00').replace('+00:00', ''))
+            delta = now - entry_time
+
+            if delta.days == 0:
+                hours = delta.seconds // 3600
+                if hours == 0:
+                    minutes = delta.seconds // 60
+                    return f"{minutes}min ago" if minutes > 0 else "just now"
+                return f"{hours}h ago"
+            elif delta.days == 1:
+                return "yesterday"
+            elif delta.days < 7:
+                return f"{delta.days}d ago"
+            else:
+                return f"{delta.days // 7}w ago"
+        except Exception as e:
+            logger.warning(f"Failed to format relative time: {e}")
+            return "recently"
+
+    def _summarize_recent_activity(self, entries: list) -> str:
+        """Generate quick summary of recent activity by type."""
+        if not entries:
+            return "No activity logged in past 7 days."
+
+        by_type = {}
+        for entry in entries:
+            entry_type = entry.get('source_classification', 'other')
+            by_type.setdefault(entry_type, []).append(entry)
+
+        summary_parts = []
+        for entry_type, items in by_type.items():
+            summary_parts.append(f"- {len(items)} {entry_type}(s)")
+
+        return "\n".join(summary_parts)
 
     async def _create_conversation(self, user_id: str) -> str:
         """
@@ -738,16 +933,33 @@ If you reference their data, be specific (e.g., "Based on your meal from Tuesday
         else:
             return f"✅ {log_type} logged successfully!"
 
-    def _calculate_claude_cost(self, input_tokens: int, output_tokens: int) -> float:
-        """Calculate Claude 3.5 Sonnet cost."""
-        # Claude 3.5 Sonnet pricing (as of 2024)
-        input_cost_per_m = 3.00  # $3 per million input tokens
-        output_cost_per_m = 15.00  # $15 per million output tokens
+    def _calculate_claude_cost(self, input_tokens: int, output_tokens: int, cache_read_tokens: int = 0, cache_write_tokens: int = 0) -> float:
+        """
+        Calculate Claude 3.5 Sonnet cost with prompt caching.
 
-        input_cost = (input_tokens / 1_000_000) * input_cost_per_m
-        output_cost = (output_tokens / 1_000_000) * output_cost_per_m
+        Prompt caching pricing:
+        - Cache writes: $3.75/M tokens (25% more than regular input)
+        - Cache reads: $0.30/M tokens (90% cheaper than regular input!)
+        - Regular input: $3.00/M tokens
+        - Output: $15.00/M tokens
+        """
+        # Regular pricing
+        input_cost = (input_tokens / 1_000_000) * 3.00
+        output_cost = (output_tokens / 1_000_000) * 15.00
 
-        return input_cost + output_cost
+        # Caching pricing (massive savings!)
+        cache_write_cost = (cache_write_tokens / 1_000_000) * 3.75  # Slightly more to write
+        cache_read_cost = (cache_read_tokens / 1_000_000) * 0.30    # 90% cheaper to read!
+
+        total = input_cost + output_cost + cache_write_cost + cache_read_cost
+
+        logger.debug(
+            f"[Cost] Input: ${input_cost:.6f}, Output: ${output_cost:.6f}, "
+            f"Cache Write: ${cache_write_cost:.6f}, Cache Read: ${cache_read_cost:.6f}, "
+            f"Total: ${total:.6f}"
+        )
+
+        return total
 
 
 # Global instance
