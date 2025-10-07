@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.api.middleware.auth import get_current_user
-from app.services.meal_logging_service import get_meal_logging_service
+from app.services.meal_logging_service_v2 import get_meal_logging_service_v2 as get_meal_logging_service
 
 logger = logging.getLogger(__name__)
 

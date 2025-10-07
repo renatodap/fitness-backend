@@ -112,13 +112,13 @@ class FoodSearchService:
         try:
             logger.info(f"Getting recent foods for user {user_id}, limit={limit}")
 
-            # Query meal_logs to find recently used foods
-            # Extract unique food_ids from foods JSONB array
-            response = self.supabase.table("meal_logs") \
-                .select("foods, logged_at") \
-                .eq("user_id", user_id) \
-                .order("logged_at", desc=True) \
-                .limit(100) \
+            # Query meal_foods table (relational schema)
+            # Join with meal_logs to filter by user_id
+            response = self.supabase.table("meal_foods") \
+                .select("food_id, quantity, unit, created_at, meal_logs!inner(user_id, logged_at)") \
+                .eq("meal_logs.user_id", user_id) \
+                .order("created_at", desc=True) \
+                .limit(200) \
                 .execute()
 
             if not response.data:
@@ -127,25 +127,25 @@ class FoodSearchService:
             # Extract food IDs and track last usage
             food_tracking = {}  # {food_id: {last_logged_at, quantity, unit, count}}
 
-            for meal in response.data:
-                foods = meal.get("foods", [])
-                logged_at = meal.get("logged_at")
+            for meal_food in response.data:
+                food_id = meal_food.get("food_id")
+                if not food_id:
+                    continue
 
-                for food_item in foods:
-                    food_id = food_item.get("food_id")
-                    if not food_id:
-                        continue
+                # Get logged_at from joined meal_logs
+                meal_log_data = meal_food.get("meal_logs", {})
+                logged_at = meal_log_data.get("logged_at") if isinstance(meal_log_data, dict) else None
 
-                    if food_id not in food_tracking:
-                        food_tracking[food_id] = {
-                            "last_logged_at": logged_at,
-                            "last_quantity": food_item.get("quantity"),
-                            "last_unit": food_item.get("unit"),
-                            "log_count": 1
-                        }
-                    else:
-                        # Update count but keep most recent quantity/unit
-                        food_tracking[food_id]["log_count"] += 1
+                if food_id not in food_tracking:
+                    food_tracking[food_id] = {
+                        "last_logged_at": logged_at or meal_food.get("created_at"),
+                        "last_quantity": meal_food.get("quantity"),
+                        "last_unit": meal_food.get("unit"),
+                        "log_count": 1
+                    }
+                else:
+                    # Update count but keep most recent quantity/unit
+                    food_tracking[food_id]["log_count"] += 1
 
             # Get top N unique food IDs
             sorted_food_ids = sorted(
