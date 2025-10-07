@@ -22,7 +22,10 @@ CREATE EXTENSION IF NOT EXISTS "vector";
 
 CREATE TABLE IF NOT EXISTS public.coach_conversations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL,
+  -- NOTE: No FK constraint to auth.users to allow mock auth in development
+  -- In production, user_id should always be a valid auth.users.id
+  -- Application code validates user_id via JWT auth
   title text,
   message_count integer DEFAULT 0 CHECK (message_count >= 0),
   archived boolean DEFAULT false,
@@ -69,7 +72,9 @@ CREATE TRIGGER update_coach_conversations_updated_at
 CREATE TABLE IF NOT EXISTS public.coach_message_embeddings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   message_id uuid NOT NULL REFERENCES public.coach_messages(id) ON DELETE CASCADE,
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL,
+  -- NOTE: No FK constraint to auth.users to allow mock auth in development
+  -- In production, user_id should always be a valid auth.users.id
   role text NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
   embedding vector(384) NOT NULL,
   content_text text NOT NULL,
