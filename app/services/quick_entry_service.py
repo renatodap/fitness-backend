@@ -635,6 +635,7 @@ MEAL example:
       {{
         "name": "Grilled chicken breast",
         "quantity": "6 oz",
+        "servings": 1.0,
         "calories": 250,
         "protein_g": 42,
         "carbs_g": 0,
@@ -644,6 +645,7 @@ MEAL example:
       {{
         "name": "Brown rice",
         "quantity": "1 cup",
+        "servings": 1.0,
         "calories": 160,
         "protein_g": 3,
         "carbs_g": 35,
@@ -653,6 +655,7 @@ MEAL example:
       {{
         "name": "Steamed broccoli",
         "quantity": "2 cups",
+        "servings": 1.0,
         "calories": 40,
         "protein_g": 0,
         "carbs_g": 5,
