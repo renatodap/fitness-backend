@@ -18,6 +18,7 @@ from app.services.quick_entry_service import get_quick_entry_service
 from app.services.supabase_service import get_service_client
 from app.services.multimodal_embedding_service import get_multimodal_service
 from app.services.agentic_rag_service import get_agentic_rag_service
+from app.services.food_vision_service import get_food_vision_service
 from anthropic import AsyncAnthropic
 from app.config import get_settings
 
@@ -42,7 +43,8 @@ class UnifiedCoachService:
         self.classifier = get_message_classifier()
         self.quick_entry = get_quick_entry_service()
         self.embedding_service = get_multimodal_service()
-        self.agentic_rag = get_agentic_rag_service()  # NEW: Agentic RAG service
+        self.agentic_rag = get_agentic_rag_service()  # Agentic RAG service
+        self.food_vision = get_food_vision_service()  # NEW: Isolated food vision service
         self.anthropic = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
     async def process_message(
@@ -190,15 +192,61 @@ class UnifiedCoachService:
         Handle CHAT mode: Generate AI response with RAG context.
 
         Flow:
-        1. Build RAG context from ALL user data
-        2. Generate Claude response (streaming)
-        3. Save AI response to database
-        4. Vectorize both user message and AI response
-        5. Return response
+        1. IF IMAGE: Analyze with isolated food vision service FIRST
+        2. Build RAG context from ALL user data
+        3. Inject food vision analysis into context
+        4. Generate Claude response (streaming)
+        5. Save AI response to database
+        6. Vectorize both user message and AI response
+        7. If food detected, offer to log it
+        8. Return response
         """
         logger.info(f"[UnifiedCoach._handle_chat_mode] START - user_message_id: {user_message_id}")
 
+        food_analysis = None
+        food_context = ""
+
         try:
+            # STEP 0: ANALYZE IMAGE FIRST (if present) using isolated vision service
+            if image_base64:
+                logger.info(f"[UnifiedCoach._handle_chat_mode] Image detected - analyzing with food vision service...")
+                try:
+                    food_analysis = await self.food_vision.analyze_food_image(
+                        image_base64=image_base64,
+                        user_message=message
+                    )
+                    logger.info(
+                        f"[UnifiedCoach._handle_chat_mode] Food vision result: "
+                        f"is_food={food_analysis.get('is_food')}, "
+                        f"confidence={food_analysis.get('confidence')}, "
+                        f"api={food_analysis.get('api_used')}"
+                    )
+
+                    # Build food context for RAG injection
+                    if food_analysis.get("is_food") and food_analysis.get("success"):
+                        nutrition = food_analysis.get("nutrition", {})
+                        food_items = food_analysis.get("food_items", [])
+                        food_context = f"""
+=== FOOD IMAGE ANALYSIS ===
+Description: {food_analysis.get('description', 'N/A')}
+Detected Foods: {', '.join([item.get('name', '') for item in food_items])}
+Estimated Nutrition:
+- Calories: {nutrition.get('calories', 'Unknown')} kcal
+- Protein: {nutrition.get('protein_g', 'Unknown')} g
+- Carbs: {nutrition.get('carbs_g', 'Unknown')} g
+- Fats: {nutrition.get('fats_g', 'Unknown')} g
+Meal Type: {food_analysis.get('meal_type', 'Unknown')}
+Confidence: {food_analysis.get('confidence', 0) * 100:.0f}%
+"""
+                        logger.info(f"[UnifiedCoach._handle_chat_mode] Food context created for RAG injection")
+                    else:
+                        # Not food or low confidence
+                        food_context = f"\n=== IMAGE ANALYSIS ===\n{food_analysis.get('description', 'Image analyzed but no food detected')}\n"
+
+                except Exception as vision_err:
+                    logger.error(f"[UnifiedCoach._handle_chat_mode] Food vision failed (non-critical): {vision_err}", exc_info=True)
+                    food_context = "\n=== IMAGE ===\nUser uploaded an image but analysis failed.\n"
+
             # STEP 1: Build RAG context using AGENTIC RAG SERVICE
             logger.info(f"[UnifiedCoach._handle_chat_mode] Building RAG context for user {user_id}...")
             try:
@@ -218,6 +266,10 @@ class UnifiedCoachService:
                 # Use empty context if RAG fails (non-critical)
                 rag_context = "No previous user data available."
                 logger.warning(f"[UnifiedCoach._handle_chat_mode] Using empty RAG context due to error")
+
+            # INJECT FOOD CONTEXT into RAG
+            if food_context:
+                rag_context = food_context + "\n" + rag_context
 
             # STEP 2: Generate AI response (Claude with streaming + caching)
 
@@ -239,6 +291,14 @@ RESPONSE RULES:
 5. Celebrate wins LOUDLY: "🔥🔥🔥 NEW PR! LET'S GOOOOO!"
 6. Link nutrition to performance: "That 450cal breakfast before your run? PERFECT for endurance"
 
+FOOD IMAGE DETECTION (IMPORTANT):
+- If you see "=== FOOD IMAGE ANALYSIS ===" in user data, a food photo was analyzed
+- Reference the detected foods and nutrition SPECIFICALLY
+- Comment on the meal quality, macros, timing
+- ALWAYS ask if they want to log it: "Want me to log this meal? I've got the nutrition data ready."
+- Be encouraging about their food choices (or constructively critical if needed)
+- Example: "I see eggs, oatmeal, and banana - solid 450 cal breakfast with 35g protein! That's EXACTLY what you need pre-workout. Want me to log it?"
+
 EXAMPLE TONE:
 User: "What should I eat for breakfast?"
 Wagner: "Looking at your training schedule, you've got solid workouts this week. You need FUEL.
@@ -256,6 +316,7 @@ Now respond to the user with this energy and specificity."""
             logger.info(f"[UnifiedCoach._handle_chat_mode] Base prompt length: {len(base_system_prompt)}")
             logger.info(f"[UnifiedCoach._handle_chat_mode] RAG context length: {len(rag_context)}")
             logger.info(f"[UnifiedCoach._handle_chat_mode] User message length: {len(message)}")
+            logger.info(f"[UnifiedCoach._handle_chat_mode] Food analysis injected: {bool(food_context)}")
 
             # Create message for Claude
             ai_response_text = ""
@@ -265,10 +326,11 @@ Now respond to the user with this energy and specificity."""
 
             try:
                 # Use Claude streaming WITH PROMPT CACHING (90% cost savings!)
+                # NOTE: Image already analyzed by food_vision_service, results in RAG context
                 async with self.anthropic.messages.stream(
                     model="claude-3-5-sonnet-20241022",
-                    max_tokens=1000,
-                    temperature=0.3,  # Lower temp for more factual coaching (was 0.7)
+                    max_tokens=1200 if food_context else 1000,  # More tokens if food detected
+                    temperature=0.3,  # Lower temp for more factual coaching
                     system=[
                         {
                             "type": "text",
@@ -278,7 +340,7 @@ Now respond to the user with this energy and specificity."""
                         {
                             "type": "text",
                             "text": f"\n\n=== USER DATA ===\n{rag_context}",
-                            "cache_control": {"type": "ephemeral"}  # Cache RAG context too!
+                            "cache_control": {"type": "ephemeral"}  # Cache RAG context (includes food analysis!)
                         }
                     ],
                     messages=[
@@ -348,18 +410,34 @@ Now respond to the user with this energy and specificity."""
 
             # STEP 5: Return response (matching UnifiedMessageResponse schema)
             logger.info(f"[UnifiedCoach._handle_chat_mode] Returning chat response")
-            return {
+
+            # Prepare response with optional food analysis data
+            response = {
                 "success": True,
                 "conversation_id": conversation_id,
                 "message_id": ai_message_id,  # The AI's message ID
                 "is_log_preview": False,
                 "message": ai_response_text,  # The AI response text
                 "log_preview": None,
-                "rag_context": None,  # TODO: Add RAG context stats
+                "rag_context": None,
                 "tokens_used": tokens_used,
                 "cost_usd": cost_usd,
                 "error": None
             }
+
+            # If food was detected, add food analysis data for potential meal logging
+            if food_analysis and food_analysis.get("is_food") and food_analysis.get("success"):
+                response["food_detected"] = {
+                    "is_food": True,
+                    "nutrition": food_analysis.get("nutrition", {}),
+                    "food_items": food_analysis.get("food_items", []),
+                    "meal_type": food_analysis.get("meal_type"),
+                    "confidence": food_analysis.get("confidence"),
+                    "description": food_analysis.get("description")
+                }
+                logger.info(f"[UnifiedCoach._handle_chat_mode] Food data included in response for potential logging")
+
+            return response
 
         except Exception as e:
             logger.error(f"[UnifiedCoach._handle_chat_mode] CRITICAL ERROR: {e}", exc_info=True)

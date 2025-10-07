@@ -215,6 +215,22 @@ class RAGContext(BaseModel):
     similarity_threshold: float = Field(0.7, description="Minimum similarity score used")
 
 
+class FoodDetected(BaseModel):
+    """Food detection data from image analysis"""
+    is_food: bool = Field(..., description="Whether food was detected in image")
+    nutrition: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Nutritional data (calories, protein_g, carbs_g, fats_g)"
+    )
+    food_items: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of detected food items with quantities"
+    )
+    meal_type: Optional[str] = Field(None, description="Detected meal type (breakfast, lunch, dinner, snack)")
+    confidence: float = Field(0.0, ge=0.0, le=1.0, description="AI confidence in detection")
+    description: str = Field("", description="Natural language description of the meal")
+
+
 class UnifiedMessageResponse(BaseModel):
     """
     Response from unified Coach.
@@ -251,6 +267,12 @@ class UnifiedMessageResponse(BaseModel):
     rag_context: Optional[RAGContext] = Field(
         None,
         description="Information about RAG context used"
+    )
+
+    # Food detection data (if image contained food)
+    food_detected: Optional[FoodDetected] = Field(
+        None,
+        description="Food detection data from image analysis (if applicable)"
     )
 
     # Cost tracking

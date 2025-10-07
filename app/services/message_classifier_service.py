@@ -116,7 +116,13 @@ Return ONLY valid JSON (no markdown, no explanation):
         # Add context about multimodal input
         context_notes = []
         if has_image:
-            context_notes.append("User included an image (likely food/workout photo)")
+            context_notes.append("User included an image")
+            # If image + food-related text, likely meal log
+            food_keywords = ['ate', 'eating', 'meal', 'breakfast', 'lunch', 'dinner', 'snack', 'food', 'calories', 'protein']
+            if any(keyword in message.lower() for keyword in food_keywords):
+                context_notes.append("Image likely shows food/meal (food-related text detected)")
+            elif len(message.strip()) < 20:  # Short message with image
+                context_notes.append("Image might be primary content (minimal text)")
         if has_audio:
             context_notes.append("User used voice input")
 
@@ -125,6 +131,8 @@ Return ONLY valid JSON (no markdown, no explanation):
 Message: "{message}"
 
 {f"Context: {', '.join(context_notes)}" if context_notes else ""}
+
+IMPORTANT: If user includes an image with minimal text or food-related text, it's likely a meal log.
 
 Return JSON classification."""
 
