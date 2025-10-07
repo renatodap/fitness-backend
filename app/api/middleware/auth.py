@@ -83,13 +83,20 @@ async def get_current_user(
     Raises:
         HTTPException: 401 if not authenticated
     """
+    logger.info(f"🔐 [Auth] Received authorization header: {authorization[:20]}...")
+
     if not authorization.startswith("Bearer "):
+        logger.warning(f"❌ [Auth] Invalid header format: {authorization[:50]}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authorization header format",
         )
 
     token = authorization.split(" ")[1]
+    logger.info(f"🔑 [Auth] Extracted token (first 30 chars): {token[:30]}...")
+    logger.info(f"📏 [Auth] Token length: {len(token)}")
+    logger.info(f"🔧 [Auth] Using JWT_SECRET (first 10 chars): {settings.JWT_SECRET[:10]}...")
+    logger.info(f"🔧 [Auth] Using algorithm: {settings.JWT_ALGORITHM}")
 
     try:
         payload = jwt.decode(
@@ -101,17 +108,21 @@ async def get_current_user(
 
         user_id = payload.get("sub")
         if not user_id:
+            logger.error("❌ [Auth] Token missing 'sub' claim")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token missing 'sub' claim",
             )
 
+        logger.info(f"✅ [Auth] Token verified successfully for user: {user_id[:8]}...")
         return {
             "user_id": user_id,
             "email": payload.get("email")
         }
 
     except JWTError as e:
+        logger.error(f"❌ [Auth] JWT verification failed: {type(e).__name__}: {str(e)}")
+        logger.error(f"❌ [Auth] Token being verified (first 50 chars): {token[:50]}...")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid authentication credentials: {str(e)}",
