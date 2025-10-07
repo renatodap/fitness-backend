@@ -211,14 +211,33 @@ async def send_message(
                 detail="AI Coach service is temporarily unavailable. Please try again."
             )
 
-        # STEP 4: Process message (auto-routing to chat or log mode)
+        # STEP 4: Handle image URLs if provided (convert first URL to base64)
+        image_base64 = None
+        if request.image_urls and len(request.image_urls) > 0:
+            try:
+                import httpx
+                import base64
+
+                logger.info(f"[COACH_ENDPOINT] Downloading image from URL: {request.image_urls[0]}")
+                async with httpx.AsyncClient() as client:
+                    img_response = await client.get(request.image_urls[0], timeout=10.0)
+                    if img_response.status_code == 200:
+                        image_base64 = base64.b64encode(img_response.content).decode('utf-8')
+                        logger.info(f"[COACH_ENDPOINT] Successfully converted image to base64 (size: {len(image_base64)} chars)")
+                    else:
+                        logger.warning(f"[COACH_ENDPOINT] Failed to download image: HTTP {img_response.status_code}")
+            except Exception as img_err:
+                logger.error(f"[COACH_ENDPOINT] Error downloading/converting image: {img_err}")
+                # Continue without image rather than failing entirely
+
+        # STEP 5: Process message (auto-routing to chat or log mode)
         logger.info(f"[COACH_ENDPOINT] Processing message for user {user_id}...")
         try:
             response = await coach_service.process_message(
                 user_id=user_id,
                 message=request.message,
                 conversation_id=request.conversation_id,
-                image_base64=None,  # TODO: Support image uploads
+                image_base64=image_base64,
                 audio_base64=None,  # TODO: Support audio uploads
                 metadata=None
             )
@@ -227,7 +246,7 @@ async def send_message(
             logger.error(f"[COACH_ENDPOINT] process_message failed: {proc_err}", exc_info=True)
             raise
 
-        # STEP 5: Return response
+        # STEP 6: Return response
         logger.info(f"[COACH_ENDPOINT] Returning response to client")
         return response
 
