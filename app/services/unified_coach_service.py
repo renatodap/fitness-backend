@@ -590,6 +590,84 @@ Now respond to the user with this energy and specificity."""
                     user_id, conversation_id, user_message_id, message, image_base64, classification
                 )
 
+            # SPECIAL CASE: If TEXT-BASED MEAL, match foods to database (same as image flow)
+            if preview_result.get("entry_type") == "meal" and preview_result.get("data", {}).get("foods"):
+                logger.info(f"[UnifiedCoach] Text-based meal detected - matching to database with agentic matcher")
+
+                # Extract foods from AI classification
+                ai_foods = preview_result["data"]["foods"]
+                logger.info(f"[UnifiedCoach] Found {len(ai_foods)} foods in AI extraction")
+
+                # Convert to detected_foods format for agentic matcher
+                detected_foods = []
+                for food in ai_foods:
+                    # Parse quantity (could be "6 oz", "1 cup", "200 g", etc.)
+                    quantity_str = food.get("quantity", "1")
+
+                    # Try to extract number and unit from quantity string
+                    import re
+                    qty_match = re.match(r'([\d.]+)\s*(.+)', str(quantity_str))
+                    if qty_match:
+                        quantity = qty_match.group(1)
+                        unit = qty_match.group(2).strip()
+                    else:
+                        # If just a number, default to serving
+                        quantity = str(food.get("servings", "1"))
+                        unit = "serving"
+
+                    detected_foods.append({
+                        "name": food.get("name", "unknown"),
+                        "quantity": quantity,
+                        "unit": unit
+                    })
+                    logger.info(f"[UnifiedCoach] Converted food: {food.get('name')} → {quantity} {unit}")
+
+                if detected_foods:
+                    # Use agentic food matcher (same as image flow)
+                    from app.services.agentic_food_matcher_service import get_agentic_food_matcher
+                    agentic_matcher = get_agentic_food_matcher()
+
+                    logger.info(f"[UnifiedCoach] Calling agentic matcher for {len(detected_foods)} foods...")
+                    match_result = await agentic_matcher.match_with_creation(
+                        detected_foods=detected_foods,
+                        user_id=user_id
+                    )
+
+                    logger.info(
+                        f"[UnifiedCoach] Text-based agentic matching complete: {match_result['total_matched']}/{match_result['total_detected']} matched, "
+                        f"{len(match_result.get('created_foods', []))} created"
+                    )
+
+                    # Return food_detected (not log_preview) for consistency with image flow
+                    return {
+                        "success": True,
+                        "conversation_id": conversation_id,
+                        "message_id": user_message_id,
+                        "is_log_preview": False,
+                        "message": None,
+                        "log_preview": None,
+                        "food_detected": {
+                            "is_food": True,
+                            "nutrition": {},  # Nutrition will be calculated from matched foods
+                            "food_items": match_result["matched_foods"],  # Real DB foods with IDs!
+                            "meal_type": preview_result["data"].get("meal_type", "lunch"),
+                            "confidence": preview_result.get("confidence", 0.9),
+                            "description": preview_result["data"].get("meal_name", "Meal"),
+                            "match_stats": {
+                                "total_detected": match_result["total_detected"],
+                                "total_matched": match_result["total_matched"],
+                                "match_rate": match_result["match_rate"]
+                            },
+                            "unmatched_foods": match_result.get("unmatched_foods", [])
+                        },
+                        "rag_context": None,
+                        "tokens_used": None,
+                        "cost_usd": None,
+                        "error": None
+                    }
+                else:
+                    logger.warning(f"[UnifiedCoach] No foods extracted from text-based meal")
+
             # Update user message type to log_preview
             self.supabase.table("coach_messages").update({
                 "message_type": "log_preview",
