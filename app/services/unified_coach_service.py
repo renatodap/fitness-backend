@@ -521,13 +521,19 @@ Now respond to the user with this energy and specificity."""
                             logger.info(f"[UnifiedCoach] Parsed food: {name} - {quantity} {unit}")
 
                     if detected_foods:
-                        # Call food matching API
-                        match_result = await food_search.match_detected_foods(
+                        # Use AGENTIC food matcher (with AI creation capability)
+                        from app.services.agentic_food_matcher_service import get_agentic_food_matcher
+                        agentic_matcher = get_agentic_food_matcher()
+
+                        match_result = await agentic_matcher.match_with_creation(
                             detected_foods=detected_foods,
                             user_id=user_id
                         )
 
-                        logger.info(f"[UnifiedCoach] Food matching complete: {match_result['total_matched']}/{match_result['total_detected']} matched")
+                        logger.info(
+                            f"[UnifiedCoach] Agentic matching complete: {match_result['total_matched']}/{match_result['total_detected']} matched, "
+                            f"{len(match_result.get('created_foods', []))} created"
+                        )
 
                         # Extract meal type and description from SYSTEM_CONTEXT
                         meal_type_match = re.search(r'meal_type["\']?\s*:\s*["\']?(\w+)', message, re.IGNORECASE)
