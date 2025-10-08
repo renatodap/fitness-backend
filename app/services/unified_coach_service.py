@@ -591,36 +591,65 @@ Now respond to the user with this energy and specificity."""
                 )
 
             # SPECIAL CASE: If TEXT-BASED MEAL, match foods to database (same as image flow)
-            if preview_result.get("entry_type") == "meal" and preview_result.get("data", {}).get("foods"):
-                logger.info(f"[UnifiedCoach] Text-based meal detected - matching to database with agentic matcher")
+            if preview_result.get("entry_type") == "meal":
+                logger.info(f"[UnifiedCoach] Text-based meal detected - checking for foods to match")
+                logger.info(f"[UnifiedCoach] Preview data keys: {list(preview_result.get('data', {}).keys())}")
+                logger.info(f"[UnifiedCoach] Preview data: {preview_result.get('data', {})}")
 
-                # Extract foods from AI classification
-                ai_foods = preview_result["data"]["foods"]
-                logger.info(f"[UnifiedCoach] Found {len(ai_foods)} foods in AI extraction")
-
-                # Convert to detected_foods format for agentic matcher
                 detected_foods = []
-                for food in ai_foods:
-                    # Parse quantity (could be "6 oz", "1 cup", "200 g", etc.)
-                    quantity_str = food.get("quantity", "1")
 
-                    # Try to extract number and unit from quantity string
+                # Try to extract foods from AI classification
+                ai_foods = preview_result.get("data", {}).get("foods", [])
+
+                if ai_foods:
+                    logger.info(f"[UnifiedCoach] Found {len(ai_foods)} foods in AI extraction")
+
+                    # Convert to detected_foods format for agentic matcher
+                    for food in ai_foods:
+                        # Parse quantity (could be "6 oz", "1 cup", "200 g", etc.)
+                        quantity_str = food.get("quantity", "1")
+
+                        # Try to extract number and unit from quantity string
+                        import re
+                        qty_match = re.match(r'([\d.]+)\s*(.+)', str(quantity_str))
+                        if qty_match:
+                            quantity = qty_match.group(1)
+                            unit = qty_match.group(2).strip()
+                        else:
+                            # If just a number, default to serving
+                            quantity = str(food.get("servings", "1"))
+                            unit = "serving"
+
+                        detected_foods.append({
+                            "name": food.get("name", "unknown"),
+                            "quantity": quantity,
+                            "unit": unit
+                        })
+                        logger.info(f"[UnifiedCoach] Converted food: {food.get('name')} → {quantity} {unit}")
+                else:
+                    # FALLBACK: AI didn't extract foods, try manual parsing
+                    logger.warning(f"[UnifiedCoach] No foods in AI extraction, trying manual parsing")
+
+                    # Try to parse "I ate X, Y, Z" or "X and Y" format
                     import re
-                    qty_match = re.match(r'([\d.]+)\s*(.+)', str(quantity_str))
-                    if qty_match:
-                        quantity = qty_match.group(1)
-                        unit = qty_match.group(2).strip()
-                    else:
-                        # If just a number, default to serving
-                        quantity = str(food.get("servings", "1"))
-                        unit = "serving"
 
-                    detected_foods.append({
-                        "name": food.get("name", "unknown"),
-                        "quantity": quantity,
-                        "unit": unit
-                    })
-                    logger.info(f"[UnifiedCoach] Converted food: {food.get('name')} → {quantity} {unit}")
+                    # Remove common prefixes
+                    text = message.lower()
+                    text = re.sub(r'^(i ate|i had|just ate|just had|eating|had for \w+)\s+', '', text)
+
+                    # Split by commas and "and"
+                    text = text.replace(' and ', ', ')
+                    food_names = [f.strip() for f in text.split(',') if f.strip()]
+
+                    logger.info(f"[UnifiedCoach] Manual parsing found {len(food_names)} foods: {food_names}")
+
+                    for food_name in food_names:
+                        if food_name:
+                            detected_foods.append({
+                                "name": food_name,
+                                "quantity": "1",
+                                "unit": "serving"
+                            })
 
                 if detected_foods:
                     # Use agentic food matcher (same as image flow)
