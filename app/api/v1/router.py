@@ -18,6 +18,7 @@ from app.api.v1 import (
     quick_entry,
     foods,
     meals,
+    activities,
     test_groq,
     debug
 )
@@ -36,5 +37,6 @@ api_router.include_router(programs.router, prefix="/programs", tags=["programs"]
 api_router.include_router(quick_entry.router, tags=["quick-entry"])  # No prefix, routes define their own
 api_router.include_router(foods.router, tags=["foods"])  # Food search and database
 api_router.include_router(meals.router, tags=["meals"])  # Meal logging CRUD
+api_router.include_router(activities.router, tags=["activities"])  # Activity logging CRUD
 api_router.include_router(test_groq.router, tags=["test"])  # Test endpoints
 api_router.include_router(debug.router, tags=["debug"])  # Debug endpoints (remove in production)
