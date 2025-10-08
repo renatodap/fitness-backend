@@ -11,6 +11,7 @@ from uuid import UUID
 from app.config import settings
 from app.services.context_builder import ContextBuilder
 from app.services.dual_model_router import dual_router, TaskType, TaskConfig
+from app.services.multimodal_embedding_service import get_multimodal_service
 
 
 class ProgramService:
@@ -20,6 +21,7 @@ class ProgramService:
         self.supabase = supabase_client
         self.context_builder = ContextBuilder(supabase_client)
         self.router = dual_router
+        self.embedding_service = get_multimodal_service()
 
     async def get_user_profile_for_generation(self, user_id: str) -> Dict[str, Any]:
         """
@@ -454,6 +456,16 @@ Generate the COMPLETE program with all 84 days of meals and workouts."""
 
                 day_counter += 1
 
+        # Create embedding for program preferences (for RAG search)
+        await self._create_program_embedding(
+            user_id=user_id,
+            program_id=program_id,
+            program_name=program_info.get('name', '12-Week Custom Program'),
+            program_description=program_info.get('description', ''),
+            questions_answers=questions_answers,
+            generation_context=generation_context
+        )
+
         # Set as user's active program
         self.supabase.table('user_active_programs').insert({
             'user_id': user_id,
@@ -529,3 +541,87 @@ RECENT ACTIVITY:
                 ]
             }
         ]
+
+    async def _create_program_embedding(
+        self,
+        user_id: str,
+        program_id: str,
+        program_name: str,
+        program_description: str,
+        questions_answers: Dict[str, Any],
+        generation_context: Dict[str, Any]
+    ):
+        """
+        Create embedding for program preferences to make them searchable via RAG.
+
+        This allows the AI coach to reference the user's program preferences
+        when answering questions, providing personalized advice based on
+        why they chose this program and what their goals were.
+
+        Args:
+            user_id: User UUID
+            program_id: Program UUID
+            program_name: Name of the generated program
+            program_description: Program description
+            questions_answers: User's answers to program generation questions
+            generation_context: Full context used for program generation
+        """
+        try:
+            # Build searchable text content from program preferences
+            content_parts = [
+                f"Program: {program_name}",
+                f"Description: {program_description}",
+                ""
+            ]
+
+            # Add Q&A responses
+            if questions_answers:
+                content_parts.append("Program Preferences:")
+                for key, value in questions_answers.items():
+                    if value and key not in ['created_at', 'updated_at', 'session_id']:
+                        label = key.replace('_', ' ').title()
+                        content_parts.append(f"  - {label}: {value}")
+
+            # Add key context from generation
+            if generation_context:
+                if goal := generation_context.get('primary_goal'):
+                    content_parts.append(f"\nPrimary Goal: {goal}")
+                if focus := generation_context.get('primary_focus'):
+                    if isinstance(focus, list):
+                        content_parts.append(f"Focus Areas: {', '.join(focus)}")
+                    else:
+                        content_parts.append(f"Focus: {focus}")
+                if equipment := generation_context.get('equipment_needed'):
+                    if isinstance(equipment, list):
+                        content_parts.append(f"Equipment: {', '.join(equipment)}")
+                if diet := generation_context.get('dietary_approach'):
+                    content_parts.append(f"Dietary Approach: {diet}")
+
+            content_text = "\n".join(content_parts)
+
+            # Generate embedding
+            embedding = await self.embedding_service.embed_text(content_text)
+
+            # Store in multimodal_embeddings table
+            await self.embedding_service.store_embedding(
+                user_id=user_id,
+                embedding=embedding,
+                data_type="text",
+                source_type="ai_program",  # Must match schema constraint
+                source_id=program_id,
+                content_text=content_text,
+                metadata={
+                    "program_id": program_id,
+                    "program_name": program_name,
+                    "questions_answers": questions_answers,
+                    "generation_date": datetime.now().isoformat()
+                },
+                embedding_model="text-embedding-3-small"
+            )
+
+            print(f"✅ Created program preference embedding for program {program_id}")
+
+        except Exception as e:
+            print(f"❌ Error creating program embedding: {e}")
+            # Don't fail program generation if embedding fails
+            pass

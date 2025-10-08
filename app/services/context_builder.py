@@ -56,6 +56,13 @@ class ContextBuilder:
             context_parts.append(program_context)
             context_parts.append("")
 
+        # 2b. AI-Generated Program (if any)
+        ai_program_context = await self._get_active_ai_program(user_id)
+        if ai_program_context and ai_program_context != "No active AI-generated program":
+            context_parts.append("## AI-Generated Program")
+            context_parts.append(ai_program_context)
+            context_parts.append("")
+
         # 3. Recent Workouts (structured data)
         recent_workouts = await self._get_recent_workouts(user_id, days_lookback)
         if recent_workouts:
@@ -129,6 +136,13 @@ class ContextBuilder:
             context_parts.append(program_context)
             context_parts.append("")
 
+        # 2b. AI-Generated Program (if any)
+        ai_program_context = await self._get_active_ai_program(user_id)
+        if ai_program_context and ai_program_context != "No active AI-generated program":
+            context_parts.append("## AI-Generated Program")
+            context_parts.append(ai_program_context)
+            context_parts.append("")
+
         # 3. Recent Meals (structured data)
         recent_meals = await self._get_recent_meals(user_id, days_lookback)
         if recent_meals:
@@ -195,6 +209,13 @@ class ContextBuilder:
         if profile_context:
             context_parts.append("## User Profile & Goals")
             context_parts.append(profile_context)
+            context_parts.append("")
+
+        # 1b. AI-Generated Program (if any)
+        ai_program_context = await self._get_active_ai_program(user_id)
+        if ai_program_context and ai_program_context != "No active AI-generated program":
+            context_parts.append("## AI-Generated Program")
+            context_parts.append(ai_program_context)
             context_parts.append("")
 
         # === TRAINING DATA ===
@@ -274,11 +295,21 @@ class ContextBuilder:
         return "\n".join(context_parts)
 
     async def _get_user_profile_context(self, user_id: str) -> str:
-        """Get user profile and goals."""
+        """
+        Get comprehensive user profile and goals.
+
+        Returns all relevant user data for AI coaching context:
+        - Basic info (name, age, gender)
+        - Physical stats (height, weight, goals)
+        - Experience level and training frequency
+        - Equipment access and limitations
+        - Dietary restrictions and preferences
+        - Settings and onboarding data
+        """
         try:
-            # Get profile
+            # Get user data (consolidated users table has all the data we need)
             profile_response = (
-                self.supabase.table("profiles")
+                self.supabase.table("users")
                 .select("*")
                 .eq("id", user_id)
                 .single()
@@ -296,28 +327,83 @@ class ContextBuilder:
                 parts.append(f"Name: {full_name}")
             if age := profile.get("age"):
                 parts.append(f"Age: {age}")
-            if gender := profile.get("gender"):
-                parts.append(f"Gender: {gender}")
+            if bio_sex := profile.get("biological_sex"):
+                parts.append(f"Biological Sex: {bio_sex}")
 
             # Physical stats
             if height := profile.get("height_cm"):
                 parts.append(f"Height: {height} cm")
-            if weight := profile.get("weight_kg"):
-                parts.append(f"Weight: {weight} kg")
+            if weight := profile.get("current_weight_kg"):
+                parts.append(f"Current Weight: {weight} kg")
+            if goal_weight := profile.get("goal_weight_kg"):
+                parts.append(f"Goal Weight: {goal_weight} kg")
 
-            # Goals
+            # Experience & Training
+            if experience := profile.get("experience_level"):
+                parts.append(f"Experience Level: {experience}")
+            if freq := profile.get("training_frequency"):
+                # training_frequency is an integer in users table
+                parts.append(f"Training Frequency: {freq} days per week")
             if goal := profile.get("primary_goal"):
                 parts.append(f"Primary Goal: {goal}")
-            if fitness_level := profile.get("fitness_level"):
-                parts.append(f"Fitness Level: {fitness_level}")
-            if target_weight := profile.get("target_weight_kg"):
-                parts.append(f"Target Weight: {target_weight} kg")
 
-            # Preferences
+            # Equipment Access
+            if equipment := profile.get("available_equipment"):
+                if isinstance(equipment, list) and equipment:
+                    parts.append(f"Available Equipment: {', '.join(equipment)}")
+                elif isinstance(equipment, str) and equipment:
+                    parts.append(f"Available Equipment: {equipment}")
+
+            # Dietary Restrictions
+            if diet_restrictions := profile.get("dietary_restrictions"):
+                if isinstance(diet_restrictions, list) and diet_restrictions:
+                    parts.append(f"Dietary Restrictions: {', '.join(diet_restrictions)}")
+                elif isinstance(diet_restrictions, str) and diet_restrictions:
+                    parts.append(f"Dietary Restrictions: {diet_restrictions}")
+
+            # Injury/Physical Limitations
+            if injuries := profile.get("injury_limitations"):
+                if isinstance(injuries, list) and injuries:
+                    parts.append(f"Injury/Physical Limitations: {', '.join(injuries)}")
+                elif isinstance(injuries, str) and injuries:
+                    parts.append(f"Injury/Physical Limitations: {injuries}")
+
+            # Nutrition Targets
+            if cal_target := profile.get("daily_calorie_target"):
+                parts.append(f"Daily Calorie Target: {cal_target} kcal")
+            if protein_target := profile.get("daily_protein_target_g"):
+                parts.append(f"Daily Protein Target: {protein_target}g")
+            if carbs_target := profile.get("daily_carbs_target_g"):
+                parts.append(f"Daily Carbs Target: {carbs_target}g")
+            if fat_target := profile.get("daily_fat_target_g"):
+                parts.append(f"Daily Fat Target: {fat_target}g")
+
+            # Preferences (legacy fields)
             if workout_pref := profile.get("workout_preferences"):
                 parts.append(f"Workout Preferences: {workout_pref}")
             if dietary_pref := profile.get("dietary_preferences"):
                 parts.append(f"Dietary Preferences: {dietary_pref}")
+
+            # Settings JSONB (additional user preferences)
+            if settings := profile.get("settings"):
+                if isinstance(settings, dict) and settings:
+                    # Extract key settings that are relevant for coaching
+                    if rest_timer := settings.get("rest_timer_default"):
+                        parts.append(f"Rest Timer Default: {rest_timer}s")
+                    if units := settings.get("preferred_units"):
+                        parts.append(f"Preferred Units: {units}")
+                    # Add any other relevant settings from JSONB
+
+            # Onboarding Data JSONB (program generation answers)
+            if onboarding := profile.get("onboarding_data"):
+                if isinstance(onboarding, dict) and onboarding:
+                    parts.append("\n## User Program Preferences:")
+                    # Extract relevant onboarding answers for context
+                    for key, value in onboarding.items():
+                        if value and key not in ['created_at', 'updated_at']:
+                            # Format key as readable label
+                            label = key.replace('_', ' ').title()
+                            parts.append(f"  - {label}: {value}")
 
             return "\n".join(parts)
 
@@ -399,6 +485,124 @@ class ContextBuilder:
 
         except Exception as e:
             logger.error(f"Error getting active nutrition program: {e}")
+            return ""
+
+    async def _get_active_ai_program(self, user_id: str) -> str:
+        """
+        Get user's active AI-generated program with current status.
+
+        Returns comprehensive program context including:
+        - Program metadata (name, duration, current day)
+        - Program generation questions/answers
+        - Current week's schedule overview
+        - Today's planned meals and workouts
+        - Upcoming days (next 3 days)
+        """
+        try:
+            # Get active AI-generated program
+            program_response = (
+                self.supabase.table("ai_generated_programs")
+                .select("*")
+                .eq("user_id", user_id)
+                .eq("is_active", True)
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+
+            if not program_response.data:
+                return "No active AI-generated program"
+
+            program = program_response.data[0]
+            parts = []
+
+            # Program metadata
+            if name := program.get("name"):
+                parts.append(f"AI Program: {name}")
+            if desc := program.get("description"):
+                parts.append(f"Description: {desc}")
+
+            duration_weeks = program.get("duration_weeks", 12)
+            total_days = program.get("total_days", 84)
+            current_day = program.get("current_day", 1)
+
+            parts.append(f"Duration: {duration_weeks} weeks ({total_days} days)")
+            parts.append(f"Current Day: {current_day}/{total_days}")
+            parts.append(f"Status: {program.get('status', 'active')}")
+
+            # Program generation preferences (from questions_answers JSONB)
+            if qa := program.get("questions_answers"):
+                if isinstance(qa, dict) and qa:
+                    parts.append("\n## Program Preferences:")
+                    for key, value in qa.items():
+                        if value and key not in ['created_at', 'updated_at', 'session_id']:
+                            label = key.replace('_', ' ').title()
+                            parts.append(f"  - {label}: {value}")
+
+            # Get today's program day
+            program_id = program["id"]
+            today_response = (
+                self.supabase.table("ai_program_days")
+                .select("*, ai_program_items(*)")
+                .eq("program_id", program_id)
+                .eq("day_number", current_day)
+                .single()
+                .execute()
+            )
+
+            if today_response.data:
+                today = today_response.data
+                parts.append(f"\n## Today (Day {current_day}):")
+
+                if day_name := today.get("day_name"):
+                    parts.append(f"  {day_name}")
+                if day_focus := today.get("day_focus"):
+                    parts.append(f"  Focus: {day_focus}")
+
+                # Today's meals and workouts
+                if items := today.get("ai_program_items"):
+                    meals = [item for item in items if item.get("item_type") == "meal"]
+                    workouts = [item for item in items if item.get("item_type") == "workout"]
+
+                    if meals:
+                        parts.append("\n  Planned Meals:")
+                        for meal in sorted(meals, key=lambda x: x.get("item_order", 0)):
+                            meal_type = meal.get("meal_type", "Meal")
+                            meal_name = meal.get("meal_name", "")
+                            calories = meal.get("meal_calories", 0)
+                            parts.append(f"    - {meal_type.title()}: {meal_name} ({calories} kcal)")
+
+                    if workouts:
+                        parts.append("\n  Planned Workouts:")
+                        for workout in sorted(workouts, key=lambda x: x.get("item_order", 0)):
+                            workout_name = workout.get("workout_name", "Workout")
+                            workout_type = workout.get("workout_type", "")
+                            duration = workout.get("workout_duration_minutes", 0)
+                            parts.append(f"    - {workout_name} ({workout_type}, {duration} min)")
+
+            # Get upcoming days (next 3 days)
+            upcoming_response = (
+                self.supabase.table("ai_program_days")
+                .select("day_number, day_name, day_focus")
+                .eq("program_id", program_id)
+                .gt("day_number", current_day)
+                .lte("day_number", current_day + 3)
+                .order("day_number", desc=False)
+                .execute()
+            )
+
+            if upcoming_response.data and len(upcoming_response.data) > 0:
+                parts.append("\n## Upcoming Days:")
+                for day in upcoming_response.data:
+                    day_num = day.get("day_number")
+                    day_name = day.get("day_name", f"Day {day_num}")
+                    day_focus = day.get("day_focus", "")
+                    parts.append(f"  - Day {day_num}: {day_name} ({day_focus})")
+
+            return "\n".join(parts)
+
+        except Exception as e:
+            logger.error(f"Error getting active AI program: {e}")
             return ""
 
     async def _get_recent_workouts(self, user_id: str, days: int) -> str:
@@ -566,6 +770,60 @@ class ContextBuilder:
             logger.error(f"Error getting nutrition compliance: {e}")
             return ""
 
+    async def _search_coach_embeddings(
+        self,
+        query: str,
+        user_id: str,
+        limit: int = 5,
+        threshold: float = 0.5
+    ) -> List[Dict[str, Any]]:
+        """
+        Search coach_message_embeddings for relevant past conversations.
+
+        This allows the AI coach to reference and learn from previous interactions,
+        creating continuity and personalized coaching based on conversation history.
+
+        Args:
+            query: Search query text
+            user_id: User UUID
+            limit: Maximum number of results
+            threshold: Minimum similarity threshold (0-1)
+
+        Returns:
+            List of relevant coach messages with similarity scores
+        """
+        try:
+            logger.info(f"🔍 Searching coach embeddings for: '{query[:50]}...'")
+
+            # Generate query embedding
+            query_embedding = await self.embedding_service.generate_embedding(query)
+
+            # Search coach_message_embeddings table using pgvector similarity
+            # Note: This assumes coach_message_embeddings has a vector column and similarity function
+            response = self.supabase.rpc(
+                "match_coach_message_embeddings",
+                {
+                    "query_embedding": query_embedding,
+                    "match_threshold": threshold,
+                    "match_count": limit,
+                    "filter_user_id": user_id
+                }
+            ).execute()
+
+            results = response.data or []
+
+            if results:
+                logger.info(f"✅ Found {len(results)} relevant coach messages")
+            else:
+                logger.info("No relevant coach messages found")
+
+            return results
+
+        except Exception as e:
+            logger.error(f"❌ Error searching coach embeddings: {e}")
+            logger.warning("Falling back to empty results (RPC function may not exist yet)")
+            return []
+
     async def _get_rag_context(
         self,
         user_id: str,
@@ -575,18 +833,21 @@ class ContextBuilder:
         include_images: bool = False
     ) -> str:
         """
-        Get relevant context using REVOLUTIONARY MULTIMODAL RAG.
+        Get relevant context using REVOLUTIONARY MULTIMODAL RAG + COACH HISTORY.
 
-        Searches across ALL modalities (text, images, audio transcripts)
-        using vector similarity in the multimodal_embeddings table.
+        Searches across:
+        1. Multimodal embeddings (text, images, audio transcripts)
+        2. Coach conversation embeddings (past interactions)
+
+        Combines and ranks results by similarity for optimal context.
 
         This is what makes the AI coach truly personalized and revolutionary!
         """
         try:
             logger.info(f"🔍 Multimodal RAG search for: '{query}' | sources={source_types}")
 
-            # Search using multimodal service (searches text, images, audio, everything!)
-            results = await self.multimodal_service.search_by_text(
+            # SEARCH 1: Multimodal embeddings (meals, workouts, activities)
+            multimodal_results = await self.multimodal_service.search_by_text(
                 query_text=query,
                 user_id=user_id,
                 source_types=source_types,
@@ -595,11 +856,28 @@ class ContextBuilder:
                 threshold=0.5  # Lower threshold for broader context
             )
 
-            if not results:
-                logger.info("No RAG results found")
+            # SEARCH 2: Coach conversation embeddings (past conversations)
+            coach_results = await self._search_coach_embeddings(
+                query=query,
+                user_id=user_id,
+                limit=3,  # Fewer coach results, they tend to be longer
+                threshold=0.5
+            )
+
+            # MERGE results from both sources
+            all_results = multimodal_results + coach_results
+
+            if not all_results:
+                logger.info("No RAG results found from any source")
                 return ""
 
-            logger.info(f"✅ Found {len(results)} relevant context items")
+            # RANK by similarity (descending)
+            all_results.sort(key=lambda x: x.get("similarity", 0), reverse=True)
+
+            # LIMIT to match_count after merging
+            results = all_results[:match_count]
+
+            logger.info(f"✅ Found {len(results)} relevant context items ({len(multimodal_results)} multimodal + {len(coach_results)} coach)")
 
             parts = []
             for i, result in enumerate(results, 1):
@@ -609,9 +887,17 @@ class ContextBuilder:
                 data_type = result.get("data_type", "text")
                 storage_url = result.get("storage_url")
                 metadata = result.get("metadata", {})
+                role = result.get("role")  # For coach messages
 
-                # Format based on data type
-                if data_type == "image" and storage_url:
+                # Format based on data type and source
+                if role:  # This is a coach conversation message
+                    # Format coach conversation context
+                    role_label = "User" if role == "user" else "Coach"
+                    parts.append(
+                        f"{i}. [PAST CONVERSATION - {role_label}] (similarity: {similarity:.2f})\n"
+                        f"   {content_text}"
+                    )
+                elif data_type == "image" and storage_url:
                     # For images, include URL and any extracted text
                     parts.append(
                         f"{i}. [{source_type}] IMAGE (similarity: {similarity:.2f})\n"
