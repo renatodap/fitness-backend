@@ -28,6 +28,46 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
+def validate_nutrition_data(food_data: Dict[str, Any]) -> tuple[bool, str]:
+    """
+    Validate nutrition data before inserting into database.
+
+    Returns:
+        (is_valid, error_message)
+    """
+    # Check required fields exist
+    required = ["calories", "protein_g", "total_carbs_g", "total_fat_g"]
+    for field in required:
+        if field not in food_data or food_data[field] is None:
+            return False, f"Missing required field: {field}"
+
+    calories = float(food_data["calories"])
+    protein_g = float(food_data["protein_g"])
+    carbs_g = float(food_data["total_carbs_g"])
+    fat_g = float(food_data["total_fat_g"])
+
+    # Check for suspicious all-zero macros
+    if calories > 50 and protein_g == 0 and carbs_g == 0 and fat_g == 0:
+        return False, "Food has calories but all macros are zero"
+
+    # Check for missing carbs/fat on caloric foods
+    if calories > 50 and (carbs_g == 0 and fat_g == 0):
+        return False, "Food has calories but zero carbs AND zero fat (unlikely)"
+
+    # Macro math validation (calories from macros should roughly match total calories)
+    protein_cal = protein_g * 4
+    carb_cal = carbs_g * 4
+    fat_cal = fat_g * 9
+    total_cal = protein_cal + carb_cal + fat_cal
+
+    # Allow 25% variance for fiber, alcohol, rounding, water content
+    variance = abs(total_cal - calories)
+    if calories > 0 and variance > calories * 0.25:
+        return False, f"Macros don't add up: {total_cal:.0f} cal from macros vs {calories:.0f} cal listed (variance: {variance:.0f})"
+
+    return True, ""
+
+
 class AgenticFoodMatcherService:
     """
     AI agent with Groq + batch processing for food matching.
@@ -135,7 +175,13 @@ class AgenticFoodMatcherService:
             # Use Groq to validate + estimate nutrition
             prompt = f"""You are a food database expert. A user wants to log "{food_name}" ({quantity} {unit}).
 
-Your task: Determine if this is a REAL food, and if so, estimate nutrition.
+Your task: Determine if this is a REAL food, and if so, estimate nutrition PER 100g serving.
+
+CRITICAL NUTRITION RULES:
+1. ALL foods must have complete macros (protein, carbs, fat)
+2. Calories should roughly equal: (protein_g × 4) + (total_carbs_g × 4) + (total_fat_g × 9)
+3. NEVER set carbs AND fat to 0 for foods with calories > 50
+4. Use realistic values based on food composition
 
 ACCEPT (real foods):
 - Brands: "Chipotle Chicken Bowl", "Subway Outlaw", "Dots Pretzel"
@@ -148,24 +194,79 @@ REJECT (fakes):
 - Made-up brands you don't recognize
 - Impossible items: "chocolate air", "sugar-free sugar"
 
-Respond in JSON:
+EXAMPLES OF CORRECT NUTRITION:
+
+Chicken Breast, Grilled (per 100g):
 {{
-    "is_real": true/false,
-    "reason": "explanation",
-    "name": "clean food name",
-    "brand_name": "brand or null",
+    "is_real": true,
+    "name": "Chicken Breast, Grilled",
+    "brand_name": null,
     "serving_size": 100,
     "serving_unit": "g",
-    "calories": 200,
-    "protein_g": 20,
-    "total_carbs_g": 10,
-    "total_fat_g": 5,
-    "dietary_fiber_g": 2,
-    "is_generic": true/false,
-    "is_branded": true/false
+    "calories": 165,
+    "protein_g": 31.0,
+    "total_carbs_g": 0.0,
+    "total_fat_g": 3.6,
+    "dietary_fiber_g": 0.0,
+    "is_generic": true,
+    "is_branded": false
 }}
 
-If not real, set is_real=false and explain why."""
+Sweet Potato, Baked (per 100g):
+{{
+    "is_real": true,
+    "name": "Sweet Potato, Baked",
+    "brand_name": null,
+    "serving_size": 100,
+    "serving_unit": "g",
+    "calories": 90,
+    "protein_g": 2.0,
+    "total_carbs_g": 20.7,
+    "total_fat_g": 0.2,
+    "dietary_fiber_g": 3.3,
+    "is_generic": true,
+    "is_branded": false
+}}
+
+Brown Rice, Cooked (per 100g):
+{{
+    "is_real": true,
+    "name": "Brown Rice, Cooked",
+    "brand_name": null,
+    "serving_size": 100,
+    "serving_unit": "g",
+    "calories": 112,
+    "protein_g": 2.6,
+    "total_carbs_g": 23.5,
+    "total_fat_g": 0.9,
+    "dietary_fiber_g": 1.8,
+    "is_generic": true,
+    "is_branded": false
+}}
+
+Chipotle Burrito Bowl (per 100g):
+{{
+    "is_real": true,
+    "name": "Burrito Bowl",
+    "brand_name": "Chipotle",
+    "serving_size": 100,
+    "serving_unit": "g",
+    "calories": 150,
+    "protein_g": 12.0,
+    "total_carbs_g": 15.0,
+    "total_fat_g": 5.0,
+    "dietary_fiber_g": 3.0,
+    "is_generic": false,
+    "is_branded": true
+}}
+
+Fake Food Example:
+{{
+    "is_real": false,
+    "reason": "Unicorn steak is a fantasy food that doesn't exist"
+}}
+
+Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
 
             response = self.client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
@@ -203,6 +304,20 @@ If not real, set is_real=false and explain why."""
                 "data_quality_score": 0.7,
                 "source": "ai_created"
             }
+
+            # Validate nutrition data before inserting
+            is_valid, error_msg = validate_nutrition_data(food_data)
+            if not is_valid:
+                logger.error(f"[AgenticMatcher] ❌ Nutrition validation failed for '{food_data['name']}': {error_msg}")
+                logger.error(f"[AgenticMatcher] Invalid data: {food_data}")
+                return {
+                    "matched": False,
+                    "food": None,
+                    "created": False,
+                    "reason": f"AI provided invalid nutrition data: {error_msg}"
+                }
+
+            logger.info(f"[AgenticMatcher] ✅ Nutrition validated for '{food_data['name']}'")
 
             # Insert
             db_response = self.supabase.table("foods_enhanced").insert(food_data).execute()

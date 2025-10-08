@@ -498,25 +498,29 @@ class FoodSearchService:
     ) -> Optional[Dict[str, Any]]:
         """Match from global food database with exact/partial matching."""
         try:
-            # Try exact match first
+            # Try exact match first (PREFER GENERIC over branded)
             response = self.supabase.from_("foods_enhanced").select(
                 "id, name, brand_name, food_group, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
                 "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
             ).ilike("name", name).order(
-                "data_quality_score", desc=True
+                "is_generic", desc=True  # Generic foods first
+            ).order(
+                "data_quality_score", desc=True  # Then by quality
             ).limit(1).execute()
 
             if response.data and len(response.data) > 0:
                 return response.data[0]
 
-            # Try partial match
+            # Try partial match (PREFER GENERIC over branded)
             response = self.supabase.from_("foods_enhanced").select(
                 "id, name, brand_name, food_group, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
                 "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
             ).ilike("name", f"%{name}%").order(
-                "data_quality_score", desc=True
+                "is_generic", desc=True  # Generic foods first
+            ).order(
+                "data_quality_score", desc=True  # Then by quality
             ).limit(1).execute()
 
             if response.data and len(response.data) > 0:
@@ -554,26 +558,30 @@ class FoodSearchService:
                     base_name = base_name.replace(method, "").strip()
                     break
 
-            # Search with cooking method filter if detected
+            # Search with cooking method filter if detected (PREFER GENERIC)
             if detected_method:
                 response = self.supabase.from_("foods_enhanced").select(
                     "id, name, brand_name, food_group, serving_size, serving_unit, "
                     "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
                     "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
                 ).ilike("name", f"%{base_name}%{detected_method}%").order(
-                    "data_quality_score", desc=True
+                    "is_generic", desc=True  # Generic foods first
+                ).order(
+                    "data_quality_score", desc=True  # Then by quality
                 ).limit(1).execute()
 
                 if response.data and len(response.data) > 0:
                     return response.data[0]
 
-            # Fallback: search just base name
+            # Fallback: search just base name (PREFER GENERIC)
             response = self.supabase.from_("foods_enhanced").select(
                 "id, name, brand_name, food_group, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
                 "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
             ).ilike("name", f"%{base_name}%").order(
-                "data_quality_score", desc=True
+                "is_generic", desc=True  # Generic foods first
+            ).order(
+                "data_quality_score", desc=True  # Then by quality
             ).limit(1).execute()
 
             if response.data and len(response.data) > 0:
