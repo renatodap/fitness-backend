@@ -121,6 +121,9 @@ class CreateActivityRequest(BaseModel):
     source: str = Field(default="manual", description="Source of activity (manual, quick_entry, strava, garmin)")
     quick_entry_log_id: Optional[str] = Field(None, description="Quick entry log ID if from quick entry")
 
+    # Strength training exercises (detailed tracking)
+    exercises: Optional[List['ActivityExerciseRequest']] = Field(default_factory=list, description="Exercises for strength training activities")
+
     @validator("mood")
     def validate_mood(cls, v):
         if v is not None:
