@@ -19,6 +19,7 @@ from app.services.supabase_service import get_service_client
 from app.services.multimodal_embedding_service import get_multimodal_service
 from app.services.agentic_rag_service import get_agentic_rag_service
 from app.services.food_vision_service import get_food_vision_service
+from app.services.tool_service import get_tool_service, COACH_TOOLS
 from anthropic import AsyncAnthropic
 from app.config import get_settings
 
@@ -43,8 +44,9 @@ class UnifiedCoachService:
         self.classifier = get_message_classifier()
         self.quick_entry = get_quick_entry_service()
         self.embedding_service = get_multimodal_service()
-        self.agentic_rag = get_agentic_rag_service()  # Agentic RAG service
+        self.agentic_rag = get_agentic_rag_service()  # Agentic RAG service (now used as ONE tool)
         self.food_vision = get_food_vision_service()  # NEW: Isolated food vision service
+        self.tool_service = get_tool_service()  # NEW: Agentic tool service
         self.anthropic = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
     async def process_message(
@@ -189,19 +191,21 @@ class UnifiedCoachService:
         classification: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Handle CHAT mode: Generate AI response with RAG context.
+        Handle CHAT mode: Generate AI response with AGENTIC TOOL CALLING.
 
-        Flow:
-        1. IF IMAGE: Analyze with isolated food vision service FIRST
-        2. Build RAG context from ALL user data
-        3. Inject food vision analysis into context
-        4. Generate Claude response (streaming)
-        5. Save AI response to database
-        6. Vectorize both user message and AI response
-        7. If food detected, offer to log it
+        NEW AGENTIC FLOW:
+        1. IF IMAGE: Analyze with food vision service FIRST
+        2. Call Claude with TOOLS (not full RAG context!)
+        3. Claude decides which tools to call (on-demand data fetching)
+        4. Execute tools and return results to Claude
+        5. Claude generates final response using only the data it requested
+        6. Save AI response to database
+        7. Vectorize messages
         8. Return response
+
+        This is 80% cheaper for simple queries - only fetches what's needed!
         """
-        logger.info(f"[UnifiedCoach._handle_chat_mode] START - user_message_id: {user_message_id}")
+        logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] START - user_message_id: {user_message_id}")
 
         food_analysis = None
         food_context = ""
@@ -209,20 +213,20 @@ class UnifiedCoachService:
         try:
             # STEP 0: ANALYZE IMAGE FIRST (if present) using isolated vision service
             if image_base64:
-                logger.info(f"[UnifiedCoach._handle_chat_mode] Image detected - analyzing with food vision service...")
+                logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Image detected - analyzing with food vision service...")
                 try:
                     food_analysis = await self.food_vision.analyze_food_image(
                         image_base64=image_base64,
                         user_message=message
                     )
                     logger.info(
-                        f"[UnifiedCoach._handle_chat_mode] Food vision result: "
+                        f"[UnifiedCoach._handle_chat_mode_AGENTIC] Food vision result: "
                         f"is_food={food_analysis.get('is_food')}, "
                         f"confidence={food_analysis.get('confidence')}, "
                         f"api={food_analysis.get('api_used')}"
                     )
 
-                    # Build food context for RAG injection
+                    # Build food context for system prompt injection
                     if food_analysis.get("is_food") and food_analysis.get("success"):
                         nutrition = food_analysis.get("nutrition", {})
                         food_items = food_analysis.get("food_items", [])
@@ -238,42 +242,18 @@ Estimated Nutrition:
 Meal Type: {food_analysis.get('meal_type', 'Unknown')}
 Confidence: {food_analysis.get('confidence', 0) * 100:.0f}%
 """
-                        logger.info(f"[UnifiedCoach._handle_chat_mode] Food context created for RAG injection")
+                        logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Food context created")
                     else:
                         # Not food or low confidence
                         food_context = f"\n=== IMAGE ANALYSIS ===\n{food_analysis.get('description', 'Image analyzed but no food detected')}\n"
 
                 except Exception as vision_err:
-                    logger.error(f"[UnifiedCoach._handle_chat_mode] Food vision failed (non-critical): {vision_err}", exc_info=True)
+                    logger.error(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Food vision failed (non-critical): {vision_err}", exc_info=True)
                     food_context = "\n=== IMAGE ===\nUser uploaded an image but analysis failed.\n"
 
-            # STEP 1: Build RAG context using AGENTIC RAG SERVICE
-            logger.info(f"[UnifiedCoach._handle_chat_mode] Building RAG context for user {user_id}...")
-            try:
-                rag_result = await self.agentic_rag.build_context(
-                    user_id=user_id,
-                    query=message,
-                    max_tokens=3000,
-                    include_conversation_history=True
-                )
-                rag_context = rag_result["context_string"]
-                logger.info(
-                    f"[UnifiedCoach._handle_chat_mode] RAG context built: {len(rag_context)} chars, "
-                    f"sources: {rag_result['sources_used']}, stats: {rag_result['stats']}"
-                )
-            except Exception as rag_err:
-                logger.error(f"[UnifiedCoach._handle_chat_mode] RAG context build failed: {rag_err}", exc_info=True)
-                # Use empty context if RAG fails (non-critical)
-                rag_context = "No previous user data available."
-                logger.warning(f"[UnifiedCoach._handle_chat_mode] Using empty RAG context due to error")
+            # STEP 1: NEW AGENTIC APPROACH - Call Claude with TOOLS, not full context!
 
-            # INJECT FOOD CONTEXT into RAG
-            if food_context:
-                rag_context = food_context + "\n" + rag_context
-
-            # STEP 2: Generate AI response (Claude with streaming + caching)
-
-            # Build Iron Discipline system prompt (cached for cost savings)
+            # Build AGENTIC system prompt with tool instructions
             base_system_prompt = """You are WAGNER - the AI coach for Iron Discipline, a hardcore fitness platform.
 
 PERSONALITY:
@@ -283,108 +263,229 @@ PERSONALITY:
 - Reference user's actual data with SPECIFICS
 - Balance intensity with expertise - you're tough but you know your shit
 
-RESPONSE RULES:
-1. ALWAYS reference their actual data when relevant
-2. Be specific: "Based on your 3 workouts this week..." not "Based on your data..."
-3. Push them hard but stay supportive
-4. If they're slacking, call it out (kindly but firmly)
-5. Celebrate wins LOUDLY: "🔥🔥🔥 NEW PR! LET'S GOOOOO!"
-6. Link nutrition to performance: "That 450cal breakfast before your run? PERFECT for endurance"
+AGENTIC WORKFLOW (IMPORTANT):
+You have access to TOOLS to get user data on-demand AND to PROACTIVELY LOG their activities.
 
-FOOD IMAGE DETECTION (IMPORTANT):
-- If you see "=== FOOD IMAGE ANALYSIS ===" in user data, a food photo was analyzed
-- Reference the detected foods and nutrition SPECIFICALLY
-- Comment on the meal quality, macros, timing
-- ALWAYS ask if they want to log it: "Want me to log this meal? I've got the nutrition data ready."
-- Be encouraging about their food choices (or constructively critical if needed)
-- Example: "I see eggs, oatmeal, and banana - solid 450 cal breakfast with 35g protein! That's EXACTLY what you need pre-workout. Want me to log it?"
+DATA RETRIEVAL TOOLS:
+- get_user_profile: Get goals, preferences, body stats, macro targets
+- get_daily_nutrition_summary: Get today's nutrition totals
+- get_recent_meals: Get meals from last N days
+- get_recent_activities: Get workouts from last N days
+- analyze_training_volume: Analyze training stats
+- get_body_measurements: Get weight/measurements
+- calculate_progress_trend: Track progress for a metric
+- semantic_search_user_data: Search all user data semantically (RAG)
+- search_food_database: Look up nutrition info
 
-EXAMPLE TONE:
+PROACTIVE LOGGING TOOLS (USE THESE AUTOMATICALLY!):
+- create_meal_log_from_description: When user mentions eating food in PAST TENSE, AUTOMATICALLY log it
+- create_activity_log_from_description: When user mentions workout in PAST TENSE, AUTOMATICALLY log it
+- create_body_measurement_log: When user mentions their weight, AUTOMATICALLY log it
+
+PROACTIVE LOGGING RULES (CRITICAL):
+1. If user says "I ate X", "I had Y for breakfast", "just finished lunch" → IMMEDIATELY call create_meal_log_from_description
+2. If user says "I did a 5k run", "just finished my workout", "went to the gym" → IMMEDIATELY call create_activity_log_from_description
+3. If user says "I weigh X lbs", "my weight is Y kg" → IMMEDIATELY call create_body_measurement_log
+4. You can log MULTIPLE items in ONE message! Example: "I had eggs for breakfast, did a run, then ate chicken for lunch" → Call create_meal_log 2x + create_activity_log 1x
+5. After logging, acknowledge what you logged with enthusiasm
+
+EXAMPLES:
+
+User: "for breakfast i had eggs and toast, then i did a 5k run, then i ate chicken and rice for lunch"
+→ You should:
+  1. create_meal_log_from_description(meal_type="breakfast", foods=["eggs", "toast"], description="eggs and toast")
+  2. create_activity_log_from_description(activity_type="running", distance_km=5, description="5k run")
+  3. create_meal_log_from_description(meal_type="lunch", foods=["chicken", "rice"], description="chicken and rice")
+→ Then respond: "LOGGED! Breakfast: eggs & toast (~350 cal), 5K run (30 min, ~300 cal burned), Lunch: chicken & rice (~550 cal). Solid day! Total 900 cal, 70g protein. KEEP CRUSHING IT! 💪"
+
+User: "I had 3 eggs and oatmeal this morning"
+→ You should:
+  1. create_meal_log_from_description(meal_type="breakfast", foods=["eggs", "oatmeal"], description="3 eggs and oatmeal")
+→ Then respond: "Logged breakfast! 3 eggs + oatmeal = ~450 cal, 35g protein. PERFECT pre-workout fuel! 🔥"
+
 User: "What should I eat for breakfast?"
-Wagner: "Looking at your training schedule, you've got solid workouts this week. You need FUEL.
+→ DO NOT log anything (this is a question, not a past event)
+→ Call: get_user_profile + get_recent_meals(days=3)
+→ Answer with recommendations
 
-Aim for 450-550 calories with 35-40g protein. Think:
-- 3 whole eggs + oatmeal + banana
-- Greek yogurt (200g) + granola + berries + protein scoop
-- Protein pancakes (3) + peanut butter + honey
+FOOD IMAGE DETECTION:
+If you see "=== FOOD IMAGE ANALYSIS ===" below, a food photo was analyzed.
+Immediately call create_meal_log_from_description with the detected foods!
 
-Based on your recent meals, you're averaging good protein. Keep crushing it. 💪"
+RESPONSE RULES:
+1. BE PROACTIVE - Log meals/workouts AUTOMATICALLY when mentioned
+2. Call tools FIRST before answering
+3. Reference SPECIFIC data from tool results
+4. Be concise but data-driven
+5. Celebrate wins LOUDLY with emojis
+6. If slacking, call it out kindly but firmly"""
 
-Now respond to the user with this energy and specificity."""
+            # Add food context if present
+            if food_context:
+                base_system_prompt += f"\n\n{food_context}"
 
-            logger.info(f"[UnifiedCoach._handle_chat_mode] Calling Claude API with caching...")
-            logger.info(f"[UnifiedCoach._handle_chat_mode] Base prompt length: {len(base_system_prompt)}")
-            logger.info(f"[UnifiedCoach._handle_chat_mode] RAG context length: {len(rag_context)}")
-            logger.info(f"[UnifiedCoach._handle_chat_mode] User message length: {len(message)}")
-            logger.info(f"[UnifiedCoach._handle_chat_mode] Food analysis injected: {bool(food_context)}")
+            logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Calling Claude with TOOLS...")
+            logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Available tools: {len(COACH_TOOLS)}")
 
-            # Create message for Claude
+            # AGENTIC LOOP: Call Claude with tools, execute tools, repeat until final answer
+            conversation_messages = [{"role": "user", "content": message}]
+            total_input_tokens = 0
+            total_output_tokens = 0
+            total_cache_read = 0
+            total_cache_write = 0
+            tool_calls_made = []
+            max_iterations = 5  # Prevent infinite loops
+
             ai_response_text = ""
-            response_chunks = []
-            tokens_used = 0
-            cost_usd = 0.0
 
-            try:
-                # Use Claude streaming WITH PROMPT CACHING (90% cost savings!)
-                # NOTE: Image already analyzed by food_vision_service, results in RAG context
-                async with self.anthropic.messages.stream(
-                    model="claude-3-5-sonnet-20241022",
-                    max_tokens=1200 if food_context else 1000,  # More tokens if food detected
-                    temperature=0.3,  # Lower temp for more factual coaching
-                    system=[
-                        {
-                            "type": "text",
-                            "text": base_system_prompt,
-                            "cache_control": {"type": "ephemeral"}  # Cache base prompt!
-                        },
-                        {
-                            "type": "text",
-                            "text": f"\n\n=== USER DATA ===\n{rag_context}",
-                            "cache_control": {"type": "ephemeral"}  # Cache RAG context (includes food analysis!)
-                        }
-                    ],
-                    messages=[
-                        {"role": "user", "content": message}
-                    ]
-                ) as stream:
-                    logger.info(f"[UnifiedCoach._handle_chat_mode] Claude stream started")
-                    async for text in stream.text_stream:
-                        ai_response_text += text
-                        response_chunks.append(text)
-                    logger.info(f"[UnifiedCoach._handle_chat_mode] Claude stream completed")
+            for iteration in range(max_iterations):
+                logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Iteration {iteration + 1}/{max_iterations}")
 
-                # Get usage stats (includes cache metrics!)
-                logger.info(f"[UnifiedCoach._handle_chat_mode] Getting usage stats...")
-                usage = await stream.get_final_message()
+                try:
+                    # Call Claude with tools
+                    response = await self.anthropic.messages.create(
+                        model="claude-3-5-sonnet-20241022",
+                        max_tokens=2000,
+                        temperature=0.3,
+                        system=[
+                            {
+                                "type": "text",
+                                "text": base_system_prompt,
+                                "cache_control": {"type": "ephemeral"}  # Cache system prompt
+                            }
+                        ],
+                        tools=COACH_TOOLS,  # Pass tools!
+                        messages=conversation_messages
+                    )
 
-                # Extract all token types (including cache)
-                input_tokens = usage.usage.input_tokens
-                output_tokens = usage.usage.output_tokens
-                cache_read_tokens = getattr(usage.usage, 'cache_read_input_tokens', 0)
-                cache_write_tokens = getattr(usage.usage, 'cache_creation_input_tokens', 0)
+                    # Track tokens
+                    total_input_tokens += response.usage.input_tokens
+                    total_output_tokens += response.usage.output_tokens
+                    total_cache_read += getattr(response.usage, 'cache_read_input_tokens', 0)
+                    total_cache_write += getattr(response.usage, 'cache_creation_input_tokens', 0)
 
-                tokens_used = input_tokens + output_tokens + cache_read_tokens + cache_write_tokens
-                cost_usd = self._calculate_claude_cost(
-                    input_tokens,
-                    output_tokens,
-                    cache_read_tokens,
-                    cache_write_tokens
-                )
+                    logger.info(
+                        f"[UnifiedCoach._handle_chat_mode_AGENTIC] Iteration {iteration + 1} tokens: "
+                        f"in={response.usage.input_tokens}, out={response.usage.output_tokens}"
+                    )
 
-                logger.info(
-                    f"[UnifiedCoach._handle_chat_mode] Token usage: "
-                    f"input={input_tokens}, output={output_tokens}, "
-                    f"cache_read={cache_read_tokens}, cache_write={cache_write_tokens}"
-                )
+                    # Check stop reason
+                    if response.stop_reason == "tool_use":
+                        # Claude wants to use tools!
+                        logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Claude requested {len([c for c in response.content if c.type == 'tool_use'])} tool(s)")
 
-                logger.info(f"[UnifiedCoach._handle_chat_mode] AI response generated: {len(ai_response_text)} chars, {tokens_used} tokens, ${cost_usd:.6f}")
-            except Exception as claude_err:
-                logger.error(f"[UnifiedCoach._handle_chat_mode] Claude API call failed: {claude_err}", exc_info=True)
-                logger.error(f"[UnifiedCoach._handle_chat_mode] Claude error type: {type(claude_err).__name__}")
-                raise
+                        # Execute all requested tools
+                        tool_results = []
 
-            # STEP 3: Save AI response to database
-            logger.info(f"[UnifiedCoach._handle_chat_mode] Saving AI response to database...")
+                        for content_block in response.content:
+                            if content_block.type == "tool_use":
+                                tool_name = content_block.name
+                                tool_input = content_block.input
+                                tool_use_id = content_block.id
+
+                                logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Executing tool: {tool_name}({tool_input})")
+
+                                # Execute the tool
+                                tool_result = await self._execute_tool(tool_name, tool_input, user_id)
+
+                                tool_results.append({
+                                    "type": "tool_result",
+                                    "tool_use_id": tool_use_id,
+                                    "content": str(tool_result)
+                                })
+
+                                tool_calls_made.append({
+                                    "tool": tool_name,
+                                    "input": tool_input,
+                                    "result_preview": str(tool_result)[:200],
+                                    "full_result": tool_result  # Store full result for aggregation
+                                })
+
+                        # Add Claude's response + tool results to conversation
+                        conversation_messages.append({
+                            "role": "assistant",
+                            "content": response.content
+                        })
+                        conversation_messages.append({
+                            "role": "user",
+                            "content": tool_results
+                        })
+
+                        # Continue loop to get final answer
+                        continue
+
+                    elif response.stop_reason == "end_turn":
+                        # Claude finished - extract text response
+                        for content_block in response.content:
+                            if content_block.type == "text":
+                                ai_response_text += content_block.text
+
+                        logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Claude finished after {iteration + 1} iterations")
+                        logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Tools called: {[t['tool'] for t in tool_calls_made]}")
+                        break
+
+                    else:
+                        logger.warning(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Unexpected stop reason: {response.stop_reason}")
+                        # Extract any text response
+                        for content_block in response.content:
+                            if content_block.type == "text":
+                                ai_response_text += content_block.text
+                        break
+
+                except Exception as claude_err:
+                    logger.error(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Claude API call failed: {claude_err}", exc_info=True)
+                    raise
+
+            # Calculate total cost
+            tokens_used = total_input_tokens + total_output_tokens + total_cache_read + total_cache_write
+            cost_usd = self._calculate_claude_cost(
+                total_input_tokens,
+                total_output_tokens,
+                total_cache_read,
+                total_cache_write
+            )
+
+            logger.info(
+                f"[UnifiedCoach._handle_chat_mode_AGENTIC] TOTAL tokens: {tokens_used}, cost: ${cost_usd:.6f}, "
+                f"tools called: {len(tool_calls_made)}"
+            )
+
+            # STEP 1.5: Aggregate logging tool results (pending_logs vs auto_logged)
+            pending_logs = []  # Logs that need user confirmation (auto_log=FALSE)
+            auto_logged_items = []  # Logs that were saved automatically (auto_log=TRUE)
+
+            for tool_call in tool_calls_made:
+                tool_name = tool_call["tool"]
+                full_result = tool_call.get("full_result", {})
+
+                # Check if this was a logging tool
+                if tool_name in ["create_meal_log_from_description", "create_activity_log_from_description", "create_body_measurement_log"]:
+
+                    if full_result.get("requires_confirmation"):
+                        # This is a pending log - needs user review
+                        pending_logs.append({
+                            "log_type": full_result.get("log_type"),
+                            "data": full_result.get("meal_data") or full_result.get("activity_data") or full_result.get("measurement_data"),
+                            "message": full_result.get("message")
+                        })
+                        logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Pending log: {full_result.get('log_type')}")
+
+                    elif full_result.get("auto_logged"):
+                        # This was auto-logged - saved to database
+                        auto_logged_items.append({
+                            "log_type": full_result.get("log_type"),
+                            "id": full_result.get("meal_id") or full_result.get("activity_id") or full_result.get("measurement_id"),
+                            "message": full_result.get("message")
+                        })
+                        logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Auto-logged: {full_result.get('log_type')}")
+
+            logger.info(
+                f"[UnifiedCoach._handle_chat_mode_AGENTIC] Aggregated: {len(pending_logs)} pending, "
+                f"{len(auto_logged_items)} auto-logged"
+            )
+
+            # STEP 2: Save AI response to database
+            logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Saving AI response to database...")
             try:
                 ai_message_id = await self._save_ai_message(
                     user_id=user_id,
@@ -392,24 +493,24 @@ Now respond to the user with this energy and specificity."""
                     content=ai_response_text,
                     tokens_used=tokens_used,
                     cost_usd=cost_usd,
-                    context_used={"rag_sources": "quick_entry_embeddings"}
+                    context_used={"tools_called": [t["tool"] for t in tool_calls_made]}
                 )
-                logger.info(f"[UnifiedCoach._handle_chat_mode] AI message saved: {ai_message_id}")
+                logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] AI message saved: {ai_message_id}")
             except Exception as save_err:
-                logger.error(f"[UnifiedCoach._handle_chat_mode] Failed to save AI message: {save_err}", exc_info=True)
+                logger.error(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Failed to save AI message: {save_err}", exc_info=True)
                 raise
 
-            # STEP 4: Vectorize both messages (async, non-blocking)
-            logger.info(f"[UnifiedCoach._handle_chat_mode] Vectorizing messages...")
+            # STEP 3: Vectorize both messages (async, non-blocking)
+            logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Vectorizing messages...")
             try:
                 await self._vectorize_message(user_id, user_message_id, message, "user")
                 await self._vectorize_message(user_id, ai_message_id, ai_response_text, "assistant")
-                logger.info(f"[UnifiedCoach._handle_chat_mode] Messages vectorized successfully")
+                logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Messages vectorized successfully")
             except Exception as vec_err:
-                logger.error(f"[UnifiedCoach._handle_chat_mode] Vectorization failed (non-critical): {vec_err}")
+                logger.error(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Vectorization failed (non-critical): {vec_err}")
 
-            # STEP 5: Return response (matching UnifiedMessageResponse schema)
-            logger.info(f"[UnifiedCoach._handle_chat_mode] Returning chat response")
+            # STEP 4: Return response (matching UnifiedMessageResponse schema)
+            logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Returning chat response")
 
             # Prepare response with optional food analysis data
             response = {
@@ -422,8 +523,19 @@ Now respond to the user with this energy and specificity."""
                 "rag_context": None,
                 "tokens_used": tokens_used,
                 "cost_usd": cost_usd,
+                "tools_used": [t["tool"] for t in tool_calls_made],  # Track which tools were called
                 "error": None
             }
+
+            # Add pending_logs if any (auto_log=FALSE)
+            if pending_logs:
+                response["pending_logs"] = pending_logs
+                logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Added {len(pending_logs)} pending logs to response")
+
+            # Add auto_logged if any (auto_log=TRUE)
+            if auto_logged_items:
+                response["auto_logged"] = auto_logged_items
+                logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Added {len(auto_logged_items)} auto-logged items to response")
 
             # If food was detected, add food analysis data for potential meal logging
             if food_analysis and food_analysis.get("is_food") and food_analysis.get("success"):
@@ -435,13 +547,13 @@ Now respond to the user with this energy and specificity."""
                     "confidence": food_analysis.get("confidence"),
                     "description": food_analysis.get("description")
                 }
-                logger.info(f"[UnifiedCoach._handle_chat_mode] Food data included in response for potential logging")
+                logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Food data included in response for potential logging")
 
             return response
 
         except Exception as e:
-            logger.error(f"[UnifiedCoach._handle_chat_mode] CRITICAL ERROR: {e}", exc_info=True)
-            logger.error(f"[UnifiedCoach._handle_chat_mode] Error type: {type(e).__name__}, args: {e.args}")
+            logger.error(f"[UnifiedCoach._handle_chat_mode_AGENTIC] CRITICAL ERROR: {e}", exc_info=True)
+            logger.error(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Error type: {type(e).__name__}, args: {e.args}")
             # Return error response matching schema
             return {
                 "success": False,
@@ -898,6 +1010,87 @@ Now respond to the user with this energy and specificity."""
                 "conversations": [],
                 "messages": [],
                 "total": 0
+            }
+
+    # ====== AGENTIC TOOL EXECUTION ======
+
+    async def _execute_tool(
+        self,
+        tool_name: str,
+        tool_input: Dict[str, Any],
+        user_id: str
+    ) -> Dict[str, Any]:
+        """
+        Execute a tool requested by Claude.
+
+        This router maps tool names to tool_service methods.
+
+        Args:
+            tool_name: Name of the tool to execute
+            tool_input: Input parameters for the tool
+            user_id: User's UUID (injected for security)
+
+        Returns:
+            Tool execution result
+        """
+        try:
+            logger.info(f"[_execute_tool] Executing: {tool_name} with input: {tool_input}")
+
+            # Inject user_id into tool_input for security (prevent cross-user access)
+            tool_input["user_id"] = user_id
+
+            # Route to appropriate tool method
+            if tool_name == "get_user_profile":
+                return await self.tool_service.get_user_profile(**tool_input)
+
+            elif tool_name == "get_daily_nutrition_summary":
+                return await self.tool_service.get_daily_nutrition_summary(**tool_input)
+
+            elif tool_name == "get_recent_meals":
+                return await self.tool_service.get_recent_meals(**tool_input)
+
+            elif tool_name == "get_recent_activities":
+                return await self.tool_service.get_recent_activities(**tool_input)
+
+            elif tool_name == "analyze_training_volume":
+                return await self.tool_service.analyze_training_volume(**tool_input)
+
+            elif tool_name == "get_body_measurements":
+                return await self.tool_service.get_body_measurements(**tool_input)
+
+            elif tool_name == "calculate_progress_trend":
+                return await self.tool_service.calculate_progress_trend(**tool_input)
+
+            elif tool_name == "semantic_search_user_data":
+                return await self.tool_service.semantic_search_user_data(**tool_input)
+
+            elif tool_name == "search_food_database":
+                # This one doesn't need user_id (global food database)
+                tool_input.pop("user_id", None)
+                return await self.tool_service.search_food_database(**tool_input)
+
+            # PROACTIVE LOGGING TOOLS (NEW!)
+            elif tool_name == "create_meal_log_from_description":
+                return await self.tool_service.create_meal_log_from_description(**tool_input)
+
+            elif tool_name == "create_activity_log_from_description":
+                return await self.tool_service.create_activity_log_from_description(**tool_input)
+
+            elif tool_name == "create_body_measurement_log":
+                return await self.tool_service.create_body_measurement_log(**tool_input)
+
+            else:
+                logger.error(f"[_execute_tool] Unknown tool: {tool_name}")
+                return {
+                    "success": False,
+                    "error": f"Unknown tool: {tool_name}"
+                }
+
+        except Exception as e:
+            logger.error(f"[_execute_tool] Tool execution failed: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": f"Tool execution failed: {str(e)}"
             }
 
     # OLD RAG METHOD REMOVED - Now using AgenticRAGService
