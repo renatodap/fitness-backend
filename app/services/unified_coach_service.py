@@ -267,7 +267,14 @@ AGENTIC WORKFLOW (IMPORTANT):
 You have access to TOOLS to get user data on-demand AND to PROACTIVELY LOG their activities.
 
 DATA RETRIEVAL TOOLS:
-- get_user_profile: Get goals, preferences, body stats, macro targets
+- get_user_profile: **USE THIS FIRST** - Returns EVERYTHING about the user in one call:
+  * Goals: primary goal, user persona, experience level
+  * Body: age, sex, weight, height, BMI
+  * Training: frequency, time preferences, injury limitations, equipment, facilities
+  * Nutrition: dietary restrictions, meal preferences
+  * Programs: active nutrition/workout programs
+  * Location: city, weather adaptations
+  → Call this tool EARLY to personalize ALL responses!
 - get_daily_nutrition_summary: Get today's nutrition totals
 - get_recent_meals: Get meals from last N days
 - get_recent_activities: Get workouts from last N days
@@ -1169,7 +1176,15 @@ RESPONSE RULES:
         }
 
         result = self.supabase.table("coach_messages").insert(message_data).execute()
-        return result.data[0]["id"]
+        ai_message_id = result.data[0]["id"]
+
+        # GENERATE CONVERSATION TITLE (if this is the first AI response)
+        try:
+            await self._generate_conversation_title_if_needed(conversation_id, user_id)
+        except Exception as e:
+            logger.warning(f"[_save_ai_message] Title generation failed (non-critical): {e}")
+
+        return ai_message_id
 
     async def _save_system_message(
         self,
@@ -1200,34 +1215,71 @@ RESPONSE RULES:
         """
         Vectorize message for RAG (both user and AI messages).
 
-        Stores in a new coach_message_embeddings table.
+        Stores embeddings in coach_message_embeddings table for semantic search.
+        This enables the AI to retrieve relevant past conversations when answering.
+
+        IMPORTANT: This runs asynchronously and should NOT block the response.
         """
         try:
-            # Generate embedding
-            embedding = await self.embedding_service.embed_text(content)
+            logger.info(f"[_vectorize_message] START - role={role}, message_id={message_id}, content_len={len(content)}")
 
-            # Store in coach_message_embeddings
+            # Validate content
+            if not content or len(content.strip()) == 0:
+                logger.warning(f"[_vectorize_message] Skipping empty content for {message_id}")
+                return
+
+            # Truncate very long content (embeddings have token limits)
+            content_to_embed = content[:5000].strip()
+
+            # Generate embedding (FREE model)
+            logger.debug(f"[_vectorize_message] Generating embedding for {message_id}...")
+            embedding = await self.embedding_service.embed_text(content_to_embed)
+
+            # Validate embedding
+            if embedding is None:
+                logger.error(f"[_vectorize_message] Embedding service returned None for {message_id}")
+                return
+
+            # Convert to list if numpy array
+            embedding_list = embedding.tolist() if hasattr(embedding, 'tolist') else embedding
+
+            # Validate embedding dimensions
+            if not isinstance(embedding_list, list) or len(embedding_list) == 0:
+                logger.error(f"[_vectorize_message] Invalid embedding format for {message_id}: {type(embedding_list)}")
+                return
+
+            logger.info(f"[_vectorize_message] Generated {len(embedding_list)}-dimensional embedding for {message_id}")
+
+            # Store in coach_message_embeddings table
             embedding_data = {
                 "message_id": message_id,
                 "user_id": user_id,
                 "role": role,
-                "embedding": embedding.tolist() if hasattr(embedding, 'tolist') else embedding,
-                "content_text": content[:5000],
+                "embedding": embedding_list,
+                "content_text": content_to_embed,
                 "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+                "embedding_dimensions": len(embedding_list),
                 "created_at": datetime.utcnow().isoformat()
             }
 
-            self.supabase.table("coach_message_embeddings").insert(embedding_data).execute()
+            insert_response = self.supabase.table("coach_message_embeddings").insert(embedding_data).execute()
 
-            # Update message with vectorization flag
-            self.supabase.table("coach_messages").update({
-                "is_vectorized": True
-            }).eq("id", message_id).execute()
+            if insert_response.data:
+                logger.info(f"[_vectorize_message] Embedding saved to database: {insert_response.data[0].get('id')}")
 
-            logger.info(f"[UnifiedCoach] Vectorized {role} message: {message_id}")
+                # Update message with vectorization flag
+                self.supabase.table("coach_messages").update({
+                    "is_vectorized": True,
+                    "updated_at": datetime.utcnow().isoformat()
+                }).eq("id", message_id).execute()
+
+                logger.info(f"[_vectorize_message] SUCCESS - {role} message {message_id} vectorized and flagged")
+            else:
+                logger.error(f"[_vectorize_message] Failed to insert embedding into database for {message_id}")
 
         except Exception as e:
-            logger.error(f"[UnifiedCoach] Vectorization failed for {message_id}: {e}")
+            logger.error(f"[_vectorize_message] FAILED for {message_id}: {e}", exc_info=True)
+            # Non-critical error - don't raise, just log
 
     def _build_success_message(self, log_type: str, log_data: Dict[str, Any]) -> str:
         """Build success message for confirmed log."""
@@ -1253,6 +1305,66 @@ RESPONSE RULES:
 
         else:
             return f"✅ {log_type} logged successfully!"
+
+    async def _generate_conversation_title_if_needed(self, conversation_id: str, user_id: str):
+        """
+        Generate conversation title from first user message if title is null.
+
+        Uses the first 50 characters of the user's first message as the title.
+        This runs AFTER the first AI response is saved.
+        """
+        try:
+            # Check if conversation already has a title
+            conv_response = self.supabase.table("coach_conversations")\
+                .select("title, id")\
+                .eq("id", conversation_id)\
+                .eq("user_id", user_id)\
+                .single()\
+                .execute()
+
+            if not conv_response.data:
+                logger.warning(f"[_generate_conversation_title] Conversation not found: {conversation_id}")
+                return
+
+            # If title already exists, skip
+            if conv_response.data.get("title"):
+                logger.debug(f"[_generate_conversation_title] Conversation already has title: {conv_response.data['title']}")
+                return
+
+            # Get first user message
+            first_msg_response = self.supabase.table("coach_messages")\
+                .select("content")\
+                .eq("conversation_id", conversation_id)\
+                .eq("role", "user")\
+                .order("created_at", desc=False)\
+                .limit(1)\
+                .execute()
+
+            if not first_msg_response.data:
+                logger.warning(f"[_generate_conversation_title] No user messages found for conversation {conversation_id}")
+                return
+
+            # Generate title from first message (first 50 chars)
+            first_message = first_msg_response.data[0]["content"]
+            title = first_message[:50].strip()
+            if len(first_message) > 50:
+                # Find last complete word within 50 chars
+                last_space = title.rfind(' ')
+                if last_space > 20:  # Only trim if we have at least 20 chars
+                    title = title[:last_space]
+                title += "..."
+
+            # Update conversation title
+            self.supabase.table("coach_conversations").update({
+                "title": title,
+                "updated_at": datetime.utcnow().isoformat()
+            }).eq("id", conversation_id).execute()
+
+            logger.info(f"[_generate_conversation_title] Generated title for {conversation_id}: '{title}'")
+
+        except Exception as e:
+            logger.error(f"[_generate_conversation_title] Failed: {e}", exc_info=True)
+            # Non-critical error - don't raise
 
     def _calculate_claude_cost(self, input_tokens: int, output_tokens: int, cache_read_tokens: int = 0, cache_write_tokens: int = 0) -> float:
         """

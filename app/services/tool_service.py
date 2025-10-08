@@ -37,50 +37,154 @@ class CoachToolService:
 
     async def get_user_profile(self, user_id: str) -> Dict[str, Any]:
         """
-        Get user's profile with goals and preferences.
+        Get user's COMPLETE profile with goals, preferences, and onboarding data.
 
-        Returns essential user info:
-        - Name, age, biological sex
-        - Current weight, goal weight, height
-        - Primary goal (lose weight, gain muscle, etc.)
-        - Experience level, training frequency
-        - Dietary restrictions, available equipment
-        - Daily macro targets (calories, protein, carbs, fats)
+        Returns comprehensive user info:
+        - Basic: Name, age, biological sex, timezone
+        - Body stats: Current weight, goal weight, height, BMI
+        - Goals: Primary goal, user persona, experience level
+        - Training: Desired frequency, training time preferences, injury limitations
+        - Equipment: Available equipment, facility access
+        - Nutrition: Dietary restrictions, meal preferences, daily meal count
+        - Location: City, location permission
+        - Programs: Active nutrition/workout programs (if any)
+
+        This tool gives the AI coach EVERYTHING about the user in one call,
+        enabling highly personalized responses.
 
         Args:
             user_id: User's UUID
 
         Returns:
-            User profile dict with all relevant data
+            Comprehensive user profile dict with all relevant data
         """
         try:
-            logger.info(f"[Tool:get_user_profile] Fetching profile for user {user_id}")
+            logger.info(f"[Tool:get_user_profile] Fetching COMPREHENSIVE profile for user {user_id}")
 
-            response = self.supabase.table("profiles")\
+            # Fetch basic profile
+            profile_response = self.supabase.table("profiles")\
                 .select("*")\
                 .eq("id", user_id)\
                 .single()\
                 .execute()
 
-            if response.data:
-                logger.info(f"[Tool:get_user_profile] Profile retrieved successfully")
-                return {
-                    "success": True,
-                    "profile": response.data
-                }
-            else:
+            if not profile_response.data:
                 logger.warning(f"[Tool:get_user_profile] No profile found")
                 return {
                     "success": False,
                     "error": "Profile not found"
                 }
 
+            profile = profile_response.data
+
+            # Fetch onboarding data (program preferences)
+            onboarding_response = self.supabase.table("user_onboarding")\
+                .select("*")\
+                .eq("user_id", user_id)\
+                .single()\
+                .execute()
+
+            onboarding = onboarding_response.data if onboarding_response.data else {}
+
+            # Fetch active programs
+            nutrition_program = await self.get_active_nutrition_program(user_id)
+            workout_program = await self.get_active_workout_program(user_id)
+
+            # Build comprehensive profile
+            comprehensive_profile = {
+                "success": True,
+                "user_id": user_id,
+
+                # Basic Info
+                "basic": {
+                    "full_name": profile.get("full_name"),
+                    "timezone": profile.get("timezone", "UTC"),
+                    "created_at": profile.get("created_at"),
+                },
+
+                # Body Stats
+                "body_stats": {
+                    "age": onboarding.get("age"),
+                    "biological_sex": onboarding.get("biological_sex"),
+                    "current_weight_kg": onboarding.get("current_weight_kg"),
+                    "height_cm": onboarding.get("height_cm"),
+                    "goal_weight_kg": onboarding.get("goal_weight_kg"),
+                    "bmi": self._calculate_bmi(onboarding.get("current_weight_kg"), onboarding.get("height_cm")),
+                },
+
+                # Goals & Persona
+                "goals": {
+                    "primary_goal": onboarding.get("primary_goal"),
+                    "user_persona": onboarding.get("user_persona"),
+                    "experience_level": onboarding.get("experience_level"),
+                },
+
+                # Training Preferences
+                "training": {
+                    "desired_training_frequency": onboarding.get("desired_training_frequency"),
+                    "current_activity_level": onboarding.get("current_activity_level"),
+                    "training_time_preferences": onboarding.get("training_time_preferences", []),
+                    "injury_limitations": onboarding.get("injury_limitations", []),
+                },
+
+                # Equipment & Facilities
+                "equipment": {
+                    "equipment_access": onboarding.get("equipment_access", []),
+                    "facility_access": onboarding.get("facility_access", []),
+                },
+
+                # Nutrition Preferences
+                "nutrition": {
+                    "dietary_restrictions": onboarding.get("dietary_restrictions", []),
+                    "daily_meal_preference": onboarding.get("daily_meal_preference"),
+                    "meal_preferences": onboarding.get("meal_preferences", []),
+                },
+
+                # Location
+                "location": {
+                    "city": onboarding.get("city"),
+                    "location_permission": onboarding.get("location_permission", False),
+                },
+
+                # Active Programs
+                "programs": {
+                    "nutrition_program": nutrition_program.get("program") if nutrition_program.get("success") else None,
+                    "workout_program": workout_program.get("program") if workout_program.get("success") else None,
+                },
+
+                # Preferences
+                "preferences": {
+                    "auto_log_enabled": profile.get("auto_log_enabled", False),
+                },
+            }
+
+            logger.info(
+                f"[Tool:get_user_profile] COMPREHENSIVE profile retrieved: "
+                f"goal={comprehensive_profile['goals']['primary_goal']}, "
+                f"persona={comprehensive_profile['goals']['user_persona']}, "
+                f"frequency={comprehensive_profile['training']['desired_training_frequency']}"
+            )
+
+            return comprehensive_profile
+
         except Exception as e:
-            logger.error(f"[Tool:get_user_profile] Failed: {e}")
+            logger.error(f"[Tool:get_user_profile] Failed: {e}", exc_info=True)
             return {
                 "success": False,
                 "error": str(e)
             }
+
+    def _calculate_bmi(self, weight_kg: Optional[float], height_cm: Optional[float]) -> Optional[float]:
+        """Calculate BMI from weight (kg) and height (cm)."""
+        if not weight_kg or not height_cm:
+            return None
+
+        try:
+            height_m = height_cm / 100
+            bmi = weight_kg / (height_m ** 2)
+            return round(bmi, 1)
+        except:
+            return None
 
     async def get_active_nutrition_program(self, user_id: str) -> Dict[str, Any]:
         """
