@@ -1,0 +1,736 @@
+"""
+Agentic Food Matcher Service
+
+Uses Groq AI agent with tool calling to intelligently match detected foods to database.
+
+Agent Workflow:
+1. BATCH processing - all foods in one agent call (4x cheaper)
+2. Search database exhaustively (recent, exact, fuzzy, cooking methods, synonyms)
+3. If not found, validate if food is "real" using AI reasoning
+4. If real, create in database with AI-estimated nutrition
+5. Return matched foods with database IDs
+
+Cost: ~$0.002 per meal (20x cheaper than Claude)
+"""
+
+import logging
+from typing import Dict, Any, List, Optional
+from openai import OpenAI
+from app.config import get_settings
+from app.services.food_search_service import get_food_search_service
+from app.services.supabase_service import get_service_client
+
+logger = logging.getLogger(__name__)
+settings = get_settings()
+
+
+class AgenticFoodMatcherService:
+    """
+    AI agent that matches foods to database with automatic creation capability.
+
+    Uses Groq Llama 3.3 70B with function calling to:
+    - BATCH process all foods in one call (cheaper + faster)
+    - Search database exhaustively
+    - Validate if foods are "real" using common sense
+    - Create missing foods with AI-estimated nutrition
+    - Prevent hallucinated/fake foods from being added
+
+    Cost: $0.05-0.10/M tokens (20x cheaper than Claude)
+    """
+
+    def __init__(self):
+        self.client = OpenAI(
+            api_key=settings.GROQ_API_KEY,
+            base_url="https://api.groq.com/openai/v1"
+        )
+        self.food_search = get_food_search_service()
+        self.supabase = get_service_client()
+
+    async def match_with_creation(
+        self,
+        detected_foods: List[Dict[str, str]],
+        user_id: str
+    ) -> Dict[str, Any]:
+        """
+        Match detected foods using AI agent with database creation capability.
+
+        BATCH PROCESSING: All foods processed in ONE agent call for efficiency.
+
+        Args:
+            detected_foods: List of {name, quantity, unit}
+            user_id: User's UUID for recent foods search
+
+        Returns:
+            {
+                "matched_foods": [...],
+                "unmatched_foods": [...],
+                "created_foods": [...],
+                "total_detected": int,
+                "total_matched": int,
+                "match_rate": float
+            }
+        """
+        logger.info(f"[AgenticMatcher] Starting BATCH matching for {len(detected_foods)} foods")
+
+        # BATCH: Process all foods in one agent call
+        result = await self._run_batch_agent(
+            detected_foods=detected_foods,
+            user_id=user_id
+        )
+
+        total_detected = len(detected_foods)
+        total_matched = len(result["matched_foods"])
+        match_rate = total_matched / total_detected if total_detected > 0 else 0.0
+
+        logger.info(
+            f"[AgenticMatcher] BATCH Complete: {total_matched}/{total_detected} matched, "
+            f"{len(result.get('created_foods', []))} created"
+        )
+
+        return {
+            "matched_foods": result["matched_foods"],
+            "unmatched_foods": result["unmatched_foods"],
+            "created_foods": result.get("created_foods", []),
+            "total_detected": total_detected,
+            "total_matched": total_matched,
+            "match_rate": match_rate
+        }
+
+    async def _run_batch_agent(
+        self,
+        detected_foods: List[Dict[str, str]],
+        user_id: str
+    ) -> Dict[str, Any]:
+        """
+        Run Groq agent to process ALL foods in one call (batch processing).
+
+        This is 4x cheaper and faster than per-food processing.
+        """
+        # Build food list for prompt
+        foods_list = "\n".join([
+            f"{i+1}. {food['name']} ({food.get('quantity', '1')} {food.get('unit', 'serving')})"
+            for i, food in enumerate(detected_foods)
+        ])
+
+        # Agent state to track results
+        agent_state = {
+            "user_id": user_id,
+            "detected_foods": detected_foods,
+            "matched_foods": [],
+            "unmatched_foods": [],
+            "created_foods": []
+        }
+
+        # System prompt
+        system_prompt = f"""You are a food database matching expert processing MULTIPLE foods at once.
+
+Your job: Match each detected food to database OR create if real and missing.
+
+STRICT RULES:
+1. For EACH food, call search_database_exhaustively FIRST
+2. If search finds match, use it (don't create duplicate)
+3. If no match, call validate_real_food to check if it's real
+4. Only call create_food_in_database if validation passes
+5. REJECT fakes: fantasy foods, made-up brands, impossible items
+
+ACCEPT (real foods):
+- Brands: "Chipotle Chicken Bowl", "Subway Outlaw", "Dots Pretzel"
+- Restaurants: "McDonald's Big Mac", "Chick-fil-A Sandwich"
+- Common: "grilled chicken", "brown rice", "steamed broccoli"
+- Packaged: "Oreos", "Kind Bar", "Quest Protein Bar"
+
+REJECT (fakes):
+- Fantasy: "unicorn steak", "dragon eggs", "phoenix wings"
+- Made-up: fake brand names you don't recognize
+- Impossible: "chocolate air", "sugar-free sugar"
+
+Process ALL these foods:
+{foods_list}
+
+Work through each food systematically. Call tools as needed."""
+
+        user_message = f"Match or create all {len(detected_foods)} foods to database."
+
+        # Define tools (OpenAI format)
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_database_exhaustively",
+                    "description": "Search foods_enhanced database using ALL strategies (recent, exact, fuzzy, cooking methods, synonyms). ALWAYS call this FIRST for each food.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "food_name": {
+                                "type": "string",
+                                "description": "Name of food to search (e.g., 'grilled chicken')"
+                            },
+                            "food_index": {
+                                "type": "integer",
+                                "description": "Index of food in the list (0-based)"
+                            }
+                        },
+                        "required": ["food_name", "food_index"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "validate_real_food",
+                    "description": "Validate if food is REAL using AI reasoning. Only call if search found nothing.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "food_name": {"type": "string"},
+                            "food_index": {"type": "integer"}
+                        },
+                        "required": ["food_name", "food_index"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "create_food_in_database",
+                    "description": "Create new food in database. ONLY call if search found nothing AND validation passed.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "food_index": {"type": "integer"},
+                            "name": {"type": "string"},
+                            "brand_name": {"type": "string", "description": "null for generic foods"},
+                            "serving_size": {"type": "number"},
+                            "serving_unit": {"type": "string"},
+                            "calories": {"type": "number"},
+                            "protein_g": {"type": "number"},
+                            "total_carbs_g": {"type": "number"},
+                            "total_fat_g": {"type": "number"},
+                            "dietary_fiber_g": {"type": "number"},
+                            "is_generic": {"type": "boolean"},
+                            "is_branded": {"type": "boolean"}
+                        },
+                        "required": ["food_index", "name", "serving_size", "serving_unit", "calories", "protein_g", "total_carbs_g", "total_fat_g"]
+                    }
+                }
+            }
+        ]
+
+        # Run agent with tool calling
+        messages = [{"role": "user", "content": user_message}]
+
+        # Agent loop (max 20 iterations for batch processing)
+        for iteration in range(20):
+            logger.info(f"[AgenticMatcher] Batch iteration {iteration + 1}")
+
+            try:
+                response = self.client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        *messages
+                    ],
+                    tools=tools,
+                    tool_choice="auto",
+                    temperature=0.1,
+                    max_tokens=4000
+                )
+
+                assistant_message = response.choices[0].message
+
+                # Check if agent wants to use tools
+                if assistant_message.tool_calls:
+                    # Add assistant message to history
+                    messages.append({
+                        "role": "assistant",
+                        "content": assistant_message.content or "",
+                        "tool_calls": [
+                            {
+                                "id": tc.id,
+                                "type": "function",
+                                "function": {
+                                    "name": tc.function.name,
+                                    "arguments": tc.function.arguments
+                                }
+                            }
+                            for tc in assistant_message.tool_calls
+                        ]
+                    })
+
+                    # Execute each tool call
+                    for tool_call in assistant_message.tool_calls:
+                        function_name = tool_call.function.name
+                        function_args = eval(tool_call.function.arguments)  # Parse JSON args
+
+                        logger.info(f"[AgenticMatcher] Calling tool: {function_name} with {function_args}")
+
+                        # Execute tool
+                        tool_result = await self._execute_batch_tool(
+                            tool_name=function_name,
+                            tool_args=function_args,
+                            agent_state=agent_state
+                        )
+
+                        # Add tool result to messages
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "name": function_name,
+                            "content": str(tool_result)
+                        })
+
+                else:
+                    # Agent finished (no more tool calls)
+                    logger.info(f"[AgenticMatcher] Agent finished batch processing")
+                    break
+
+            except Exception as e:
+                logger.error(f"[AgenticMatcher] Batch agent error: {e}", exc_info=True)
+                # Return partial results
+                break
+
+        return agent_state
+
+    async def _execute_batch_tool(
+        self,
+        tool_name: str,
+        tool_args: Dict[str, Any],
+        agent_state: Dict[str, Any]
+    ) -> str:
+        """
+        Run Claude agent to match or create a single food.
+
+        Agent uses tools:
+        1. search_database_exhaustively - search foods_enhanced table
+        2. validate_real_food - use AI reasoning to check if food is real
+        3. create_food_in_database - insert new food record
+
+        Returns:
+            {
+                "matched": bool,
+                "food": Dict (if matched),
+                "created": bool,
+                "reason": str (if unmatched)
+            }
+        """
+        # Define tools for agent
+        tools = [
+            {
+                "name": "search_database_exhaustively",
+                "description": "Search the foods_enhanced database table using ALL matching strategies: recent foods, exact name, fuzzy matching, cooking method variants, and synonyms. ALWAYS call this FIRST before considering creating a new food. Returns list of matching foods with full nutrition data and database IDs.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "food_name": {
+                            "type": "string",
+                            "description": "Name of the food to search for (e.g., 'grilled chicken', 'brown rice')"
+                        }
+                    },
+                    "required": ["food_name"]
+                }
+            },
+            {
+                "name": "validate_real_food",
+                "description": "Use AI reasoning to validate if this is a REAL food that people actually consume (not a hallucination). Consider: Is it sold in stores/restaurants? Is it a real brand? Is it a common ingredient or meal? Is it physically possible to eat? ONLY call this if search_database_exhaustively found no matches.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "food_name": {
+                            "type": "string",
+                            "description": "Name of food to validate"
+                        },
+                        "quantity": {
+                            "type": "string",
+                            "description": "Detected quantity (e.g., '100', '1')"
+                        },
+                        "unit": {
+                            "type": "string",
+                            "description": "Detected unit (e.g., 'g', 'oz', 'cup', 'serving')"
+                        }
+                    },
+                    "required": ["food_name"]
+                }
+            },
+            {
+                "name": "create_food_in_database",
+                "description": "Create a new food entry in the foods_enhanced database table. ONLY call this if: (1) search_database_exhaustively found NO matches AND (2) validate_real_food confirmed it's a real food. Inserts the food with AI-estimated nutrition data.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Clean food name (e.g., 'Chicken Breast, Grilled')"
+                        },
+                        "brand_name": {
+                            "type": "string",
+                            "description": "Brand name if applicable (e.g., 'Chipotle', 'Subway', null for generic)"
+                        },
+                        "serving_size": {
+                            "type": "number",
+                            "description": "Standard serving size (e.g., 100 for grams, 1 for items)"
+                        },
+                        "serving_unit": {
+                            "type": "string",
+                            "description": "Serving unit (e.g., 'g', 'oz', 'serving', 'bowl')"
+                        },
+                        "calories": {
+                            "type": "number",
+                            "description": "Calories per serving"
+                        },
+                        "protein_g": {
+                            "type": "number",
+                            "description": "Protein in grams per serving"
+                        },
+                        "total_carbs_g": {
+                            "type": "number",
+                            "description": "Total carbohydrates in grams per serving"
+                        },
+                        "total_fat_g": {
+                            "type": "number",
+                            "description": "Total fat in grams per serving"
+                        },
+                        "dietary_fiber_g": {
+                            "type": "number",
+                            "description": "Dietary fiber in grams (optional, default 0)"
+                        },
+                        "is_generic": {
+                            "type": "boolean",
+                            "description": "True if generic food, false if branded"
+                        },
+                        "is_branded": {
+                            "type": "boolean",
+                            "description": "True if branded food, false if generic"
+                        }
+                    },
+                    "required": ["name", "serving_size", "serving_unit", "calories", "protein_g", "total_carbs_g", "total_fat_g"]
+                }
+            }
+        ]
+
+        # System prompt for agent
+        system_prompt = f"""You are a food database matching expert. Your job is to match detected food names to database entries or create new entries for real foods.
+
+STRICT RULES:
+1. ALWAYS call search_database_exhaustively FIRST before doing anything else
+2. If search finds a match, return it immediately (don't create duplicates)
+3. Only call validate_real_food if search found NO matches
+4. Only call create_food_in_database if validation confirms it's a REAL food
+5. REJECT obvious fakes: fantasy foods (unicorn meat, dragon fruit cake), made-up brands, impossible items
+
+WHAT TO ACCEPT (examples of REAL foods):
+- Commercial brands: "Chipotle Chicken Bowl", "Subway Outlaw", "Dots Pretzel"
+- Restaurant items: "McDonald's Big Mac", "Chick-fil-A Grilled Chicken Sandwich"
+- Common foods: "grilled chicken", "brown rice", "steamed broccoli"
+- Packaged foods: "Oreos", "Kind Bar", "Quest Protein Bar"
+- Regional foods: "California Burrito", "Nashville Hot Chicken"
+
+WHAT TO REJECT (examples of FAKE foods):
+- Fantasy: "unicorn steak", "dragon eggs", "phoenix wings"
+- Made-up brands: "SuperFitPro MegaBar" (unless you know it exists)
+- Impossible: "chocolate-covered air", "sugar-free sugar"
+- Gibberish: random characters or nonsensical names
+
+User wants to log: "{food_name}" ({quantity} {unit})
+
+Your task: Match this to database OR create if it's a real food people actually consume."""
+
+        # User message
+        user_message = f"Find or create database entry for: {food_name}"
+
+        # Run agent
+        try:
+            messages = [{"role": "user", "content": user_message}]
+            agent_state = {
+                "food_name": food_name,
+                "quantity": quantity,
+                "unit": unit,
+                "user_id": user_id,
+                "search_result": None,
+                "validation_result": None,
+                "final_food": None
+            }
+
+            # Agent loop (max 5 iterations)
+            for iteration in range(5):
+                logger.info(f"[AgenticMatcher] Agent iteration {iteration + 1}")
+
+                response = await self.anthropic.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=2000,
+                    system=system_prompt,
+                    tools=tools,
+                    messages=messages
+                )
+
+                # Check if agent wants to use a tool
+                if response.stop_reason == "tool_use":
+                    # Process tool calls
+                    for content_block in response.content:
+                        if content_block.type == "tool_use":
+                            tool_name = content_block.name
+                            tool_input = content_block.input
+                            tool_use_id = content_block.id
+
+                            logger.info(f"[AgenticMatcher] Agent calling tool: {tool_name}")
+
+                            # Execute tool
+                            tool_result = await self._execute_tool(
+                                tool_name=tool_name,
+                                tool_input=tool_input,
+                                agent_state=agent_state
+                            )
+
+                            # Add tool result to messages
+                            messages.append({"role": "assistant", "content": response.content})
+                            messages.append({
+                                "role": "user",
+                                "content": [
+                                    {
+                                        "type": "tool_result",
+                                        "tool_use_id": tool_use_id,
+                                        "content": str(tool_result)
+                                    }
+                                ]
+                            })
+
+                elif response.stop_reason == "end_turn":
+                    # Agent finished, extract final answer
+                    logger.info(f"[AgenticMatcher] Agent finished")
+
+                    # Check if we have a final food
+                    if agent_state["final_food"]:
+                        return {
+                            "matched": True,
+                            "food": agent_state["final_food"],
+                            "created": agent_state.get("created", False),
+                            "reason": None
+                        }
+                    else:
+                        # Parse text response for reason
+                        text_content = ""
+                        for block in response.content:
+                            if hasattr(block, "text"):
+                                text_content += block.text
+
+                        return {
+                            "matched": False,
+                            "food": None,
+                            "created": False,
+                            "reason": text_content or "Agent could not match or create food"
+                        }
+                else:
+                    logger.warning(f"[AgenticMatcher] Unexpected stop reason: {response.stop_reason}")
+                    break
+
+            # If loop completes without return, agent failed
+            return {
+                "matched": False,
+                "food": None,
+                "created": False,
+                "reason": "Agent exceeded max iterations"
+            }
+
+        except Exception as e:
+            logger.error(f"[AgenticMatcher] Agent error: {e}", exc_info=True)
+            return {
+                "matched": False,
+                "food": None,
+                "created": False,
+                "reason": f"Agent error: {str(e)}"
+            }
+
+    async def _execute_tool(
+        self,
+        tool_name: str,
+        tool_input: Dict[str, Any],
+        agent_state: Dict[str, Any]
+    ) -> str:
+        """Execute agent tool and return result."""
+        try:
+            if tool_name == "search_database_exhaustively":
+                return await self._tool_search_database(tool_input, agent_state)
+
+            elif tool_name == "validate_real_food":
+                return await self._tool_validate_real_food(tool_input, agent_state)
+
+            elif tool_name == "create_food_in_database":
+                return await self._tool_create_food(tool_input, agent_state)
+
+            else:
+                return f"Error: Unknown tool {tool_name}"
+
+        except Exception as e:
+            logger.error(f"[AgenticMatcher] Tool {tool_name} error: {e}", exc_info=True)
+            return f"Error executing {tool_name}: {str(e)}"
+
+    async def _tool_search_database(
+        self,
+        tool_input: Dict[str, Any],
+        agent_state: Dict[str, Any]
+    ) -> str:
+        """Tool: Search database exhaustively using FoodSearchService."""
+        food_name = tool_input.get("food_name", "")
+        user_id = agent_state["user_id"]
+
+        # Use existing match_single_food logic
+        match_result = await self.food_search._match_single_food(
+            name=food_name,
+            quantity=agent_state["quantity"],
+            unit=agent_state["unit"],
+            user_id=user_id
+        )
+
+        if match_result:
+            # Found a match!
+            agent_state["final_food"] = match_result
+            agent_state["search_result"] = match_result
+            return f"MATCH FOUND: {match_result['name']} (ID: {match_result['id']}). Use this food. Do NOT create a new one."
+        else:
+            agent_state["search_result"] = None
+            return f"NO MATCH FOUND in database for '{food_name}'. You may proceed to validate_real_food if you believe this is a real food."
+
+    async def _tool_validate_real_food(
+        self,
+        tool_input: Dict[str, Any],
+        agent_state: Dict[str, Any]
+    ) -> str:
+        """
+        Tool: Validate if food is real using AI reasoning.
+
+        This is handled by the agent's own reasoning, so we just return
+        a confirmation message.
+        """
+        food_name = tool_input.get("food_name", "")
+
+        # Agent will use its own reasoning to determine if food is real
+        # We just need to guide it with the response
+        validation_prompt = f"""Based on your knowledge, is "{food_name}" a REAL food that people actually consume?
+
+Consider:
+- Is it sold in stores, restaurants, or commonly homemade?
+- Is it a real brand or restaurant item?
+- Is it a common ingredient, meal, or snack?
+- Is it physically possible to eat and nutritionally reasonable?
+
+If YES (REAL food): Proceed to create_food_in_database with estimated nutrition
+If NO (FAKE/hallucination): Stop and tell the user it cannot be added
+
+Examples of REAL: "Chipotle Chicken Bowl", "Dots Pretzel", "grilled chicken"
+Examples of FAKE: "unicorn steak", "dragon eggs", "chocolate air"
+
+Decision: Is "{food_name}" REAL?"""
+
+        agent_state["validation_result"] = "pending"
+        return validation_prompt
+
+    async def _tool_create_food(
+        self,
+        tool_input: Dict[str, Any],
+        agent_state: Dict[str, Any]
+    ) -> str:
+        """Tool: Create new food in database."""
+        try:
+            # Extract nutrition data
+            food_data = {
+                "name": tool_input.get("name"),
+                "brand_name": tool_input.get("brand_name"),
+                "food_group": "other",  # Default
+                "serving_size": float(tool_input.get("serving_size")),
+                "serving_unit": tool_input.get("serving_unit"),
+                "calories": float(tool_input.get("calories")),
+                "protein_g": float(tool_input.get("protein_g")),
+                "total_carbs_g": float(tool_input.get("total_carbs_g")),
+                "total_fat_g": float(tool_input.get("total_fat_g")),
+                "dietary_fiber_g": float(tool_input.get("dietary_fiber_g", 0)),
+                "is_generic": tool_input.get("is_generic", True),
+                "is_branded": tool_input.get("is_branded", False),
+                "data_quality_score": 0.7,  # AI-estimated
+                "source": "ai_created"
+            }
+
+            # Insert into database
+            response = self.supabase.table("foods_enhanced").insert(food_data).execute()
+
+            if response.data:
+                created_food = response.data[0]
+
+                # Log creation for audit
+                await self._log_food_creation(
+                    user_id=agent_state["user_id"],
+                    detected_name=agent_state["food_name"],
+                    created_food_id=created_food["id"],
+                    food_data=food_data
+                )
+
+                # Build matched food response (matching expected schema)
+                matched_food = {
+                    "id": created_food["id"],
+                    "name": created_food["name"],
+                    "brand_name": created_food.get("brand_name"),
+                    "food_group": created_food.get("food_group"),
+                    "serving_size": created_food["serving_size"],
+                    "serving_unit": created_food["serving_unit"],
+                    "calories": created_food.get("calories"),
+                    "protein_g": created_food.get("protein_g"),
+                    "carbs_g": created_food.get("total_carbs_g"),
+                    "fat_g": created_food.get("total_fat_g"),
+                    "fiber_g": created_food.get("dietary_fiber_g"),
+                    "detected_quantity": float(agent_state["quantity"]),
+                    "detected_unit": agent_state["unit"],
+                    "match_confidence": 0.8,
+                    "match_method": "ai_created",
+                    "is_recent": False,
+                    "data_quality_score": 0.7
+                }
+
+                agent_state["final_food"] = matched_food
+                agent_state["created"] = True
+
+                return f"SUCCESS: Created new food '{food_data['name']}' with ID {created_food['id']}. Nutrition: {food_data['calories']} cal, {food_data['protein_g']}g protein, {food_data['total_carbs_g']}g carbs, {food_data['total_fat_g']}g fat."
+            else:
+                return "ERROR: Failed to insert food into database"
+
+        except Exception as e:
+            logger.error(f"[AgenticMatcher] Create food error: {e}", exc_info=True)
+            return f"ERROR: Failed to create food: {str(e)}"
+
+    async def _log_food_creation(
+        self,
+        user_id: str,
+        detected_name: str,
+        created_food_id: str,
+        food_data: Dict[str, Any]
+    ):
+        """Log AI-created food for audit/review."""
+        try:
+            log_entry = {
+                "user_id": user_id,
+                "detected_food_name": detected_name,
+                "created_food_id": created_food_id,
+                "food_data": food_data,
+                "confidence": 0.8,
+                "agent_reasoning": f"AI agent created food '{food_data['name']}' with estimated nutrition"
+            }
+
+            # Insert into audit log
+            self.supabase.table("ai_created_foods_log").insert(log_entry).execute()
+
+            logger.info(
+                f"[AgenticMatcher] ✅ AI Created Food: {food_data['name']} (ID: {created_food_id}) for user {user_id}"
+            )
+
+        except Exception as e:
+            # Non-critical error - log but don't fail the request
+            logger.error(f"[AgenticMatcher] Failed to log food creation to audit table: {e}")
+
+
+# Singleton
+_agentic_food_matcher = None
+
+
+def get_agentic_food_matcher() -> AgenticFoodMatcherService:
+    """Get singleton instance of agentic food matcher."""
+    global _agentic_food_matcher
+    if _agentic_food_matcher is None:
+        _agentic_food_matcher = AgenticFoodMatcherService()
+    return _agentic_food_matcher
