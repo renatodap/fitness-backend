@@ -479,7 +479,96 @@ Now respond to the user with this energy and specificity."""
         logger.info(f"[UnifiedCoach] LOG MODE: {classification['log_type']}")
 
         try:
-            # Use existing Quick Entry preview logic
+            # SPECIAL CASE: If meal log with [SYSTEM_CONTEXT], parse food items and match to database
+            if classification['log_type'] == 'meal' and '[SYSTEM_CONTEXT]' in message:
+                logger.info(f"[UnifiedCoach] Meal with SYSTEM_CONTEXT detected - parsing and matching to database")
+
+                # Parse detected foods from SYSTEM_CONTEXT
+                import re
+                detected_foods_match = re.search(r'Detected Foods: ([^\n]+)', message)
+
+                if detected_foods_match:
+                    detected_foods_text = detected_foods_match.group(1)
+                    logger.info(f"[UnifiedCoach] Found detected foods: {detected_foods_text}")
+
+                    # Get food search service
+                    from app.services.food_search_service import get_food_search_service
+                    food_search = get_food_search_service()
+
+                    # Parse food items (format: "food1 (qty unit), food2 (qty unit), ...")
+                    detected_foods = []
+                    for food_item in detected_foods_text.split(','):
+                        food_item = food_item.strip()
+                        # Parse "food name (quantity unit)"
+                        match = re.match(r'(.+?)\s*\(([^)]+)\)', food_item)
+                        if match:
+                            name = match.group(1).strip()
+                            qty_unit = match.group(2).strip()
+                            # Split quantity and unit (e.g., "100 g" or "1 cup")
+                            qty_parts = qty_unit.split()
+                            if len(qty_parts) >= 2:
+                                quantity = qty_parts[0]
+                                unit = ' '.join(qty_parts[1:])
+                            else:
+                                quantity = "1"
+                                unit = qty_unit
+
+                            detected_foods.append({
+                                "name": name,
+                                "quantity": quantity,
+                                "unit": unit
+                            })
+                            logger.info(f"[UnifiedCoach] Parsed food: {name} - {quantity} {unit}")
+
+                    if detected_foods:
+                        # Call food matching API
+                        match_result = await food_search.match_detected_foods(
+                            detected_foods=detected_foods,
+                            user_id=user_id
+                        )
+
+                        logger.info(f"[UnifiedCoach] Food matching complete: {match_result['total_matched']}/{match_result['total_detected']} matched")
+
+                        # Extract meal type and description from SYSTEM_CONTEXT
+                        meal_type_match = re.search(r'meal_type["\']?\s*:\s*["\']?(\w+)', message, re.IGNORECASE)
+                        meal_type = meal_type_match.group(1) if meal_type_match else "dinner"
+
+                        description_match = re.search(r'Description: ([^\n]+)', message)
+                        description = description_match.group(1).strip() if description_match else "Food detected from image"
+
+                        # Build response with food_detected
+                        return {
+                            "success": True,
+                            "conversation_id": conversation_id,
+                            "message_id": user_message_id,
+                            "is_log_preview": False,
+                            "message": None,
+                            "log_preview": None,
+                            "food_detected": {
+                                "is_food": True,
+                                "nutrition": {},  # Nutrition will be calculated from matched foods
+                                "food_items": match_result["matched_foods"],  # Use matched foods with DB IDs
+                                "meal_type": meal_type,
+                                "confidence": 0.95,
+                                "description": description,
+                                "match_stats": {
+                                    "total_detected": match_result["total_detected"],
+                                    "total_matched": match_result["total_matched"],
+                                    "match_rate": match_result["match_rate"]
+                                },
+                                "unmatched_foods": match_result.get("unmatched_foods", [])
+                            },
+                            "rag_context": None,
+                            "tokens_used": None,
+                            "cost_usd": None,
+                            "error": None
+                        }
+                    else:
+                        logger.warning(f"[UnifiedCoach] Could not parse food items from SYSTEM_CONTEXT")
+                else:
+                    logger.warning(f"[UnifiedCoach] No 'Detected Foods' found in SYSTEM_CONTEXT")
+
+            # Default: Use existing Quick Entry preview logic
             preview_result = await self.quick_entry.process_entry_preview(
                 user_id=user_id,
                 text=message,
