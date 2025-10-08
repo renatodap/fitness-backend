@@ -165,8 +165,19 @@ class AgenticFoodMatcherService:
         )
 
         if match:
-            logger.info(f"[AgenticMatcher] ✅ Found in DB: {food_name}")
-            return {"matched": True, "food": match, "created": False}
+            # STEP 1b: Validate nutrition completeness (reject incomplete foods)
+            calories = match.get("calories", 0) or 0
+            carbs = match.get("total_carbs_g", 0) or 0
+            fat = match.get("total_fat_g", 0) or 0
+
+            # Reject foods with calories but BOTH carbs AND fat are 0
+            if calories > 50 and carbs == 0 and fat == 0:
+                logger.warning(f"[AgenticMatcher] ❌ DB match rejected for '{food_name}': incomplete nutrition (0g carbs AND 0g fat)")
+                logger.warning(f"[AgenticMatcher] Matched food: {match.get('name')} - {calories} cal, {carbs}g C, {fat}g F")
+                # Fall through to AI creation below
+            else:
+                logger.info(f"[AgenticMatcher] ✅ Found in DB: {food_name}")
+                return {"matched": True, "food": match, "created": False}
 
         # STEP 2: No match - use Groq to validate and create
         logger.info(f"[AgenticMatcher] No DB match for '{food_name}' - using AI")

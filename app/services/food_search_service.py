@@ -257,6 +257,9 @@ class FoodSearchService:
                 "popularity_score, search_count, is_generic, is_branded"
             )
 
+            # Filter by data quality (exclude low-quality foods with incomplete nutrition)
+            select_query = select_query.gte("data_quality_score", 0.5)
+
             # Filter by query (partial match on name or brand)
             # Use ILIKE for case-insensitive partial matching
             select_query = select_query.or_(
@@ -483,7 +486,7 @@ class FoodSearchService:
                     "id, name, brand_name, food_group, serving_size, serving_unit, "
                     "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
                     "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
-                ).ilike("name", f"%{name}%").limit(1).execute()
+                ).gte("data_quality_score", 0.5).ilike("name", f"%{name}%").limit(1).execute()
 
                 if response.data and len(response.data) > 0:
                     return response.data[0]
@@ -503,7 +506,7 @@ class FoodSearchService:
                 "id, name, brand_name, food_group, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
                 "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
-            ).ilike("name", name).order(
+            ).gte("data_quality_score", 0.5).ilike("name", name).order(
                 "is_generic", desc=True  # Generic foods first
             ).order(
                 "data_quality_score", desc=True  # Then by quality
@@ -517,7 +520,7 @@ class FoodSearchService:
                 "id, name, brand_name, food_group, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
                 "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
-            ).ilike("name", f"%{name}%").order(
+            ).gte("data_quality_score", 0.5).ilike("name", f"%{name}%").order(
                 "is_generic", desc=True  # Generic foods first
             ).order(
                 "data_quality_score", desc=True  # Then by quality
@@ -564,7 +567,7 @@ class FoodSearchService:
                     "id, name, brand_name, food_group, serving_size, serving_unit, "
                     "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
                     "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
-                ).ilike("name", f"%{base_name}%{detected_method}%").order(
+                ).gte("data_quality_score", 0.5).ilike("name", f"%{base_name}%{detected_method}%").order(
                     "is_generic", desc=True  # Generic foods first
                 ).order(
                     "data_quality_score", desc=True  # Then by quality
@@ -578,7 +581,7 @@ class FoodSearchService:
                 "id, name, brand_name, food_group, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
                 "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
-            ).ilike("name", f"%{base_name}%").order(
+            ).gte("data_quality_score", 0.5).ilike("name", f"%{base_name}%").order(
                 "is_generic", desc=True  # Generic foods first
             ).order(
                 "data_quality_score", desc=True  # Then by quality

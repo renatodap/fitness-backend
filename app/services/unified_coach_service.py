@@ -657,15 +657,35 @@ Now respond to the user with this energy and specificity."""
                     agentic_matcher = get_agentic_food_matcher()
 
                     logger.info(f"[UnifiedCoach] Calling agentic matcher for {len(detected_foods)} foods...")
-                    match_result = await agentic_matcher.match_with_creation(
-                        detected_foods=detected_foods,
-                        user_id=user_id
-                    )
+                    logger.info(f"[UnifiedCoach] Detected foods structure: {detected_foods}")
 
-                    logger.info(
-                        f"[UnifiedCoach] Text-based agentic matching complete: {match_result['total_matched']}/{match_result['total_detected']} matched, "
-                        f"{len(match_result.get('created_foods', []))} created"
-                    )
+                    try:
+                        match_result = await agentic_matcher.match_with_creation(
+                            detected_foods=detected_foods,
+                            user_id=user_id
+                        )
+
+                        logger.info(f"[UnifiedCoach] Match result structure: {match_result}")
+                        logger.info(
+                            f"[UnifiedCoach] Text-based agentic matching complete: {match_result['total_matched']}/{match_result['total_detected']} matched, "
+                            f"{len(match_result.get('created_foods', []))} created"
+                        )
+                        logger.info(f"[UnifiedCoach] Matched foods count: {len(match_result.get('matched_foods', []))}")
+                        logger.info(f"[UnifiedCoach] Unmatched foods count: {len(match_result.get('unmatched_foods', []))}")
+
+                        # Log details of each matched food
+                        for idx, food in enumerate(match_result.get("matched_foods", [])):
+                            logger.info(f"[UnifiedCoach] Matched food {idx+1}: {food.get('name')} - {food.get('calories')}cal, {food.get('carbs_g', food.get('total_carbs_g'))}g C, {food.get('fat_g', food.get('total_fat_g'))}g F")
+
+                        # Log details of unmatched foods
+                        for idx, food in enumerate(match_result.get("unmatched_foods", [])):
+                            logger.warning(f"[UnifiedCoach] Unmatched food {idx+1}: {food.get('name')} - reason: {food.get('reason')}")
+
+                    except Exception as match_error:
+                        logger.error(f"[UnifiedCoach] Agentic matcher FAILED: {match_error}", exc_info=True)
+                        logger.error(f"[UnifiedCoach] Failed with detected_foods: {detected_foods}")
+                        logger.error(f"[UnifiedCoach] User ID: {user_id}")
+                        raise
 
                     # Return food_detected (not log_preview) for consistency with image flow
                     return {
