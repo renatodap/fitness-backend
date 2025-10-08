@@ -345,6 +345,330 @@ class FoodSearchService:
         except Exception as e:
             logger.debug(f"Popularity tracking failed (non-critical): {e}")
 
+    async def match_detected_foods(
+        self,
+        detected_foods: List[Dict[str, str]],
+        user_id: str
+    ) -> Dict[str, Any]:
+        """
+        Match detected food names to database foods with fuzzy matching.
+
+        Matching strategies (in order):
+        1. User's recent foods (exact/partial match)
+        2. Exact name match in database
+        3. Fuzzy match with cooking method detection
+        4. Generic fallback (base ingredient)
+
+        Args:
+            detected_foods: List of dicts with 'name', 'quantity', 'unit'
+            user_id: User ID for personalized matching (recent foods)
+
+        Returns:
+            Dict with matched_foods and unmatched_foods lists
+        """
+        try:
+            logger.info(f"Matching {len(detected_foods)} detected foods for user {user_id}")
+
+            matched_foods = []
+            unmatched_foods = []
+
+            for detected in detected_foods:
+                name = detected.get("name", "").strip()
+                quantity = detected.get("quantity", "1").strip()
+                unit = detected.get("unit", "serving").strip()
+
+                if not name:
+                    continue
+
+                # Try to match this food
+                match_result = await self._match_single_food(
+                    name=name,
+                    quantity=quantity,
+                    unit=unit,
+                    user_id=user_id
+                )
+
+                if match_result:
+                    matched_foods.append(match_result)
+                else:
+                    unmatched_foods.append({
+                        "name": name,
+                        "reason": "no_match_found"
+                    })
+
+            total_detected = len(detected_foods)
+            total_matched = len(matched_foods)
+            match_rate = total_matched / total_detected if total_detected > 0 else 0.0
+
+            logger.info(f"Matching complete: {total_matched}/{total_detected} matched ({match_rate*100:.1f}%)")
+
+            return {
+                "matched_foods": matched_foods,
+                "unmatched_foods": unmatched_foods,
+                "total_detected": total_detected,
+                "total_matched": total_matched,
+                "match_rate": match_rate
+            }
+
+        except Exception as e:
+            logger.error(f"Food matching failed: {e}", exc_info=True)
+            raise
+
+    async def _match_single_food(
+        self,
+        name: str,
+        quantity: str,
+        unit: str,
+        user_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Match a single detected food to database.
+
+        Returns enriched food dict or None if no match found.
+        """
+        try:
+            # Strategy 1: Search user's recent foods (highest priority)
+            recent_match = await self._match_from_recent_foods(name, user_id)
+            if recent_match:
+                return self._enrich_match(recent_match, quantity, unit, "recent", 1.0, True)
+
+            # Strategy 2: Exact/partial match in database
+            db_match = await self._match_from_database(name)
+            if db_match:
+                confidence = self._calculate_match_confidence(name, db_match["name"])
+                match_method = "exact" if confidence > 0.9 else "fuzzy"
+                return self._enrich_match(db_match, quantity, unit, match_method, confidence, False)
+
+            # Strategy 3: Fuzzy match with cooking method detection
+            fuzzy_match = await self._fuzzy_match_with_cooking_method(name)
+            if fuzzy_match:
+                confidence = self._calculate_match_confidence(name, fuzzy_match["name"])
+                return self._enrich_match(fuzzy_match, quantity, unit, "fuzzy", confidence, False)
+
+            # No match found
+            logger.warning(f"No match found for: {name}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Single food matching failed for '{name}': {e}", exc_info=True)
+            return None
+
+    async def _match_from_recent_foods(
+        self,
+        name: str,
+        user_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Match from user's recently logged foods."""
+        try:
+            # Query recent foods with name matching
+            response = self.supabase.rpc(
+                "search_user_recent_foods_v2",
+                {
+                    "p_user_id": user_id,
+                    "p_search_query": name,
+                    "p_limit": 1
+                }
+            ).execute()
+
+            if response.data and len(response.data) > 0:
+                return response.data[0]
+
+            return None
+        except Exception as e:
+            # RPC might not exist, fall back to manual query
+            logger.debug(f"Recent foods RPC failed, using fallback: {e}")
+            try:
+                # Fallback: query recent foods manually
+                response = self.supabase.from_("foods_enhanced").select(
+                    "id, name, brand_name, food_group, serving_size, serving_unit, "
+                    "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
+                    "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
+                ).ilike("name", f"%{name}%").limit(1).execute()
+
+                if response.data and len(response.data) > 0:
+                    return response.data[0]
+            except:
+                pass
+
+            return None
+
+    async def _match_from_database(
+        self,
+        name: str
+    ) -> Optional[Dict[str, Any]]:
+        """Match from global food database with exact/partial matching."""
+        try:
+            # Try exact match first
+            response = self.supabase.from_("foods_enhanced").select(
+                "id, name, brand_name, food_group, serving_size, serving_unit, "
+                "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
+                "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
+            ).ilike("name", name).order(
+                "data_quality_score", desc=True
+            ).limit(1).execute()
+
+            if response.data and len(response.data) > 0:
+                return response.data[0]
+
+            # Try partial match
+            response = self.supabase.from_("foods_enhanced").select(
+                "id, name, brand_name, food_group, serving_size, serving_unit, "
+                "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
+                "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
+            ).ilike("name", f"%{name}%").order(
+                "data_quality_score", desc=True
+            ).limit(1).execute()
+
+            if response.data and len(response.data) > 0:
+                return response.data[0]
+
+            return None
+        except Exception as e:
+            logger.error(f"Database match failed: {e}")
+            return None
+
+    async def _fuzzy_match_with_cooking_method(
+        self,
+        name: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fuzzy match with cooking method detection.
+
+        Detects cooking methods (grilled, fried, raw, cooked, etc.) and searches accordingly.
+        """
+        try:
+            # Common cooking methods
+            cooking_methods = [
+                "grilled", "fried", "baked", "roasted", "steamed",
+                "boiled", "raw", "cooked", "fresh", "frozen"
+            ]
+
+            # Detect cooking method in name
+            detected_method = None
+            base_name = name.lower()
+
+            for method in cooking_methods:
+                if method in base_name:
+                    detected_method = method
+                    # Remove method from name to get base ingredient
+                    base_name = base_name.replace(method, "").strip()
+                    break
+
+            # Search with cooking method filter if detected
+            if detected_method:
+                response = self.supabase.from_("foods_enhanced").select(
+                    "id, name, brand_name, food_group, serving_size, serving_unit, "
+                    "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
+                    "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
+                ).ilike("name", f"%{base_name}%{detected_method}%").order(
+                    "data_quality_score", desc=True
+                ).limit(1).execute()
+
+                if response.data and len(response.data) > 0:
+                    return response.data[0]
+
+            # Fallback: search just base name
+            response = self.supabase.from_("foods_enhanced").select(
+                "id, name, brand_name, food_group, serving_size, serving_unit, "
+                "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
+                "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
+            ).ilike("name", f"%{base_name}%").order(
+                "data_quality_score", desc=True
+            ).limit(1).execute()
+
+            if response.data and len(response.data) > 0:
+                return response.data[0]
+
+            return None
+        except Exception as e:
+            logger.error(f"Fuzzy match failed: {e}")
+            return None
+
+    def _calculate_match_confidence(
+        self,
+        detected_name: str,
+        db_name: str
+    ) -> float:
+        """
+        Calculate match confidence using string similarity.
+
+        Returns value between 0.0 and 1.0.
+        """
+        from difflib import SequenceMatcher
+
+        detected_lower = detected_name.lower().strip()
+        db_lower = db_name.lower().strip()
+
+        # Use SequenceMatcher for similarity
+        similarity = SequenceMatcher(None, detected_lower, db_lower).ratio()
+
+        # Bonus for exact substring match
+        if detected_lower in db_lower or db_lower in detected_lower:
+            similarity = min(1.0, similarity + 0.1)
+
+        return round(similarity, 2)
+
+    def _enrich_match(
+        self,
+        food_record: Dict[str, Any],
+        quantity: str,
+        unit: str,
+        method: str,
+        confidence: float,
+        is_recent: bool
+    ) -> Dict[str, Any]:
+        """
+        Enrich matched food with detected quantity and metadata.
+
+        Args:
+            food_record: Database food record
+            quantity: Detected quantity as string
+            unit: Detected unit
+            method: Match method used
+            confidence: Match confidence score
+            is_recent: Whether from recent foods
+
+        Returns:
+            Enriched food dict ready for API response
+        """
+        try:
+            quantity_float = float(quantity)
+        except (ValueError, TypeError):
+            quantity_float = 1.0
+
+        return {
+            # Database fields
+            "id": food_record.get("id"),
+            "name": food_record.get("name"),
+            "brand_name": food_record.get("brand_name"),
+            "food_group": food_record.get("food_group"),
+            "serving_size": food_record.get("serving_size"),
+            "serving_unit": food_record.get("serving_unit"),
+
+            # Nutrition
+            "calories": food_record.get("calories"),
+            "protein_g": food_record.get("protein_g"),
+            "total_carbs_g": food_record.get("total_carbs_g"),
+            "total_fat_g": food_record.get("total_fat_g"),
+            "dietary_fiber_g": food_record.get("dietary_fiber_g"),
+            "total_sugars_g": food_record.get("total_sugars_g"),
+            "sodium_mg": food_record.get("sodium_mg"),
+
+            # Detected values
+            "detected_quantity": quantity_float,
+            "detected_unit": unit or food_record.get("serving_unit", "serving"),
+
+            # Match metadata
+            "match_confidence": confidence,
+            "match_method": method,
+            "is_recent": is_recent,
+            "data_quality_score": food_record.get("data_quality_score"),
+
+            # Food type flags
+            "is_generic": food_record.get("is_generic"),
+            "is_branded": food_record.get("is_branded"),
+        }
+
 
 # Global instance
 _service: Optional[FoodSearchService] = None

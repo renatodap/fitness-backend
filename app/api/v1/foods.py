@@ -11,6 +11,10 @@ from pydantic import BaseModel, Field
 
 from app.api.middleware.auth import get_current_user
 from app.services.food_search_service import get_food_search_service
+from app.api.v1.schemas.food_matching_schemas import (
+    MatchDetectedFoodsRequest,
+    MatchDetectedFoodsResponse
+)
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +198,87 @@ async def get_recent_foods(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve recent foods. Please try again."
+        )
+
+
+@router.post(
+    "/match-detected",
+    response_model=MatchDetectedFoodsResponse,
+    summary="Match detected foods to database",
+    description="""
+    Match food names detected from image analysis to database foods with full nutrition.
+
+    This endpoint:
+    - Searches database for matching food records
+    - Uses fuzzy matching for better results
+    - Prioritizes user's recent foods
+    - Detects cooking methods (grilled, fried, raw, etc.)
+    - Returns full nutrition data for matched foods
+    - Preserves detected quantities and units
+
+    **Use case:** Convert AI-detected food names to database records for meal logging.
+
+    **Example request:**
+    ```json
+    {
+      "detected_foods": [
+        {"name": "grilled chicken", "quantity": "150", "unit": "g"},
+        {"name": "brown rice", "quantity": "1", "unit": "cup"}
+      ]
+    }
+    ```
+    """,
+    responses={
+        200: {"description": "Foods successfully matched"},
+        400: {"description": "Invalid request"},
+        500: {"description": "Matching failed"}
+    }
+)
+async def match_detected_foods(
+    request: MatchDetectedFoodsRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Match detected food names to database records.
+
+    Args:
+        request: List of detected foods with names, quantities, and units
+        current_user: Authenticated user from JWT
+
+    Returns:
+        MatchDetectedFoodsResponse with matched/unmatched foods
+    """
+    try:
+        logger.info(
+            f"Food matching request: user_id={current_user['user_id']}, "
+            f"foods_count={len(request.detected_foods)}"
+        )
+
+        # Get search service
+        search_service = get_food_search_service()
+
+        # Convert Pydantic models to dicts
+        detected_foods_dicts = [food.model_dump() for food in request.detected_foods]
+
+        # Match foods
+        result = await search_service.match_detected_foods(
+            detected_foods=detected_foods_dicts,
+            user_id=current_user["user_id"]
+        )
+
+        logger.info(
+            f"Food matching complete: matched={result['total_matched']}/{result['total_detected']}, "
+            f"rate={result['match_rate']:.2f}"
+        )
+
+        # Convert to response model
+        return MatchDetectedFoodsResponse(**result)
+
+    except Exception as e:
+        logger.error(f"Food matching failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to match foods. Please try again."
         )
 
 
