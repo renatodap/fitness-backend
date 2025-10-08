@@ -753,18 +753,30 @@ class CoachToolService:
                 logger.warning(f"[Tool:create_meal_log] Failed to fetch preference, defaulting to FALSE: {pref_err}")
                 auto_log_enabled = False
 
-            # STEP 2: Use agentic food matcher to match foods to database
+            # STEP 2: Extract quantities from description using Groq AI
+            from app.services.groq_service_v2 import get_groq_service_v2
+            groq_service = get_groq_service_v2()
+
+            logger.info(f"[Tool:create_meal_log] Extracting quantities from description...")
+            parsed_quantities = await groq_service.extract_food_quantities(
+                description=description,
+                food_names=foods
+            )
+
+            # STEP 3: Use agentic food matcher to match foods to database
             from app.services.agentic_food_matcher_service import get_agentic_food_matcher
             agentic_matcher = get_agentic_food_matcher()
 
-            # Convert food list to detected_foods format
+            # Convert parsed quantities to detected_foods format
             detected_foods = []
-            for food_name in foods:
+            for parsed_food in parsed_quantities:
                 detected_foods.append({
-                    "name": food_name,
-                    "quantity": "1",
-                    "unit": "serving"
+                    "name": parsed_food["food"],
+                    "quantity": str(parsed_food["quantity"]),
+                    "unit": parsed_food["unit"]
                 })
+
+            logger.info(f"[Tool:create_meal_log] Detected foods with quantities: {detected_foods}")
 
             # Match foods to database (with AI creation if needed)
             match_result = await agentic_matcher.match_with_creation(
@@ -776,17 +788,63 @@ class CoachToolService:
                 f"[Tool:create_meal_log] Matched {match_result['total_matched']}/{match_result['total_detected']} foods"
             )
 
-            # STEP 3: Calculate total nutrition from matched foods
+            # STEP 4: Calculate total nutrition with PROPER UNIT CONVERSION
+            # Import meal logging service for unit conversion logic
+            from app.services.meal_logging_service import get_meal_logging_service
+            meal_logging = get_meal_logging_service()
+
             total_calories = 0
             total_protein = 0
             total_carbs = 0
             total_fats = 0
+            total_fiber = 0
 
-            for food in match_result["matched_foods"]:
-                total_calories += food.get("calories", 0)
-                total_protein += food.get("protein_g", 0)
-                total_carbs += food.get("carbs_g", food.get("total_carbs_g", 0))
-                total_fats += food.get("fat_g", food.get("total_fat_g", 0))
+            logger.info(f"[Tool:create_meal_log] Scaling nutrition for {len(match_result['matched_foods'])} foods...")
+
+            for idx, food in enumerate(match_result["matched_foods"]):
+                # Get quantity and unit from detected_foods (with correct parsing)
+                detected_food = detected_foods[idx] if idx < len(detected_foods) else {}
+                quantity = float(detected_food.get("quantity", 1))
+                unit = detected_food.get("unit", "serving")
+
+                logger.info(
+                    f"[Tool:create_meal_log] Food {idx+1}: {food.get('name')} - "
+                    f"{quantity} {unit} (base: {food.get('serving_size')}{food.get('serving_unit')})"
+                )
+
+                # Scale nutrition based on quantity and unit
+                # This handles conversions: cups→g, oz→g, ml→g, scoops, etc.
+                scaled_nutrition = meal_logging._scale_nutrition(
+                    food_data=food,
+                    quantity=quantity,
+                    unit=unit
+                )
+
+                logger.info(
+                    f"[Tool:create_meal_log]   Scaled: {scaled_nutrition.get('calories')} cal, "
+                    f"{scaled_nutrition.get('protein_g')}g P, {scaled_nutrition.get('carbs_g')}g C, "
+                    f"{scaled_nutrition.get('fat_g')}g F"
+                )
+
+                # Add scaled nutrition to totals
+                total_calories += scaled_nutrition.get("calories", 0)
+                total_protein += scaled_nutrition.get("protein_g", 0)
+                total_carbs += scaled_nutrition.get("carbs_g", 0)
+                total_fats += scaled_nutrition.get("fat_g", 0)
+                total_fiber += scaled_nutrition.get("fiber_g", 0)
+
+                # Update the matched food with scaled values for preview
+                food["calories_scaled"] = round(scaled_nutrition.get("calories", 0), 1)
+                food["protein_g_scaled"] = round(scaled_nutrition.get("protein_g", 0), 1)
+                food["carbs_g_scaled"] = round(scaled_nutrition.get("carbs_g", 0), 1)
+                food["fat_g_scaled"] = round(scaled_nutrition.get("fat_g", 0), 1)
+                food["quantity"] = quantity
+                food["unit"] = unit
+
+            logger.info(
+                f"[Tool:create_meal_log] ✅ Total nutrition: {round(total_calories, 1)} cal, "
+                f"{round(total_protein, 1)}g P, {round(total_carbs, 1)}g C, {round(total_fats, 1)}g F"
+            )
 
             # Override with estimated calories if provided
             if estimated_calories:
@@ -801,6 +859,7 @@ class CoachToolService:
                 "total_protein_g": round(total_protein, 1),
                 "total_carbs_g": round(total_carbs, 1),
                 "total_fats_g": round(total_fats, 1),
+                "total_fiber_g": round(total_fiber, 1),
                 "match_stats": {
                     "matched": match_result["total_matched"],
                     "total": match_result["total_detected"],
@@ -808,7 +867,7 @@ class CoachToolService:
                 }
             }
 
-            # STEP 4: BRANCH based on auto_log preference
+            # STEP 5: BRANCH based on auto_log preference
             if auto_log_enabled:
                 # AUTO-LOG MODE: Save immediately
                 logger.info(f"[Tool:create_meal_log] AUTO-LOGGING (auto_log=true)")

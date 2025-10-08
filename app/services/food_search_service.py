@@ -501,7 +501,9 @@ class FoodSearchService:
     ) -> Optional[Dict[str, Any]]:
         """Match from global food database with exact/partial matching."""
         try:
-            # Try exact match first (PREFER GENERIC over branded)
+            # STEP 1: Try EXACT case-insensitive match first (highest priority)
+            # This ensures "whey isolate" matches "Whey Isolate" exactly, not "Whey Protein"
+            logger.info(f"[FoodSearch] Trying EXACT match for: '{name}'")
             response = self.supabase.from_("foods_enhanced").select(
                 "id, name, brand_name, food_group, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
@@ -510,12 +512,27 @@ class FoodSearchService:
                 "is_generic", desc=True  # Generic foods first
             ).order(
                 "data_quality_score", desc=True  # Then by quality
-            ).limit(1).execute()
+            ).limit(5).execute()  # Get top 5 to filter
 
             if response.data and len(response.data) > 0:
+                # Filter for EXACT matches (ignoring case and extra spaces)
+                exact_matches = [
+                    food for food in response.data
+                    if food["name"].lower().strip() == name.lower().strip()
+                ]
+
+                if exact_matches:
+                    logger.info(f"[FoodSearch] ✅ EXACT match found: '{exact_matches[0]['name']}'")
+                    return exact_matches[0]
+
+                # If no exact match but ilike found something, it's a partial match
+                # Return the first one but log it
+                logger.info(f"[FoodSearch] ⚠️ Partial match (ilike): '{response.data[0]['name']}' for query '{name}'")
                 return response.data[0]
 
-            # Try partial match (PREFER GENERIC over branded)
+            # STEP 2: Try partial match with word boundaries (PREFER GENERIC over branded)
+            # This searches for foods containing the search term
+            logger.info(f"[FoodSearch] Trying PARTIAL match for: '{name}'")
             response = self.supabase.from_("foods_enhanced").select(
                 "id, name, brand_name, food_group, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
@@ -527,8 +544,10 @@ class FoodSearchService:
             ).limit(1).execute()
 
             if response.data and len(response.data) > 0:
+                logger.info(f"[FoodSearch] ⚠️ Partial match found: '{response.data[0]['name']}' for query '{name}'")
                 return response.data[0]
 
+            logger.warning(f"[FoodSearch] ❌ No match found for: '{name}'")
             return None
         except Exception as e:
             logger.error(f"Database match failed: {e}")

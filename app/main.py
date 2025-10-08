@@ -37,6 +37,14 @@ async def lifespan(app: FastAPI):
     logger.info(f"CORS Origins: {_settings.cors_origins_list}")
     logger.info(f"Allow All Origins: {_settings.ALLOW_ALL_ORIGINS}")
 
+    # Log CORS configuration details for debugging
+    if _settings.ALLOW_ALL_ORIGINS:
+        logger.warning("⚠️ CORS: Allowing ALL origins (wildcard *)")
+    else:
+        logger.info(f"🔒 CORS: Restricting to {len(_settings.cors_origins_list)} origins:")
+        for origin in _settings.cors_origins_list:
+            logger.info(f"   ✓ {origin}")
+
     yield
 
     logger.info(f"Shutting down {_settings.APP_NAME}")
@@ -66,6 +74,7 @@ if _settings.ALLOW_ALL_ORIGINS:
         allow_headers=["*"],
     )
 else:
+    logger.info(f"🔒 CORS: Configuring whitelist with {len(_settings.cors_origins_list)} origins")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_settings.cors_origins_list,
@@ -73,6 +82,29 @@ else:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+
+# Request logging middleware for CORS debugging
+from fastapi import Request
+import time
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all incoming requests with CORS origin for debugging."""
+    start_time = time.time()
+
+    # Log request details
+    origin = request.headers.get("origin")
+    if origin:
+        logger.info(f"🌐 Request from origin: {origin} → {request.method} {request.url.path}")
+
+    response = await call_next(request)
+
+    # Log response time
+    process_time = time.time() - start_time
+    logger.info(f"✅ {request.method} {request.url.path} → {response.status_code} ({process_time:.3f}s)")
+
+    return response
 
 
 @app.get("/")

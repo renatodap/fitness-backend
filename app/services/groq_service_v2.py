@@ -982,6 +982,119 @@ Return structured JSON with primary_fields (show by default) and secondary_field
             logger.error(f"[GroqV2] ❌ Audio transcription failed: {e}")
             return "Failed to transcribe audio"
 
+    async def extract_food_quantities(
+        self,
+        description: str,
+        food_names: List[str]
+    ) -> List[Dict[str, Any]]:
+        """
+        Extract food quantities and units from a description.
+
+        This is critical for accurate macro calculation - we need to parse
+        "1.5 cup of oatmeal, 2 scoops of whey, 15g of maple syrup"
+        into structured data with correct quantities/units.
+
+        Args:
+            description: Natural language description of the meal
+            food_names: List of detected food names to match against
+
+        Returns:
+            List of dicts with {food, quantity, unit} for each food
+        """
+        logger.info(f"[GroqV2] Extracting quantities from: '{description}'")
+        logger.info(f"[GroqV2] Expected foods: {food_names}")
+
+        prompt = f"""Extract food quantities from this meal description:
+
+"{description}"
+
+Expected foods: {food_names}
+
+Parse each food and extract:
+- food: The food name (match to expected foods list)
+- quantity: The numeric amount (e.g., 1.5, 2, 15)
+- unit: The unit (cup, scoop, g, kg, oz, lb, tbsp, tsp, piece, serving, etc.)
+
+RULES:
+1. Match each food in the expected list to its quantity/unit in the description
+2. If a food is mentioned but no quantity given, use quantity=1, unit="serving"
+3. Keep units exactly as mentioned (don't convert - e.g., "cup" stays "cup", "g" stays "g")
+4. For brand names or protein powder, "scoop" is typical unit
+5. Don't add foods that aren't in the expected list
+
+EXAMPLES:
+
+Input: "1.5 cup of oatmeal, 2 scoops of whey isolate, 15g of maple syrup"
+Expected: ["oatmeal", "whey isolate", "maple syrup"]
+Output:
+[
+  {{"food": "oatmeal", "quantity": 1.5, "unit": "cup"}},
+  {{"food": "whey isolate", "quantity": 2, "unit": "scoop"}},
+  {{"food": "maple syrup", "quantity": 15, "unit": "g"}}
+]
+
+Input: "3 eggs, 2 slices of toast, 1 banana"
+Expected: ["eggs", "toast", "banana"]
+Output:
+[
+  {{"food": "eggs", "quantity": 3, "unit": "piece"}},
+  {{"food": "toast", "quantity": 2, "unit": "slice"}},
+  {{"food": "banana", "quantity": 1, "unit": "piece"}}
+]
+
+Input: "chicken breast and brown rice"
+Expected: ["chicken breast", "brown rice"]
+Output:
+[
+  {{"food": "chicken breast", "quantity": 1, "unit": "serving"}},
+  {{"food": "brown rice", "quantity": 1, "unit": "serving"}}
+]
+
+Return ONLY valid JSON array with NO explanation or markdown."""
+
+        try:
+            response = self.client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                max_tokens=500,
+                response_format={"type": "json_object"}
+            )
+
+            content = response.choices[0].message.content
+            logger.info(f"[GroqV2] Raw response: {content}")
+
+            # Parse JSON response
+            result = json.loads(content)
+
+            # Handle if response is wrapped in a key
+            if "foods" in result:
+                parsed_foods = result["foods"]
+            elif "data" in result:
+                parsed_foods = result["data"]
+            elif isinstance(result, list):
+                parsed_foods = result
+            else:
+                # Assume the first array value is our data
+                parsed_foods = list(result.values())[0] if result else []
+
+            logger.info(f"[GroqV2] ✅ Extracted {len(parsed_foods)} food quantities:")
+            for food in parsed_foods:
+                logger.info(f"   - {food.get('food')}: {food.get('quantity')} {food.get('unit')}")
+
+            return parsed_foods
+
+        except json.JSONDecodeError as e:
+            logger.error(f"[GroqV2] ❌ JSON decode error: {e}")
+            logger.error(f"[GroqV2] Raw content: {content}")
+            # Fallback: return default servings
+            return [{"food": name, "quantity": 1, "unit": "serving"} for name in food_names]
+
+        except Exception as e:
+            logger.error(f"[GroqV2] ❌ Quantity extraction failed: {e}")
+            # Fallback: return default servings
+            return [{"food": name, "quantity": 1, "unit": "serving"} for name in food_names]
+
 
 # Global instance
 _groq_service_v2: Optional[GroqServiceV2] = None
