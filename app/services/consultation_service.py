@@ -32,6 +32,116 @@ logger = logging.getLogger(__name__)
 class ConsultationService:
     """Service for AI-driven consultation sessions."""
 
+    # Consultation goals for unified_coach (goal-driven approach)
+    CONSULTATION_GOALS = {
+        'unified_coach': [
+            {
+                'id': 'primary_fitness_goal',
+                'name': 'Primary Fitness Goal',
+                'description': 'Identify primary fitness goal (build_muscle, lose_fat, endurance, health, athletic_performance)',
+                'required_fields': ['primary_fitness_goal'],
+                'questions': [
+                    "What's your primary fitness goal right now?",
+                    "Are you focused more on building muscle, losing fat, improving endurance, or general health?"
+                ]
+            },
+            {
+                'id': 'primary_nutrition_goal',
+                'name': 'Primary Nutrition Goal',
+                'description': 'Identify primary nutrition goal (gain_weight, lose_weight, maintain, performance)',
+                'required_fields': ['primary_nutrition_goal'],
+                'questions': [
+                    "What about your nutrition goals - are you trying to gain, lose, or maintain your current weight?",
+                    "How do your nutrition goals align with your fitness goals?"
+                ]
+            },
+            {
+                'id': 'measurements',
+                'name': 'Body Measurements',
+                'description': 'Collect current weight, height, age, biological sex',
+                'required_fields': ['current_weight_kg', 'height_cm', 'age', 'biological_sex'],
+                'questions': [
+                    "Let's get some basic measurements. What's your current weight and height?",
+                    "How old are you, and what's your biological sex (for calorie calculations)?"
+                ]
+            },
+            {
+                'id': 'typical_eating',
+                'name': 'Typical Daily Eating Pattern',
+                'description': 'Understand typical breakfast, lunch, dinner routines and timing',
+                'required_fields': ['typical_breakfast', 'typical_lunch', 'typical_dinner'],
+                'questions': [
+                    "Walk me through a typical day of eating - what do you usually have for breakfast?",
+                    "What about lunch and dinner? What does that typically look like?",
+                    "What time do you usually eat these meals?"
+                ]
+            },
+            {
+                'id': 'food_preferences',
+                'name': 'Food Preferences & Restrictions',
+                'description': 'Capture favorite foods, foods to avoid, dietary restrictions/allergies',
+                'required_fields': ['favorite_foods', 'dietary_restrictions'],
+                'questions': [
+                    "What are some of your favorite foods that you'd want to see in a meal plan?",
+                    "Are there any foods you won't eat or any dietary restrictions I should know about?",
+                    "Do you have any food allergies?"
+                ]
+            },
+            {
+                'id': 'typical_training',
+                'name': 'Typical Weekly Training Pattern',
+                'description': 'Understand training frequency, preferred days, time of day',
+                'required_fields': ['training_frequency', 'training_days', 'training_time'],
+                'questions': [
+                    "How many days per week do you currently train or want to train?",
+                    "Which days of the week work best for you?",
+                    "What time of day do you prefer to work out?"
+                ]
+            },
+            {
+                'id': 'training_preferences',
+                'name': 'Training Preferences',
+                'description': 'Capture equipment access, preferred location, exercise types',
+                'required_fields': ['equipment_access', 'training_location'],
+                'questions': [
+                    "Do you train at a gym with full equipment, at home, or somewhere else?",
+                    "What equipment do you have access to?",
+                    "Are there specific types of exercises you love or hate?"
+                ]
+            },
+            {
+                'id': 'limitations',
+                'name': 'Limitations & Constraints',
+                'description': 'Identify injuries, medical conditions, schedule constraints',
+                'required_fields': ['injuries', 'medical_conditions'],
+                'questions': [
+                    "Do you have any injuries or physical limitations I should be aware of?",
+                    "Any medical conditions that might affect your training or nutrition?",
+                    "What's your biggest challenge when it comes to sticking to a fitness routine?"
+                ]
+            },
+            {
+                'id': 'events',
+                'name': 'Event Goals',
+                'description': 'Capture upcoming events (race, competition, vacation, wedding)',
+                'required_fields': [],  # Optional
+                'questions': [
+                    "Do you have any upcoming events you're training for? Like a race, competition, vacation, or special occasion?"
+                ]
+            },
+            {
+                'id': 'hydration',
+                'name': 'Hydration Habits',
+                'description': 'Daily water intake',
+                'required_fields': ['daily_water_intake'],
+                'questions': [
+                    "How much water do you typically drink per day?",
+                    "Do you track your hydration?"
+                ]
+            }
+        ]
+    }
+
     # Specialist system prompts
     SPECIALIST_PROMPTS = {
         'nutritionist': """You are an expert registered dietitian nutritionist conducting an initial consultation.
@@ -184,6 +294,9 @@ HOLISTIC APPROACH:
         self.router = dual_router
         self.calorie_service = get_calorie_service()
         self.embedding_service = get_multimodal_service()
+        # Import tool service for proactive logging
+        from app.services.tool_service import get_tool_service
+        self.tool_service = get_tool_service()
 
     async def start_consultation(
         self,
@@ -219,19 +332,38 @@ HOLISTIC APPROACH:
             session = existing.data[0]
             logger.info(f"Resuming consultation session {session['id']}")
         else:
-            # Create new session
+            # Create new session with goal tracking
             stages = self.SPECIALIST_STAGES[specialist_type]
+
+            # Initialize goals for unified_coach
+            goals_config = {}
+            if specialist_type == 'unified_coach' and specialist_type in self.CONSULTATION_GOALS:
+                goals_config = {
+                    'goals': self.CONSULTATION_GOALS[specialist_type],
+                    'goals_met': [],
+                    'goals_pending': [g['id'] for g in self.CONSULTATION_GOALS[specialist_type]],
+                    'total_goals': len(self.CONSULTATION_GOALS[specialist_type])
+                }
+
             session_response = self.supabase.table('consultation_sessions').insert({
                 'user_id': user_id,
                 'specialist_type': specialist_type,
                 'status': 'active',
                 'conversation_stage': stages[0],  # Start with first stage
                 'progress_percentage': 0,
-                'session_metadata': {'stages': stages, 'current_stage_index': 0}
+                'session_metadata': {
+                    'stages': stages,
+                    'current_stage_index': 0,
+                    'goals_configuration': goals_config,
+                    'start_time': datetime.utcnow().isoformat()
+                },
+                'goals_configuration': goals_config,  # Store in dedicated column
+                'goals_met': 0,
+                'goals_total': goals_config.get('total_goals', 10) if goals_config else 10
             }).execute()
 
             session = session_response.data[0]
-            logger.info(f"Created new consultation session {session['id']}")
+            logger.info(f"Created new consultation session {session['id']} with {goals_config.get('total_goals', 0)} goals")
 
         # Generate initial question
         initial_question = await self._generate_initial_question(session)
@@ -296,6 +428,13 @@ HOLISTIC APPROACH:
             content=user_input
         )
 
+        # Proactively log any meals, workouts, or measurements mentioned
+        logged_items = await self._detect_and_log_items(
+            user_input=user_input,
+            user_id=user_id,
+            session_id=session_id
+        )
+
         # Get conversation history
         conversation_history = await self._get_conversation_history(session_id)
 
@@ -315,35 +454,51 @@ HOLISTIC APPROACH:
                 source_message_content=user_input
             )
 
-        # Check if consultation should end
+        # Get all extracted data so far for goal evaluation
+        extraction_summary = await self.get_consultation_summary(session_id)
+
+        # Evaluate goals if this is a goal-driven consultation
+        goal_status = self._evaluate_all_goals(session, extraction_summary)
+
+        # Check time/message limits
+        limits_status = self._check_consultation_limits(session)
+
+        # Determine if we should end consultation
         metadata = session.get('session_metadata', {})
         stages = metadata.get('stages', [])
         current_stage_index = metadata.get('current_stage_index', 0)
 
+        # Decision logic: End if ALL goals met OR limits reached
+        all_goals_met = len(goal_status['goals_pending']) == 0 if goal_status['goals_total'] > 0 else False
+        should_end = all_goals_met or limits_status['should_end']
+
         # Generate next question or wrap up
-        if current_stage_index < len(stages) - 1:
-            # More stages to go - generate next question
+        if not should_end:
+            # Continue consultation - generate next question
             next_question = await self._generate_next_question(
                 session=session,
                 conversation_history=conversation_history,
-                extracted_data_summary=extracted_data
+                extracted_data_summary=extracted_data,
+                goal_status=goal_status,
+                limits_status=limits_status
             )
 
-            # Check if we should advance stage (basic heuristic: every 2-3 questions)
-            if session['total_messages'] > 0 and session['total_messages'] % 3 == 0:
-                current_stage_index += 1
-                new_stage = stages[current_stage_index] if current_stage_index < len(stages) else stages[-1]
-                progress = round((current_stage_index / len(stages)) * 100)
+            # Update session with new progress
+            progress = goal_status['progress_percentage']
 
-                # Update session
-                self.supabase.table('consultation_sessions').update({
-                    'conversation_stage': new_stage,
-                    'progress_percentage': progress,
-                    'session_metadata': {**metadata, 'current_stage_index': current_stage_index}
-                }).eq('id', session_id).execute()
-            else:
-                progress = session['progress_percentage']
-                new_stage = session['conversation_stage']
+            # Update session
+            self.supabase.table('consultation_sessions').update({
+                'progress_percentage': progress,
+                'goals_met': len(goal_status['goals_met']),
+                'session_metadata': {
+                    **metadata,
+                    'goals_configuration': {
+                        **metadata.get('goals_configuration', {}),
+                        'goals_met': goal_status['goals_met'],
+                        'goals_pending': goal_status['goals_pending']
+                    }
+                }
+            }).eq('id', session_id).execute()
 
             # Save assistant message
             response = await self._save_message(
@@ -360,16 +515,24 @@ HOLISTIC APPROACH:
                 'status': 'active',
                 'next_question': next_question,
                 'extracted_data': extracted_data,
-                'conversation_stage': new_stage,
+                'logged_items': logged_items,  # Proactively logged items
                 'progress_percentage': progress,
+                'goals_met': len(goal_status['goals_met']),
+                'goals_total': goal_status['goals_total'],
+                'goals_detail': goal_status['details'],
+                'minutes_elapsed': limits_status['minutes_elapsed'],
+                'messages_sent': limits_status['messages_sent'],
+                'approaching_limit': limits_status.get('approaching_limit', False),
                 'is_complete': False
             }
 
         else:
-            # Final stage - wrap up consultation
+            # End consultation - wrap up
             wrap_up_message = await self._generate_wrap_up_message(
                 session=session,
-                conversation_history=conversation_history
+                conversation_history=conversation_history,
+                limits_reached=limits_status.get('should_end', False),
+                limit_reason=limits_status.get('reason')
             )
 
             # Save wrap-up message
@@ -501,6 +664,324 @@ HOLISTIC APPROACH:
         return summary
 
     # =====================================================
+    # GOAL TRACKING METHODS
+    # =====================================================
+
+    def _check_goal_completion(
+        self,
+        goal_config: Dict[str, Any],
+        extraction_summary: Dict[str, Any]
+    ) -> bool:
+        """
+        Check if a specific goal is met based on extracted data.
+
+        Args:
+            goal_config: Goal configuration with required_fields
+            extraction_summary: Current extracted data
+
+        Returns:
+            True if all required fields are present, False otherwise
+        """
+        required_fields = goal_config.get('required_fields', [])
+
+        # If no required fields, goal is considered optional (like events)
+        if not required_fields:
+            # Check if any data exists for this goal category
+            goal_id = goal_config['id']
+            if goal_id in extraction_summary:
+                return bool(extraction_summary[goal_id])
+            return True  # Optional goals auto-pass if no data
+
+        # Check all required fields are present in extraction_summary
+        for field in required_fields:
+            # Look for field in any extraction category
+            found = False
+            for category_data in extraction_summary.values():
+                if isinstance(category_data, dict) and field in category_data:
+                    if category_data[field]:  # Non-empty value
+                        found = True
+                        break
+            if not found:
+                return False
+
+        return True
+
+    def _evaluate_all_goals(
+        self,
+        session: Dict[str, Any],
+        extraction_summary: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Evaluate all consultation goals and return status.
+
+        Args:
+            session: Consultation session data
+            extraction_summary: All extracted data so far
+
+        Returns:
+            Dictionary with goals_met, goals_pending, progress, details
+        """
+        specialist_type = session['specialist_type']
+        goals_config = session.get('session_metadata', {}).get('goals_configuration', {})
+
+        if not goals_config or 'goals' not in goals_config:
+            # Fallback for non-goal-driven consultations
+            return {
+                'goals_met': [],
+                'goals_pending': [],
+                'goals_total': 0,
+                'progress_percentage': session.get('progress_percentage', 0),
+                'details': {}
+            }
+
+        goals = goals_config['goals']
+        goals_met = []
+        goals_pending = []
+        details = {}
+
+        for goal in goals:
+            goal_id = goal['id']
+            is_met = self._check_goal_completion(goal, extraction_summary)
+
+            if is_met:
+                goals_met.append(goal_id)
+                details[goal_id] = {'status': 'met', 'name': goal['name']}
+            else:
+                goals_pending.append(goal_id)
+                details[goal_id] = {'status': 'pending', 'name': goal['name']}
+
+        total_goals = len(goals)
+        progress = round((len(goals_met) / total_goals * 100)) if total_goals > 0 else 0
+
+        return {
+            'goals_met': goals_met,
+            'goals_pending': goals_pending,
+            'goals_total': total_goals,
+            'progress_percentage': progress,
+            'details': details
+        }
+
+    def _check_consultation_limits(
+        self,
+        session: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Check if consultation has reached time or message limits.
+
+        Limits:
+        - Max 50 messages
+        - Max 30 minutes
+
+        Args:
+            session: Consultation session data
+
+        Returns:
+            {
+                'should_end': bool,
+                'reason': str,
+                'minutes_elapsed': int,
+                'messages_sent': int
+            }
+        """
+        # Message limit
+        messages_sent = session.get('total_messages', 0)
+        MAX_MESSAGES = 50
+
+        # Time limit
+        start_time_str = session.get('session_metadata', {}).get('start_time')
+        if start_time_str:
+            start_time = datetime.fromisoformat(start_time_str)
+            elapsed = (datetime.utcnow() - start_time).total_seconds() / 60
+            minutes_elapsed = int(elapsed)
+        else:
+            # Fallback to created_at if start_time not in metadata
+            created_at = datetime.fromisoformat(session['created_at'].replace('Z', '+00:00'))
+            elapsed = (datetime.utcnow() - created_at.replace(tzinfo=None)).total_seconds() / 60
+            minutes_elapsed = int(elapsed)
+
+        MAX_MINUTES = 30
+
+        # Check limits
+        if messages_sent >= MAX_MESSAGES:
+            return {
+                'should_end': True,
+                'reason': 'message_limit',
+                'minutes_elapsed': minutes_elapsed,
+                'messages_sent': messages_sent,
+                'message': f"We've reached the {MAX_MESSAGES}-message limit for this consultation."
+            }
+
+        if minutes_elapsed >= MAX_MINUTES:
+            return {
+                'should_end': True,
+                'reason': 'time_limit',
+                'minutes_elapsed': minutes_elapsed,
+                'messages_sent': messages_sent,
+                'message': f"We've been chatting for {minutes_elapsed} minutes. Let's wrap up!"
+            }
+
+        # Approaching limits (warning)
+        approaching = False
+        if messages_sent >= MAX_MESSAGES - 5:
+            approaching = True
+        elif minutes_elapsed >= MAX_MINUTES - 5:
+            approaching = True
+
+        return {
+            'should_end': False,
+            'reason': None,
+            'minutes_elapsed': minutes_elapsed,
+            'messages_sent': messages_sent,
+            'approaching_limit': approaching
+        }
+
+    # =====================================================
+    # PROACTIVE LOGGING METHODS
+    # =====================================================
+
+    async def _detect_and_log_items(
+        self,
+        user_input: str,
+        user_id: str,
+        session_id: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Detect meals, workouts, or measurements mentioned in user input
+        and proactively log them if auto_log preference is enabled.
+
+        Args:
+            user_input: User's message
+            user_id: User's UUID
+            session_id: Consultation session ID
+
+        Returns:
+            List of logged items with metadata
+        """
+        # Check if user has auto_log preference enabled
+        profile = self.supabase.table('profiles').select('auto_log').eq('id', user_id).single().execute()
+        auto_log_enabled = profile.data.get('auto_log', True) if profile.data else True
+
+        if not auto_log_enabled:
+            logger.info(f"Auto-log disabled for user {user_id}, skipping proactive logging")
+            return []
+
+        # Use LLM to detect logging-worthy items
+        detection_prompt = f"""Analyze this user message and detect if they mention any of the following:
+
+1. **Meals**: User mentions eating specific foods (e.g., "I had eggs and toast for breakfast")
+2. **Workouts**: User describes physical activity (e.g., "I did a 5k run yesterday")
+3. **Measurements**: User states their weight, body fat, etc. (e.g., "I weigh 175 lbs")
+
+User message: "{user_input}"
+
+Return a JSON object with detected items:
+{{
+  "meals": [
+    {{
+      "meal_type": "breakfast|lunch|dinner|snack",
+      "description": "full description",
+      "foods": ["food1", "food2"]
+    }}
+  ],
+  "workouts": [
+    {{
+      "activity_type": "cardio|strength|sports|flexibility|other",
+      "description": "full description",
+      "duration_minutes": estimated_duration_or_null
+    }}
+  ],
+  "measurements": [
+    {{
+      "measurement_type": "weight|body_fat|waist|other",
+      "value": numeric_value,
+      "unit": "kg|lbs|cm|inches|percentage"
+    }}
+  ]
+}}
+
+If nothing is mentioned, return empty arrays. Be conservative - only detect explicit mentions."""
+
+        try:
+            # Use fast LLM for detection
+            from app.services.dual_model_router import TaskType, TaskConfig
+            response = await self.router.complete(
+                config=TaskConfig(
+                    type=TaskType.STRUCTURED_OUTPUT,
+                    requires_json=True,
+                    prioritize_speed=True
+                ),
+                messages=[
+                    {"role": "system", "content": "You are a data extraction assistant."},
+                    {"role": "user", "content": detection_prompt}
+                ],
+                response_format={"type": "json_object"}
+            )
+
+            detected = json.loads(response.choices[0].message.content)
+            logged_items = []
+
+            # Log meals
+            for meal in detected.get('meals', []):
+                try:
+                    result = await self.tool_service.create_meal_log_from_description(
+                        user_id=user_id,
+                        meal_type=meal['meal_type'],
+                        description=meal['description'],
+                        foods=meal.get('foods', []),
+                        logged_at=datetime.utcnow().isoformat()
+                    )
+                    if result.get('success'):
+                        logged_items.append({
+                            'type': 'meal',
+                            'meal_id': result.get('meal_log_id'),
+                            'description': meal['description']
+                        })
+                        logger.info(f"Auto-logged meal during consultation: {meal['description'][:50]}")
+                except Exception as e:
+                    logger.error(f"Failed to auto-log meal: {e}")
+
+            # Log workouts
+            for workout in detected.get('workouts', []):
+                try:
+                    result = await self.tool_service.create_activity_log_from_description(
+                        user_id=user_id,
+                        activity_type=workout['activity_type'],
+                        description=workout['description'],
+                        duration_minutes=workout.get('duration_minutes'),
+                        logged_at=datetime.utcnow().isoformat()
+                    )
+                    if result.get('success'):
+                        logged_items.append({
+                            'type': 'workout',
+                            'activity_id': result.get('activity_id'),
+                            'description': workout['description']
+                        })
+                        logger.info(f"Auto-logged workout during consultation: {workout['description'][:50]}")
+                except Exception as e:
+                    logger.error(f"Failed to auto-log workout: {e}")
+
+            # Log measurements
+            for measurement in detected.get('measurements', []):
+                try:
+                    # TODO: Implement body measurement logging tool
+                    # For now, just track that we detected it
+                    logged_items.append({
+                        'type': 'measurement',
+                        'measurement_type': measurement['measurement_type'],
+                        'value': measurement['value'],
+                        'unit': measurement['unit']
+                    })
+                    logger.info(f"Detected measurement during consultation: {measurement}")
+                except Exception as e:
+                    logger.error(f"Failed to log measurement: {e}")
+
+            return logged_items
+
+        except Exception as e:
+            logger.error(f"Error in proactive logging detection: {e}")
+            return []
+
+    # =====================================================
     # PRIVATE HELPER METHODS
     # =====================================================
 
@@ -525,24 +1006,44 @@ HOLISTIC APPROACH:
         self,
         session: Dict[str, Any],
         conversation_history: List[Dict[str, str]],
-        extracted_data_summary: Dict[str, Any]
+        extracted_data_summary: Dict[str, Any],
+        goal_status: Dict[str, Any] = None,
+        limits_status: Dict[str, Any] = None
     ) -> str:
-        """Generate next intelligent question using LLM."""
+        """Generate next intelligent question using LLM with goal-driven context."""
         specialist_type = session['specialist_type']
         system_prompt = self.SPECIALIST_PROMPTS[specialist_type]
-        current_stage = session['conversation_stage']
 
-        # Build context about what we know
-        context_parts = [
-            f"Current conversation stage: {current_stage}",
-            f"Questions asked so far: {session['total_messages'] // 2}",
-            "\nData collected so far:"
-        ]
+        # Build goal-focused context
+        context_parts = []
 
+        # Add goals progress if available
+        if goal_status and goal_status.get('goals_total', 0) > 0:
+            context_parts.append(f"Goals met: {len(goal_status['goals_met'])}/{goal_status['goals_total']}")
+            context_parts.append("\nGoals remaining:")
+            for goal_id in goal_status['goals_pending']:
+                goal_detail = goal_status['details'].get(goal_id, {})
+                context_parts.append(f"  ⏳ {goal_detail.get('name', goal_id)}")
+
+            context_parts.append("\nGoals completed:")
+            for goal_id in goal_status['goals_met']:
+                goal_detail = goal_status['details'].get(goal_id, {})
+                context_parts.append(f"  ✅ {goal_detail.get('name', goal_id)}")
+        else:
+            # Fallback for non-goal-driven
+            context_parts.append(f"Questions asked so far: {session['total_messages'] // 2}")
+
+        # Add time/message tracking
+        if limits_status:
+            context_parts.append(f"\nTime elapsed: {limits_status.get('minutes_elapsed', 0)} min")
+            context_parts.append(f"Messages exchanged: {limits_status.get('messages_sent', 0)}")
+
+        # Add extracted data
+        context_parts.append("\nData collected so far:")
         if extracted_data_summary:
             for key, value in extracted_data_summary.items():
-                if value:
-                    context_parts.append(f"- {key}: {json.dumps(value)}")
+                if value and key != '_metadata':
+                    context_parts.append(f"- {key}: {json.dumps(value)[:100]}...")  # Truncate long data
         else:
             context_parts.append("- (No structured data yet)")
 
@@ -554,18 +1055,33 @@ HOLISTIC APPROACH:
             for msg in conversation_history[-6:]
         ])
 
+        # Build goal-focused prompt
+        if goal_status and goal_status.get('goals_pending'):
+            # Goal-driven approach
+            pending_goal_names = [goal_status['details'][g]['name'] for g in goal_status['goals_pending'][:3]]
+            goal_focus = f"Focus on unfulfilled goals: {', '.join(pending_goal_names)}"
+        else:
+            # Fallback
+            goal_focus = "Continue gathering comprehensive information"
+
         user_prompt = f"""{context}
 
 Recent conversation:
 {conversation_summary}
 
-Based on what the user has shared, generate ONE focused follow-up question to:
-1. Build on their previous answer
-2. Fill gaps in the information needed for {specialist_type} consultation
-3. Move toward the '{current_stage}' stage objectives
+{goal_focus}
 
-The question should be conversational, empathetic, and specific to their situation.
-Do NOT ask about information we already have.
+Based on what the user has shared, generate ONE focused follow-up question to:
+1. Build on their previous answer naturally
+2. Fill gaps in information needed to complete the remaining goals
+3. Ask about typical daily or weekly patterns (typical breakfast, typical training week, etc.)
+4. Probe deeper if user mentions events, injuries, or specific challenges
+
+The question should be:
+- Conversational and empathetic (like a real coach)
+- Specific to their situation
+- Focused on ONE topic at a time
+- NOT repeating information we already have
 
 Return ONLY the question, no additional text."""
 
@@ -596,23 +1112,56 @@ Return ONLY the question, no additional text."""
     async def _generate_wrap_up_message(
         self,
         session: Dict[str, Any],
-        conversation_history: List[Dict[str, str]]
+        conversation_history: List[Dict[str, str]],
+        limits_reached: bool = False,
+        limit_reason: str = None
     ) -> str:
         """Generate wrap-up message summarizing consultation."""
         specialist_type = session['specialist_type']
 
+        # Base templates
         wrap_up_templates = {
-            'nutritionist': "Thank you for sharing all of that with me! Based on our conversation, I have a clear understanding of your nutrition goals and current habits. I'm going to create a personalized nutrition plan that addresses your specific needs. Is there anything else you'd like to add before we finalize your plan?",
-            'trainer': "Excellent! I now have a comprehensive understanding of your fitness background and goals. I'm ready to design a training program tailored specifically to you. Before we finalize, is there anything else you'd like me to know about your training preferences or limitations?",
-            'physiotherapist': "Thank you for sharing your physical health history. I have a good understanding of your current state and rehabilitation needs. I'll design a recovery and movement program suited to your specific situation. Is there anything else about your physical health I should consider?",
-            'sports_psychologist': "I appreciate you opening up about your mental approach to training. I now understand your psychological strengths and areas for development. Before we create your mental performance plan, is there anything else you'd like to discuss about your mindset?",
-            'unified_coach': "Perfect! I now have a complete picture of your fitness and nutrition situation. I'm ready to create a comprehensive program combining training and nutrition strategies tailored to your unique needs and goals. Any final thoughts or concerns before we proceed?"
+            'unified_coach': """Perfect! I now have a great understanding of your fitness and nutrition goals.
+
+Here's what I learned:
+- Your primary goals and timeline
+- Your typical eating and training patterns
+- Your preferences, limitations, and resources
+- The challenges you're facing
+
+I'm ready to create a comprehensive program combining training and nutrition strategies tailored to your unique needs.
+
+{limit_note}
+
+Ready to generate your personalized program?""",
+            'nutritionist': "Thank you for sharing all of that with me! Based on our conversation, I have a clear understanding of your nutrition goals and current habits. I'm going to create a personalized nutrition plan that addresses your specific needs.",
+            'trainer': "Excellent! I now have a comprehensive understanding of your fitness background and goals. I'm ready to design a training program tailored specifically to you.",
+            'physiotherapist': "Thank you for sharing your physical health history. I have a good understanding of your current state and rehabilitation needs.",
+            'sports_psychologist': "I appreciate you opening up about your mental approach to training. I now understand your psychological strengths and areas for development."
         }
 
-        return wrap_up_templates.get(
+        base_message = wrap_up_templates.get(
             specialist_type,
-            "Thank you for all that information! I'm ready to create your personalized plan. Anything else you'd like to add?"
+            "Thank you for all that information! I'm ready to create your personalized plan."
         )
+
+        # Add limit note if applicable
+        limit_note = ""
+        if limits_reached:
+            if limit_reason == 'time_limit':
+                limit_note = "We've been chatting for about 30 minutes, so let's wrap up here."
+            elif limit_reason == 'message_limit':
+                limit_note = "We've covered a lot of ground in our conversation!"
+            else:
+                limit_note = ""
+        else:
+            limit_note = "You've completed the full consultation!"
+
+        # Format unified coach message with limit note
+        if specialist_type == 'unified_coach':
+            return base_message.format(limit_note=limit_note)
+        else:
+            return base_message + (" " + limit_note if limit_note else "")
 
     async def _extract_structured_data(
         self,
@@ -666,7 +1215,14 @@ Return ONLY the question, no additional text."""
                 'goals': ['primary_fitness_goal', 'primary_nutrition_goal', 'timeline'],
                 'current_state': ['training_frequency', 'current_diet', 'experience_level'],
                 'measurements': ['current_weight_kg', 'height_cm', 'age', 'biological_sex'],
-                'preferences': ['equipment_access', 'dietary_restrictions', 'time_availability']
+                'preferences': ['equipment_access', 'dietary_restrictions', 'time_availability'],
+                'typical_eating': ['typical_breakfast', 'typical_lunch', 'typical_dinner', 'meal_times'],
+                'food_preferences': ['favorite_foods', 'foods_to_avoid', 'dietary_restrictions'],
+                'typical_training': ['training_frequency', 'training_days', 'training_time', 'typical_week'],
+                'training_preferences': ['equipment_access', 'training_location', 'preferred_exercises'],
+                'limitations': ['injuries', 'medical_conditions', 'schedule_constraints'],
+                'events': ['event_type', 'event_date', 'event_goal', 'event_description'],
+                'hydration': ['daily_water_intake', 'hydration_tracking']
             }
         }
 
@@ -688,6 +1244,17 @@ Latest user response:
 
 Extract data for these categories:
 {json.dumps(schema, indent=2)}
+
+**SPECIAL ATTENTION TO EVENTS:**
+If the user mentions any upcoming events (race, marathon, competition, vacation, wedding, photo shoot, reunion), extract:
+- event_type: (race, marathon, competition, vacation, wedding, photo_shoot, reunion, other)
+- event_date: (specific date in ISO format YYYY-MM-DD, or relative like "in 3 months")
+- event_goal: (what they want to achieve for this event)
+- event_description: (full description of the event)
+
+Examples:
+- "I have a marathon on October 15th" → {{"event_type": "marathon", "event_date": "2025-10-15"}}
+- "My wedding is in 4 months" → {{"event_type": "wedding", "event_date": "in 4 months"}}
 
 Return a JSON object with only the categories and fields that have data.
 If no relevant data found, return empty object {{}}.
