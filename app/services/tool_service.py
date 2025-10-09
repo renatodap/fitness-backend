@@ -1202,6 +1202,140 @@ class CoachToolService:
                 "error": str(e)
             }
 
+    # ====== CONSULTATION HISTORY TOOLS (Feature 8) ======
+
+    async def get_consultation_timeline(
+        self,
+        user_id: str,
+        category: str = "all",
+        limit: int = 5
+    ) -> Dict[str, Any]:
+        """
+        Get consultation history with temporal context for goal evolution tracking.
+
+        This tool enables the coach to:
+        - Reference past consultations with temporal context ("You mentioned 3 months ago...")
+        - Track how goals/preferences evolved over time
+        - Compare consultations to identify changes
+        - Understand user's journey and progress
+
+        Args:
+            user_id: User's UUID
+            category: Focus on specific category or "all" for complete history
+            limit: Maximum number of consultations to include (default 5)
+
+        Returns:
+            Formatted consultation timeline with temporal references and evolution data
+        """
+        try:
+            logger.info(f"[Tool:get_consultation_timeline] Fetching history for user {user_id}, category={category}")
+
+            from app.services.consultation_service import get_consultation_service
+            consultation_service = get_consultation_service()
+
+            # Get consultation history
+            history = await consultation_service.get_consultation_history(
+                user_id=user_id,
+                limit=limit
+            )
+
+            if not history:
+                return {
+                    "success": True,
+                    "message": "No consultation history found. User hasn't completed any consultations yet.",
+                    "history": [],
+                    "evolution": None
+                }
+
+            # If category specified, get evolution for that category
+            evolution = None
+            if category and category != "all":
+                evolution_data = await consultation_service.get_goal_evolution(
+                    user_id=user_id,
+                    category=category
+                )
+                evolution = evolution_data if not evolution_data.get("error") else None
+
+            # Format timeline for coach context
+            formatted_timeline = await consultation_service.format_consultation_timeline(
+                user_id=user_id,
+                limit=limit
+            )
+
+            # Build response with temporal context
+            response = {
+                "success": True,
+                "total_consultations": len(history),
+                "formatted_timeline": formatted_timeline,
+                "history": []
+            }
+
+            # Add detailed history with temporal references
+            for consultation in history:
+                time_ago = self._format_time_ago(consultation['completed_at'])
+
+                entry = {
+                    "session_id": consultation['session_id'],
+                    "specialist_type": consultation['specialist_type'],
+                    "completed": time_ago,
+                    "completed_at": consultation['completed_at'],
+                    "duration_minutes": consultation['duration_minutes']
+                }
+
+                # Add category-specific data if requested
+                if category == "all":
+                    entry["data"] = consultation['summary']
+                elif category in consultation['summary']:
+                    entry["data"] = consultation['summary'][category]
+
+                response["history"].append(entry)
+
+            # Add evolution data if available
+            if evolution:
+                response["evolution"] = {
+                    "category": category,
+                    "total_changes": evolution.get("total_changes", 0),
+                    "timeline": evolution.get("timeline", []),
+                    "changes": evolution.get("evolution", [])
+                }
+
+            logger.info(f"[Tool:get_consultation_timeline] Retrieved {len(history)} consultations")
+
+            return response
+
+        except Exception as e:
+            logger.error(f"[Tool:get_consultation_timeline] Failed: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
+    def _format_time_ago(self, timestamp: str) -> str:
+        """Format timestamp as 'X days/weeks/months ago'."""
+        from datetime import datetime
+
+        past = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+        now = datetime.utcnow()
+
+        delta = now - past.replace(tzinfo=None)
+        days = delta.days
+
+        if days == 0:
+            return "today"
+        elif days == 1:
+            return "1 day ago"
+        elif days < 7:
+            return f"{days} days ago"
+        elif days < 30:
+            weeks = days // 7
+            return f"{weeks} week{'s' if weeks > 1 else ''} ago"
+        elif days < 365:
+            months = days // 30
+            return f"{months} month{'s' if months > 1 else ''} ago"
+        else:
+            years = days // 365
+            return f"{years} year{'s' if years > 1 else ''} ago"
+
     # ====== SEMANTIC SEARCH TOOL (RAG) ======
 
     async def semantic_search_user_data(
@@ -1549,6 +1683,106 @@ COACH_TOOLS = [
                 }
             },
             "required": []
+        }
+    },
+    # ====== CONSULTATION DATA TOOLS ======
+    {
+        "name": "get_consultation_profile_summary",
+        "description": "Get user's complete profile from consultation including nutrition targets, goals, preferences, and measurements. Use this to understand their personalized targets and goals set during consultation.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "description": "The user's UUID"
+                }
+            },
+            "required": ["user_id"]
+        }
+    },
+    {
+        "name": "get_user_goals_from_consultation",
+        "description": "Get user's stated goals from consultation (primary goal, goal weight, specific targets). Use this when user asks about their goals or what they're working towards.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "description": "The user's UUID"
+                }
+            },
+            "required": ["user_id"]
+        }
+    },
+    {
+        "name": "get_user_preferences_from_consultation",
+        "description": "Get dietary restrictions, training preferences, equipment access from consultation. Use when user asks 'Can I eat X?' or 'What equipment can I use?'",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "description": "The user's UUID"
+                }
+            },
+            "required": ["user_id"]
+        }
+    },
+    {
+        "name": "get_nutrition_targets_with_progress",
+        "description": "Get daily macro targets (calories, protein, carbs, fat) with current progress and remaining amounts. Perfect for 'How much protein do I have left?' or 'Did I hit my calorie goal?'",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "description": "The user's UUID"
+                },
+                "date": {
+                    "type": "string",
+                    "description": "Date in YYYY-MM-DD format (defaults to today if not specified)"
+                }
+            },
+            "required": ["user_id"]
+        }
+    },
+    {
+        "name": "get_todays_recommendations_from_consultation",
+        "description": "Get today's meal and workout recommendations with next suggested action. Use this to answer 'What should I do next?' or 'What should I eat/train today?'",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "description": "The user's UUID"
+                }
+            },
+            "required": ["user_id"]
+        }
+    },
+    # ====== CONSULTATION HISTORY TOOLS (Feature 8) ======
+    {
+        "name": "get_consultation_timeline",
+        "description": "Get user's consultation history with temporal context. Use this to reference past consultations with phrases like 'You mentioned 3 months ago that...', track goal evolution, and compare how preferences/goals changed over time. Perfect for understanding long-term progress and changes.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "description": "The user's UUID"
+                },
+                "category": {
+                    "type": "string",
+                    "description": "Optional: Focus on specific category evolution (goals, preferences, measurements, health_history)",
+                    "enum": ["goals", "preferences", "measurements", "health_history", "all"]
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of consultations to retrieve (default 5)",
+                    "default": 5
+                }
+            },
+            "required": ["user_id"]
         }
     }
 ]

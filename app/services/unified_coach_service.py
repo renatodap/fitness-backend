@@ -253,6 +253,9 @@ Confidence: {food_analysis.get('confidence', 0) * 100:.0f}%
 
             # STEP 1: NEW AGENTIC APPROACH - Call Claude with TOOLS, not full context!
 
+            # Get consultation status for proactive suggestions
+            consultation_status = await self._get_consultation_status(user_id)
+
             # Build AGENTIC system prompt with tool instructions
             base_system_prompt = """You are WAGNER - the AI coach for Iron Discipline, a hardcore fitness platform.
 
@@ -330,6 +333,10 @@ RESPONSE RULES:
             # Add food context if present
             if food_context:
                 base_system_prompt += f"\n\n{food_context}"
+
+            # Add consultation status context (proactive suggestions)
+            if consultation_status:
+                base_system_prompt += f"\n\n{consultation_status}"
 
             logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Calling Claude with TOOLS...")
             logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Available tools: {len(COACH_TOOLS)}")
@@ -1086,6 +1093,36 @@ RESPONSE RULES:
             elif tool_name == "create_body_measurement_log":
                 return await self.tool_service.create_body_measurement_log(**tool_input)
 
+            # CONSULTATION DATA TOOLS (NEW!)
+            elif tool_name == "get_consultation_profile_summary":
+                from app.services.consultation_service import get_consultation_service
+                consultation_service = get_consultation_service()
+                return await consultation_service.get_user_profile_summary(**tool_input)
+
+            elif tool_name == "get_user_goals_from_consultation":
+                from app.services.consultation_service import get_consultation_service
+                consultation_service = get_consultation_service()
+                return await consultation_service.get_user_goals(**tool_input)
+
+            elif tool_name == "get_user_preferences_from_consultation":
+                from app.services.consultation_service import get_consultation_service
+                consultation_service = get_consultation_service()
+                return await consultation_service.get_user_preferences(**tool_input)
+
+            elif tool_name == "get_nutrition_targets_with_progress":
+                from app.services.consultation_service import get_consultation_service
+                consultation_service = get_consultation_service()
+                return await consultation_service.get_nutrition_targets_with_progress(**tool_input)
+
+            elif tool_name == "get_todays_recommendations_from_consultation":
+                from app.services.consultation_service import get_consultation_service
+                consultation_service = get_consultation_service()
+                return await consultation_service.get_todays_recommendations_for_coach(**tool_input)
+
+            # Feature 8: Multi-Modal Consultation History
+            elif tool_name == "get_consultation_timeline":
+                return await self.tool_service.get_consultation_timeline(**tool_input)
+
             else:
                 logger.error(f"[_execute_tool] Unknown tool: {tool_name}")
                 return {
@@ -1365,6 +1402,82 @@ RESPONSE RULES:
         except Exception as e:
             logger.error(f"[_generate_conversation_title] Failed: {e}", exc_info=True)
             # Non-critical error - don't raise
+
+    async def _get_consultation_status(self, user_id: str) -> str:
+        """
+        Get user's consultation status for system prompt injection.
+
+        Returns formatted string describing:
+        - Whether user has completed consultation
+        - Last consultation date (if completed)
+        - Prompt to suggest consultation (if not completed)
+
+        This enables coach to proactively reference consultation data or suggest completing it.
+
+        Args:
+            user_id: User's UUID
+
+        Returns:
+            Formatted consultation status string for system prompt
+        """
+        try:
+            from app.services.consultation_service import get_consultation_service
+            consultation_service = get_consultation_service()
+
+            # Check if user has completed consultation
+            has_completed = await consultation_service.has_completed_consultation(user_id)
+
+            if has_completed:
+                # Get latest consultation session
+                latest_session = self.supabase.table('consultation_sessions')\
+                    .select('completed_at, specialist_type')\
+                    .eq('user_id', user_id)\
+                    .eq('status', 'completed')\
+                    .order('completed_at', desc=True)\
+                    .limit(1)\
+                    .execute()
+
+                if latest_session.data:
+                    completed_at = latest_session.data[0]['completed_at']
+                    specialist = latest_session.data[0]['specialist_type']
+
+                    # Calculate days since consultation
+                    from datetime import datetime
+                    completed_date = datetime.fromisoformat(completed_at.replace('Z', '+00:00'))
+                    days_since = (datetime.utcnow() - completed_date.replace(tzinfo=None)).days
+
+                    if days_since >= 90:
+                        # Suggest re-consultation after 3 months
+                        return f"""
+=== CONSULTATION STATUS ===
+User completed consultation {days_since} days ago with {specialist}.
+→ SUGGEST RE-CONSULTATION: It's been 3+ months. Goals may have changed.
+→ Say: "It's been {days_since // 30} months since your consultation. Want to update your goals and preferences?"
+"""
+                    else:
+                        # Consultation is recent - reference the data
+                        return f"""
+=== CONSULTATION STATUS ===
+User completed consultation {days_since} days ago with {specialist}.
+→ Consultation data is available through RAG and tools.
+→ Reference user's goals, preferences, and targets from consultation when relevant.
+"""
+                else:
+                    return "=== CONSULTATION STATUS ===\nUser has consultation data (completion date unknown).\n"
+
+            else:
+                # No consultation completed - suggest it!
+                return """
+=== CONSULTATION STATUS ===
+User has NOT completed consultation yet.
+→ PROACTIVELY SUGGEST: "I notice you haven't set your goals yet. Complete a 5-minute consultation to unlock personalized meal plans and workout programs!"
+→ Be encouraging but not pushy. Mention benefits: personalized recommendations, accurate nutrition targets, workout programs.
+"""
+
+        except Exception as e:
+            logger.error(f"[_get_consultation_status] Failed: {e}", exc_info=True)
+            # Return empty on error (non-critical)
+            return ""
 
     def _calculate_claude_cost(self, input_tokens: int, output_tokens: int, cache_read_tokens: int = 0, cache_write_tokens: int = 0) -> float:
         """
