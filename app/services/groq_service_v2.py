@@ -985,7 +985,7 @@ Return structured JSON with primary_fields (show by default) and secondary_field
     async def generate_meal_title(
         self,
         description: str,
-        foods: List[str],
+        foods: list[str],
         meal_type: str
     ) -> str:
         """
@@ -1084,8 +1084,8 @@ Return ONLY the title, NO explanation or extra text."""
     async def extract_food_quantities(
         self,
         description: str,
-        food_names: List[str]
-    ) -> List[Dict[str, Any]]:
+        food_names: list[str]
+    ) -> list[dict[str, Any]]:
         """
         Extract food quantities and units from a description.
 
