@@ -893,6 +893,9 @@ Return JSON classification and data extraction."""
                     "macro_balance_score": enrichment.get("macro_balance_score"),
                     "adherence_to_goals": enrichment.get("adherence_to_goals"),
                     "tags": enrichment.get("tags", []),
+                    # Template tracking (not used by quick entry, but included for schema compatibility)
+                    "template_id": None,
+                    "created_from_template": False,
                     "logged_at": datetime.utcnow().isoformat(),
                     "created_at": datetime.utcnow().isoformat(),
                     "updated_at": datetime.utcnow().isoformat()

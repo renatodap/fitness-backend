@@ -102,7 +102,7 @@ class MealLoggingService:
             # Step 3: Insert foods into meal_foods table
             meal_foods_records = []
 
-            for item in food_items:
+            for idx, item in enumerate(food_items):
                 food_id = item["food_id"]
                 quantity = item["quantity"]
                 unit = item["unit"]
@@ -123,7 +123,10 @@ class MealLoggingService:
                 # Build meal_foods record
                 meal_food_record = {
                     "meal_log_id": meal_id,
+                    "item_type": "food",  # All items in this function are foods
                     "food_id": food_id,
+                    "template_id": None,  # Not a template
+                    "order_index": idx,  # Maintain order
                     "quantity": quantity,
                     "unit": unit,
                     "calories": round(scaled_nutrition.get("calories", 0), 1),
@@ -196,7 +199,7 @@ class MealLoggingService:
                 # Insert new meal_foods records
                 meal_foods_records = []
 
-                for item in food_items:
+                for idx, item in enumerate(food_items):
                     food_id = item["food_id"]
                     quantity = item["quantity"]
                     unit = item["unit"]
@@ -214,7 +217,10 @@ class MealLoggingService:
 
                     meal_food_record = {
                         "meal_log_id": meal_id,
+                        "item_type": "food",  # All items in this function are foods
                         "food_id": food_id,
+                        "template_id": None,  # Not a template
+                        "order_index": idx,  # Maintain order
                         "quantity": quantity,
                         "unit": unit,
                         "calories": round(scaled_nutrition.get("calories", 0), 1),

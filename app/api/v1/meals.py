@@ -20,10 +20,20 @@ router = APIRouter(prefix="/meals", tags=["meals"])
 
 # Request Models
 class FoodItemRequest(BaseModel):
-    """Food item in a meal."""
-    food_id: str = Field(..., description="Food UUID from foods_enhanced table")
-    quantity: float = Field(..., gt=0, description="Quantity of food")
+    """Food or template item in a meal."""
+    item_type: str = Field(default="food", description="Type: 'food' or 'template'")
+    food_id: Optional[str] = Field(None, description="Food UUID from foods_enhanced table (required if item_type='food')")
+    template_id: Optional[str] = Field(None, description="Template UUID from meal_templates (required if item_type='template')")
+    quantity: float = Field(..., gt=0, description="Quantity of food/template")
     unit: str = Field(..., description="Unit (g, oz, cup, serving, etc.)")
+
+    class Config:
+        json_schema_extra = {
+            "examples": [
+                {"item_type": "food", "food_id": "uuid-1", "quantity": 6, "unit": "oz"},
+                {"item_type": "template", "template_id": "uuid-2", "quantity": 1, "unit": "serving"}
+            ]
+        }
 
 
 class CreateMealRequest(BaseModel):
@@ -60,14 +70,16 @@ class UpdateMealRequest(BaseModel):
 
 # Response Models
 class FoodItemResponse(BaseModel):
-    """Food item in a meal response."""
-    food_id: str
+    """Food or template item in a meal response."""
+    item_type: str  # 'food' or 'template'
+    food_id: Optional[str]
+    template_id: Optional[str]
     name: str
     brand: Optional[str]
     quantity: float
     unit: str
-    serving_size: float
-    serving_unit: str
+    serving_size: Optional[float]
+    serving_unit: Optional[str]
     calories: float
     protein_g: float
     carbs_g: float
@@ -86,6 +98,8 @@ class MealResponse(BaseModel):
     category: str
     logged_at: str
     notes: Optional[str]
+    template_id: Optional[str]  # NEW: Template used to create this meal
+    created_from_template: Optional[bool]  # NEW: Whether meal was created from template
     total_calories: float
     total_protein_g: float
     total_carbs_g: float
