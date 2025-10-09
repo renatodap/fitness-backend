@@ -12,7 +12,7 @@ import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
-from app.services.supabase_service import get_supabase_client
+from app.services.supabase_service import get_service_client
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class MealTemplateService:
 
     def __init__(self):
         """Initialize template service with Supabase client."""
-        self.supabase = get_supabase_client()
+        self.supabase = get_service_client()
 
     async def create_template(
         self,
