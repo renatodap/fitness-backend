@@ -982,6 +982,105 @@ Return structured JSON with primary_fields (show by default) and secondary_field
             logger.error(f"[GroqV2] ❌ Audio transcription failed: {e}")
             return "Failed to transcribe audio"
 
+    async def generate_meal_title(
+        self,
+        description: str,
+        foods: List[str],
+        meal_type: str
+    ) -> str:
+        """
+        Generate a concise meal title from description and foods.
+
+        Converts long descriptions like "I had 3 eggs, 2 slices of toast with butter,
+        and a banana for breakfast" into concise titles like "Eggs, toast, and banana".
+
+        Args:
+            description: Natural language meal description
+            foods: List of food names
+            meal_type: Type of meal (breakfast, lunch, dinner, snack)
+
+        Returns:
+            Concise meal title (max 50 characters)
+        """
+        logger.info(f"[GroqV2] Generating meal title from: '{description[:100]}...'")
+
+        prompt = f"""Generate a short, concise meal title from this description:
+
+Description: "{description}"
+Foods: {foods}
+Meal type: {meal_type}
+
+RULES:
+1. Create a title that's 3-6 words maximum
+2. Focus on the main foods, not preparation details
+3. Use natural language, not a list
+4. Don't include meal type (breakfast/lunch/dinner) unless relevant
+5. Don't include quantities or portions
+
+EXAMPLES:
+
+Input: "I had 3 eggs, 2 slices of toast with butter for breakfast"
+Foods: ["eggs", "toast", "butter"]
+Output: Eggs and toast with butter
+
+Input: "ate 6oz grilled chicken breast with 1 cup brown rice and broccoli for lunch"
+Foods: ["chicken breast", "brown rice", "broccoli"]
+Output: Chicken, rice, and broccoli
+
+Input: "had a protein shake with banana and oatmeal after my workout"
+Foods: ["protein shake", "banana", "oatmeal"]
+Output: Protein shake with banana
+
+Input: "dinner was salmon with sweet potato and green beans"
+Foods: ["salmon", "sweet potato", "green beans"]
+Output: Salmon with sweet potato
+
+Input: "snacked on an apple and peanut butter"
+Foods: ["apple", "peanut butter"]
+Output: Apple with peanut butter
+
+Input: "Chicken Margherita at Olive Garden"
+Foods: ["chicken margherita"]
+Output: Chicken Margherita
+
+Input: "big mac meal with fries and coke"
+Foods: ["big mac", "fries", "coke"]
+Output: Big Mac meal
+
+Return ONLY the title, NO explanation or extra text."""
+
+        try:
+            response = self.client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=50
+            )
+
+            title = response.choices[0].message.content.strip()
+
+            # Remove any quotes or extra formatting
+            title = title.strip('"').strip("'").strip()
+
+            # Truncate if too long
+            if len(title) > 50:
+                title = title[:47] + "..."
+
+            logger.info(f"[GroqV2] ✅ Generated title: '{title}'")
+            return title
+
+        except Exception as e:
+            logger.error(f"[GroqV2] ❌ Title generation failed: {e}")
+            # Fallback: create simple title from foods
+            if len(foods) == 1:
+                return foods[0].capitalize()
+            elif len(foods) == 2:
+                return f"{foods[0].capitalize()} and {foods[1]}"
+            elif len(foods) >= 3:
+                return f"{foods[0].capitalize()}, {foods[1]}, and more"
+            else:
+                return meal_type.capitalize()
+
     async def extract_food_quantities(
         self,
         description: str,

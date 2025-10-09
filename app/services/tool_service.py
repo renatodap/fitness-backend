@@ -850,8 +850,23 @@ class CoachToolService:
             if estimated_calories:
                 total_calories = estimated_calories
 
+            # STEP 4.5: Generate meal title using Groq AI
+            logger.info(f"[Tool:create_meal_log] Generating meal title...")
+            try:
+                meal_title = await groq_service.generate_meal_title(
+                    description=description,
+                    foods=foods,
+                    meal_type=meal_type
+                )
+                logger.info(f"[Tool:create_meal_log] Generated title: '{meal_title}'")
+            except Exception as title_err:
+                logger.warning(f"[Tool:create_meal_log] Title generation failed: {title_err}")
+                # Fallback: use first food or meal type
+                meal_title = foods[0].capitalize() if foods else meal_type.capitalize()
+
             # Build meal data structure
             meal_data = {
+                "name": meal_title,
                 "meal_type": meal_type,
                 "description": description,
                 "foods": match_result["matched_foods"],
@@ -876,6 +891,7 @@ class CoachToolService:
                 try:
                     meal_log_entry = {
                         "user_id": user_id,
+                        "name": meal_data["name"],
                         "meal_type": meal_type,
                         "description": description,
                         "total_calories": meal_data["total_calories"],
@@ -1336,6 +1352,98 @@ class CoachToolService:
             years = days // 365
             return f"{years} year{'s' if years > 1 else ''} ago"
 
+    # ====== EVENT TOOLS (NEW: Event awareness) ======
+
+    async def get_upcoming_events(self, user_id: str, days_ahead: int = 90) -> Dict[str, Any]:
+        """
+        Get user's upcoming events (races, competitions, shows).
+
+        Enables the coach to:
+        - See all upcoming events in next N days
+        - Reference events in conversation ("I see you have a marathon coming up...")
+        - Provide event-specific advice
+
+        Args:
+            user_id: User's UUID
+            days_ahead: Days to look ahead (default 90)
+
+        Returns:
+            List of upcoming events with countdown data
+        """
+        try:
+            logger.info(f"[Tool:get_upcoming_events] Fetching events for next {days_ahead} days")
+
+            from app.services.event_service import get_event_service
+            event_service = get_event_service()
+
+            events = await event_service.get_upcoming_events(user_id, days_ahead=days_ahead)
+
+            logger.info(f"[Tool:get_upcoming_events] Found {len(events)} upcoming events")
+
+            return {
+                "success": True,
+                "count": len(events),
+                "events": events
+            }
+
+        except Exception as e:
+            logger.error(f"[Tool:get_upcoming_events] Failed: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
+    async def get_primary_event_countdown(self, user_id: str) -> Dict[str, Any]:
+        """
+        Get user's primary event with detailed countdown information.
+
+        Enables the coach to:
+        - Reference event countdown ("You have 30 days until the marathon!")
+        - Understand current training phase (base/build/peak/taper)
+        - Provide phase-appropriate advice (taper week, peak week, etc.)
+        - Adjust recommendations based on proximity to event
+
+        Args:
+            user_id: User's UUID
+
+        Returns:
+            Primary event data with countdown, training phase, and milestones
+        """
+        try:
+            logger.info(f"[Tool:get_primary_event_countdown] Fetching primary event")
+
+            from app.services.event_service import get_event_service
+            event_service = get_event_service()
+
+            primary_event = await event_service.get_primary_event(user_id)
+
+            if not primary_event:
+                logger.info(f"[Tool:get_primary_event_countdown] No primary event found")
+                return {
+                    "success": True,
+                    "has_primary_event": False,
+                    "event": None,
+                    "message": "User has no primary event set"
+                }
+
+            logger.info(
+                f"[Tool:get_primary_event_countdown] Found: {primary_event.get('event_name')} "
+                f"in {primary_event.get('days_until_event')} days"
+            )
+
+            return {
+                "success": True,
+                "has_primary_event": True,
+                "event": primary_event
+            }
+
+        except Exception as e:
+            logger.error(f"[Tool:get_primary_event_countdown] Failed: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
     # ====== SEMANTIC SEARCH TOOL (RAG) ======
 
     async def semantic_search_user_data(
@@ -1780,6 +1888,40 @@ COACH_TOOLS = [
                     "type": "integer",
                     "description": "Maximum number of consultations to retrieve (default 5)",
                     "default": 5
+                }
+            },
+            "required": ["user_id"]
+        }
+    },
+    # ====== EVENT TOOLS (NEW: Event awareness) ======
+    {
+        "name": "get_upcoming_events",
+        "description": "Get user's upcoming events (races, competitions, shows) in the next N days. Use this to see all their planned events and reference them in conversation ('I see you have a marathon coming up!', 'What events are you training for?'). Perfect for providing event-specific guidance.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "description": "The user's UUID"
+                },
+                "days_ahead": {
+                    "type": "integer",
+                    "description": "Number of days to look ahead (default 90)",
+                    "default": 90
+                }
+            },
+            "required": ["user_id"]
+        }
+    },
+    {
+        "name": "get_primary_event_countdown",
+        "description": "Get user's primary event with detailed countdown and training phase information. Use this to understand their main goal event, how many days until it, what training phase they're in (base/build/peak/taper), and provide phase-appropriate advice. CRITICAL for event-aware coaching - call this when discussing workouts, nutrition, or training plans!",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "description": "The user's UUID"
                 }
             },
             "required": ["user_id"]
