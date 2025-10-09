@@ -2,9 +2,9 @@
 Debug endpoint to test JWT authentication.
 """
 import logging
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header
 from jose import jwt, JWTError
-from app.config import settings
+from app.config import get_settings
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -16,6 +16,8 @@ async def debug_jwt(authorization: str = Header(None)):
     Debug JWT token verification.
     Returns detailed info about why auth is failing.
     """
+    settings = get_settings()
+
     if not authorization:
         return {"error": "No Authorization header provided"}
 

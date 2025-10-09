@@ -10,11 +10,10 @@ from typing import Callable, Optional
 from functools import wraps
 
 from fastapi import HTTPException, Request, status
-from fastapi.responses import JSONResponse
 import redis.asyncio as redis
 import structlog
 
-from app.config import settings
+from app.config import get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -34,6 +33,7 @@ class RateLimiter:
         Args:
             redis_url: Redis connection URL (defaults to settings.REDIS_URL)
         """
+        settings = get_settings()
         self.redis_url = redis_url or settings.REDIS_URL
         self._redis: Optional[redis.Redis] = None
 

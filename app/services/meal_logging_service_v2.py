@@ -11,7 +11,6 @@ Handles manual meal logging with:
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-from uuid import UUID
 
 from app.services.supabase_service import get_service_client
 from app.services.food_search_service import get_food_search_service

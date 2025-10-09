@@ -11,9 +11,7 @@ Returns structured nutritional data + natural language description.
 
 import logging
 import json
-import base64
-from typing import Dict, Any, Optional, Tuple
-import httpx
+from typing import Dict, Any, Optional
 from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 
@@ -70,35 +68,35 @@ class FoodVisionService:
                 "api_used": str
             }
         """
-        logger.info(f"[FoodVision] Starting food image analysis")
+        logger.info("[FoodVision] Starting food image analysis")
 
         # Try APIs in order of preference (cost + accuracy)
 
         # OPTION 1: FatSecret Platform API (if configured)
         if self.fatsecret_consumer_key and self.fatsecret_consumer_secret:
-            logger.info(f"[FoodVision] Trying FatSecret API...")
+            logger.info("[FoodVision] Trying FatSecret API...")
             result = await self._analyze_with_fatsecret(image_base64, user_message)
             if result and result.get("success"):
-                logger.info(f"[FoodVision] FatSecret analysis successful")
+                logger.info("[FoodVision] FatSecret analysis successful")
                 return result
 
         # OPTION 2: OpenAI Vision API (fast, accurate, $0.01/1K tokens)
         if self.openai_client:
-            logger.info(f"[FoodVision] Trying OpenAI Vision API...")
+            logger.info("[FoodVision] Trying OpenAI Vision API...")
             result = await self._analyze_with_openai_vision(image_base64, user_message)
             if result and result.get("success"):
-                logger.info(f"[FoodVision] OpenAI Vision analysis successful")
+                logger.info("[FoodVision] OpenAI Vision analysis successful")
                 return result
 
         # OPTION 3: Claude Vision API (fallback, already integrated)
-        logger.info(f"[FoodVision] Falling back to Claude Vision API...")
+        logger.info("[FoodVision] Falling back to Claude Vision API...")
         result = await self._analyze_with_claude_vision(image_base64, user_message)
         if result and result.get("success"):
-            logger.info(f"[FoodVision] Claude Vision analysis successful")
+            logger.info("[FoodVision] Claude Vision analysis successful")
             return result
 
         # All APIs failed
-        logger.error(f"[FoodVision] All vision APIs failed")
+        logger.error("[FoodVision] All vision APIs failed")
         return {
             "success": False,
             "is_food": False,
@@ -121,7 +119,7 @@ class FoodVisionService:
         try:
             # TODO: Implement FatSecret OAuth 2.0 flow and image recognition
             # For now, skip to next API
-            logger.warning(f"[FoodVision] FatSecret API not fully implemented yet")
+            logger.warning("[FoodVision] FatSecret API not fully implemented yet")
             return None
         except Exception as e:
             logger.error(f"[FoodVision] FatSecret API failed: {e}")
@@ -173,7 +171,7 @@ If NOT food, return:
     "confidence": 1.0
 }"""
 
-            user_prompt = f"Analyze this food image."
+            user_prompt = "Analyze this food image."
             if user_message:
                 user_prompt += f"\n\nUser's message: {user_message}"
 

@@ -11,7 +11,7 @@ from fastapi import Header, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
-from app.config import settings
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,7 @@ async def verify_token(
     Raises:
         HTTPException: If token is invalid or expired
     """
+    settings = get_settings()
     token = credentials.credentials
 
     try:
@@ -83,6 +84,7 @@ async def get_current_user(
     Raises:
         HTTPException: 401 if not authenticated
     """
+    settings = get_settings()
     logger.info(f"🔐 [Auth] Received authorization header: {authorization[:20]}...")
 
     if not authorization.startswith("Bearer "):
@@ -144,6 +146,7 @@ async def get_current_user_optional(
     if not authorization or not authorization.startswith("Bearer "):
         return None
 
+    settings = get_settings()
     token = authorization.split(" ")[1]
 
     try:
@@ -171,6 +174,7 @@ async def verify_cron_secret(authorization: str = Header(...)) -> None:
     Raises:
         HTTPException: 401 if secret is invalid
     """
+    settings = get_settings()
     expected = f"Bearer {settings.CRON_SECRET}"
 
     if authorization != expected:
@@ -193,6 +197,7 @@ async def verify_webhook_secret(authorization: str = Header(...)) -> None:
     Raises:
         HTTPException: 401 if secret is invalid
     """
+    settings = get_settings()
     expected = f"Bearer {settings.WEBHOOK_SECRET}"
 
     if authorization != expected:

@@ -6,9 +6,7 @@ OPTIMIZED: Using 100% FREE models with intelligent routing!
 import json
 from datetime import date, datetime, timedelta
 from typing import Dict, List, Optional, Any
-from uuid import UUID
 
-from app.config import settings
 from app.services.context_builder import ContextBuilder
 from app.services.dual_model_router import dual_router, TaskType, TaskConfig
 from app.services.multimodal_embedding_service import get_multimodal_service

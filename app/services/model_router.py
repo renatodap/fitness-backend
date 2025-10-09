@@ -7,7 +7,7 @@ All models are FREE with intelligent fallback chains
 
 import logging
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 from dataclasses import dataclass
 from openai import AsyncOpenAI, OpenAI
 

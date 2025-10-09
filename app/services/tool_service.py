@@ -37,154 +37,50 @@ class CoachToolService:
 
     async def get_user_profile(self, user_id: str) -> Dict[str, Any]:
         """
-        Get user's COMPLETE profile with goals, preferences, and onboarding data.
+        Get user's profile with goals and preferences.
 
-        Returns comprehensive user info:
-        - Basic: Name, age, biological sex, timezone
-        - Body stats: Current weight, goal weight, height, BMI
-        - Goals: Primary goal, user persona, experience level
-        - Training: Desired frequency, training time preferences, injury limitations
-        - Equipment: Available equipment, facility access
-        - Nutrition: Dietary restrictions, meal preferences, daily meal count
-        - Location: City, location permission
-        - Programs: Active nutrition/workout programs (if any)
-
-        This tool gives the AI coach EVERYTHING about the user in one call,
-        enabling highly personalized responses.
+        Returns essential user info:
+        - Name, age, biological sex
+        - Current weight, goal weight, height
+        - Primary goal (lose weight, gain muscle, etc.)
+        - Experience level, training frequency
+        - Dietary restrictions, available equipment
+        - Daily macro targets (calories, protein, carbs, fats)
 
         Args:
             user_id: User's UUID
 
         Returns:
-            Comprehensive user profile dict with all relevant data
+            User profile dict with all relevant data
         """
         try:
-            logger.info(f"[Tool:get_user_profile] Fetching COMPREHENSIVE profile for user {user_id}")
+            logger.info(f"[Tool:get_user_profile] Fetching profile for user {user_id}")
 
-            # Fetch basic profile
-            profile_response = self.supabase.table("profiles")\
+            response = self.supabase.table("profiles")\
                 .select("*")\
                 .eq("id", user_id)\
                 .single()\
                 .execute()
 
-            if not profile_response.data:
-                logger.warning(f"[Tool:get_user_profile] No profile found")
+            if response.data:
+                logger.info("[Tool:get_user_profile] Profile retrieved successfully")
+                return {
+                    "success": True,
+                    "profile": response.data
+                }
+            else:
+                logger.warning("[Tool:get_user_profile] No profile found")
                 return {
                     "success": False,
                     "error": "Profile not found"
                 }
 
-            profile = profile_response.data
-
-            # Fetch onboarding data (program preferences)
-            onboarding_response = self.supabase.table("user_onboarding")\
-                .select("*")\
-                .eq("user_id", user_id)\
-                .single()\
-                .execute()
-
-            onboarding = onboarding_response.data if onboarding_response.data else {}
-
-            # Fetch active programs
-            nutrition_program = await self.get_active_nutrition_program(user_id)
-            workout_program = await self.get_active_workout_program(user_id)
-
-            # Build comprehensive profile
-            comprehensive_profile = {
-                "success": True,
-                "user_id": user_id,
-
-                # Basic Info
-                "basic": {
-                    "full_name": profile.get("full_name"),
-                    "timezone": profile.get("timezone", "UTC"),
-                    "created_at": profile.get("created_at"),
-                },
-
-                # Body Stats
-                "body_stats": {
-                    "age": onboarding.get("age"),
-                    "biological_sex": onboarding.get("biological_sex"),
-                    "current_weight_kg": onboarding.get("current_weight_kg"),
-                    "height_cm": onboarding.get("height_cm"),
-                    "goal_weight_kg": onboarding.get("goal_weight_kg"),
-                    "bmi": self._calculate_bmi(onboarding.get("current_weight_kg"), onboarding.get("height_cm")),
-                },
-
-                # Goals & Persona
-                "goals": {
-                    "primary_goal": onboarding.get("primary_goal"),
-                    "user_persona": onboarding.get("user_persona"),
-                    "experience_level": onboarding.get("experience_level"),
-                },
-
-                # Training Preferences
-                "training": {
-                    "desired_training_frequency": onboarding.get("desired_training_frequency"),
-                    "current_activity_level": onboarding.get("current_activity_level"),
-                    "training_time_preferences": onboarding.get("training_time_preferences", []),
-                    "injury_limitations": onboarding.get("injury_limitations", []),
-                },
-
-                # Equipment & Facilities
-                "equipment": {
-                    "equipment_access": onboarding.get("equipment_access", []),
-                    "facility_access": onboarding.get("facility_access", []),
-                },
-
-                # Nutrition Preferences
-                "nutrition": {
-                    "dietary_restrictions": onboarding.get("dietary_restrictions", []),
-                    "daily_meal_preference": onboarding.get("daily_meal_preference"),
-                    "meal_preferences": onboarding.get("meal_preferences", []),
-                },
-
-                # Location
-                "location": {
-                    "city": onboarding.get("city"),
-                    "location_permission": onboarding.get("location_permission", False),
-                },
-
-                # Active Programs
-                "programs": {
-                    "nutrition_program": nutrition_program.get("program") if nutrition_program.get("success") else None,
-                    "workout_program": workout_program.get("program") if workout_program.get("success") else None,
-                },
-
-                # Preferences
-                "preferences": {
-                    "auto_log_enabled": profile.get("auto_log_enabled", False),
-                },
-            }
-
-            logger.info(
-                f"[Tool:get_user_profile] COMPREHENSIVE profile retrieved: "
-                f"goal={comprehensive_profile['goals']['primary_goal']}, "
-                f"persona={comprehensive_profile['goals']['user_persona']}, "
-                f"frequency={comprehensive_profile['training']['desired_training_frequency']}"
-            )
-
-            return comprehensive_profile
-
         except Exception as e:
-            logger.error(f"[Tool:get_user_profile] Failed: {e}", exc_info=True)
+            logger.error(f"[Tool:get_user_profile] Failed: {e}")
             return {
                 "success": False,
                 "error": str(e)
             }
-
-    def _calculate_bmi(self, weight_kg: Optional[float], height_cm: Optional[float]) -> Optional[float]:
-        """Calculate BMI from weight (kg) and height (cm)."""
-        if not weight_kg or not height_cm:
-            return None
-
-        try:
-            height_m = height_cm / 100
-            bmi = weight_kg / (height_m ** 2)
-            return round(bmi, 1)
-        except:
-            return None
 
     async def get_active_nutrition_program(self, user_id: str) -> Dict[str, Any]:
         """
@@ -220,7 +116,7 @@ class CoachToolService:
                     "program": response.data[0]
                 }
             else:
-                logger.info(f"[Tool:get_active_nutrition_program] No active program")
+                logger.info("[Tool:get_active_nutrition_program] No active program")
                 return {
                     "success": True,
                     "program": None
@@ -267,7 +163,7 @@ class CoachToolService:
                     "program": response.data[0]
                 }
             else:
-                logger.info(f"[Tool:get_active_workout_program] No active program")
+                logger.info("[Tool:get_active_workout_program] No active program")
                 return {
                     "success": True,
                     "program": None
@@ -504,13 +400,13 @@ class CoachToolService:
                 .execute()
 
             if response.data:
-                logger.info(f"[Tool:get_activity_details] Activity found")
+                logger.info("[Tool:get_activity_details] Activity found")
                 return {
                     "success": True,
                     "activity": response.data
                 }
             else:
-                logger.warning(f"[Tool:get_activity_details] Activity not found")
+                logger.warning("[Tool:get_activity_details] Activity not found")
                 return {
                     "success": False,
                     "error": "Activity not found"
@@ -753,30 +649,18 @@ class CoachToolService:
                 logger.warning(f"[Tool:create_meal_log] Failed to fetch preference, defaulting to FALSE: {pref_err}")
                 auto_log_enabled = False
 
-            # STEP 2: Extract quantities from description using Groq AI
-            from app.services.groq_service_v2 import get_groq_service_v2
-            groq_service = get_groq_service_v2()
-
-            logger.info(f"[Tool:create_meal_log] Extracting quantities from description...")
-            parsed_quantities = await groq_service.extract_food_quantities(
-                description=description,
-                food_names=foods
-            )
-
-            # STEP 3: Use agentic food matcher to match foods to database
+            # STEP 2: Use agentic food matcher to match foods to database
             from app.services.agentic_food_matcher_service import get_agentic_food_matcher
             agentic_matcher = get_agentic_food_matcher()
 
-            # Convert parsed quantities to detected_foods format
+            # Convert food list to detected_foods format
             detected_foods = []
-            for parsed_food in parsed_quantities:
+            for food_name in foods:
                 detected_foods.append({
-                    "name": parsed_food["food"],
-                    "quantity": str(parsed_food["quantity"]),
-                    "unit": parsed_food["unit"]
+                    "name": food_name,
+                    "quantity": "1",
+                    "unit": "serving"
                 })
-
-            logger.info(f"[Tool:create_meal_log] Detected foods with quantities: {detected_foods}")
 
             # Match foods to database (with AI creation if needed)
             match_result = await agentic_matcher.match_with_creation(
@@ -788,85 +672,24 @@ class CoachToolService:
                 f"[Tool:create_meal_log] Matched {match_result['total_matched']}/{match_result['total_detected']} foods"
             )
 
-            # STEP 4: Calculate total nutrition with PROPER UNIT CONVERSION
-            # Import meal logging service for unit conversion logic
-            from app.services.meal_logging_service import get_meal_logging_service
-            meal_logging = get_meal_logging_service()
-
+            # STEP 3: Calculate total nutrition from matched foods
             total_calories = 0
             total_protein = 0
             total_carbs = 0
             total_fats = 0
-            total_fiber = 0
 
-            logger.info(f"[Tool:create_meal_log] Scaling nutrition for {len(match_result['matched_foods'])} foods...")
-
-            for idx, food in enumerate(match_result["matched_foods"]):
-                # Get quantity and unit from detected_foods (with correct parsing)
-                detected_food = detected_foods[idx] if idx < len(detected_foods) else {}
-                quantity = float(detected_food.get("quantity", 1))
-                unit = detected_food.get("unit", "serving")
-
-                logger.info(
-                    f"[Tool:create_meal_log] Food {idx+1}: {food.get('name')} - "
-                    f"{quantity} {unit} (base: {food.get('serving_size')}{food.get('serving_unit')})"
-                )
-
-                # Scale nutrition based on quantity and unit
-                # This handles conversions: cups→g, oz→g, ml→g, scoops, etc.
-                scaled_nutrition = meal_logging._scale_nutrition(
-                    food_data=food,
-                    quantity=quantity,
-                    unit=unit
-                )
-
-                logger.info(
-                    f"[Tool:create_meal_log]   Scaled: {scaled_nutrition.get('calories')} cal, "
-                    f"{scaled_nutrition.get('protein_g')}g P, {scaled_nutrition.get('carbs_g')}g C, "
-                    f"{scaled_nutrition.get('fat_g')}g F"
-                )
-
-                # Add scaled nutrition to totals
-                total_calories += scaled_nutrition.get("calories", 0)
-                total_protein += scaled_nutrition.get("protein_g", 0)
-                total_carbs += scaled_nutrition.get("carbs_g", 0)
-                total_fats += scaled_nutrition.get("fat_g", 0)
-                total_fiber += scaled_nutrition.get("fiber_g", 0)
-
-                # Update the matched food with scaled values for preview
-                food["calories_scaled"] = round(scaled_nutrition.get("calories", 0), 1)
-                food["protein_g_scaled"] = round(scaled_nutrition.get("protein_g", 0), 1)
-                food["carbs_g_scaled"] = round(scaled_nutrition.get("carbs_g", 0), 1)
-                food["fat_g_scaled"] = round(scaled_nutrition.get("fat_g", 0), 1)
-                food["quantity"] = quantity
-                food["unit"] = unit
-
-            logger.info(
-                f"[Tool:create_meal_log] ✅ Total nutrition: {round(total_calories, 1)} cal, "
-                f"{round(total_protein, 1)}g P, {round(total_carbs, 1)}g C, {round(total_fats, 1)}g F"
-            )
+            for food in match_result["matched_foods"]:
+                total_calories += food.get("calories", 0)
+                total_protein += food.get("protein_g", 0)
+                total_carbs += food.get("carbs_g", food.get("total_carbs_g", 0))
+                total_fats += food.get("fat_g", food.get("total_fat_g", 0))
 
             # Override with estimated calories if provided
             if estimated_calories:
                 total_calories = estimated_calories
 
-            # STEP 4.5: Generate meal title using Groq AI
-            logger.info(f"[Tool:create_meal_log] Generating meal title...")
-            try:
-                meal_title = await groq_service.generate_meal_title(
-                    description=description,
-                    foods=foods,
-                    meal_type=meal_type
-                )
-                logger.info(f"[Tool:create_meal_log] Generated title: '{meal_title}'")
-            except Exception as title_err:
-                logger.warning(f"[Tool:create_meal_log] Title generation failed: {title_err}")
-                # Fallback: use first food or meal type
-                meal_title = foods[0].capitalize() if foods else meal_type.capitalize()
-
             # Build meal data structure
             meal_data = {
-                "name": meal_title,
                 "meal_type": meal_type,
                 "description": description,
                 "foods": match_result["matched_foods"],
@@ -874,7 +697,6 @@ class CoachToolService:
                 "total_protein_g": round(total_protein, 1),
                 "total_carbs_g": round(total_carbs, 1),
                 "total_fats_g": round(total_fats, 1),
-                "total_fiber_g": round(total_fiber, 1),
                 "match_stats": {
                     "matched": match_result["total_matched"],
                     "total": match_result["total_detected"],
@@ -882,16 +704,15 @@ class CoachToolService:
                 }
             }
 
-            # STEP 5: BRANCH based on auto_log preference
+            # STEP 4: BRANCH based on auto_log preference
             if auto_log_enabled:
                 # AUTO-LOG MODE: Save immediately
-                logger.info(f"[Tool:create_meal_log] AUTO-LOGGING (auto_log=true)")
+                logger.info("[Tool:create_meal_log] AUTO-LOGGING (auto_log=true)")
 
                 # Save to meal_logs table
                 try:
                     meal_log_entry = {
                         "user_id": user_id,
-                        "name": meal_data["name"],
                         "meal_type": meal_type,
                         "description": description,
                         "total_calories": meal_data["total_calories"],
@@ -932,7 +753,7 @@ class CoachToolService:
 
             else:
                 # PREVIEW MODE: Return for user confirmation
-                logger.info(f"[Tool:create_meal_log] PREVIEW MODE (auto_log=false)")
+                logger.info("[Tool:create_meal_log] PREVIEW MODE (auto_log=false)")
 
                 return {
                     "success": True,
@@ -1030,7 +851,7 @@ class CoachToolService:
             # STEP 3: BRANCH based on auto_log preference
             if auto_log_enabled:
                 # AUTO-LOG MODE: Save immediately
-                logger.info(f"[Tool:create_activity_log] AUTO-LOGGING (auto_log=true)")
+                logger.info("[Tool:create_activity_log] AUTO-LOGGING (auto_log=true)")
 
                 # Save to activities table
                 try:
@@ -1077,7 +898,7 @@ class CoachToolService:
 
             else:
                 # PREVIEW MODE: Return for user confirmation
-                logger.info(f"[Tool:create_activity_log] PREVIEW MODE (auto_log=false)")
+                logger.info("[Tool:create_activity_log] PREVIEW MODE (auto_log=false)")
 
                 return {
                     "success": True,
@@ -1157,7 +978,7 @@ class CoachToolService:
             # STEP 3: BRANCH based on auto_log preference
             if auto_log_enabled:
                 # AUTO-LOG MODE: Save immediately
-                logger.info(f"[Tool:create_body_measurement_log] AUTO-LOGGING (auto_log=true)")
+                logger.info("[Tool:create_body_measurement_log] AUTO-LOGGING (auto_log=true)")
 
                 # Save to body_measurements table
                 try:
@@ -1201,7 +1022,7 @@ class CoachToolService:
 
             else:
                 # PREVIEW MODE: Return for user confirmation
-                logger.info(f"[Tool:create_body_measurement_log] PREVIEW MODE (auto_log=false)")
+                logger.info("[Tool:create_body_measurement_log] PREVIEW MODE (auto_log=false)")
 
                 return {
                     "success": True,
@@ -1213,232 +1034,6 @@ class CoachToolService:
 
         except Exception as e:
             logger.error(f"[Tool:create_body_measurement_log] Failed: {e}", exc_info=True)
-            return {
-                "success": False,
-                "error": str(e)
-            }
-
-    # ====== CONSULTATION HISTORY TOOLS (Feature 8) ======
-
-    async def get_consultation_timeline(
-        self,
-        user_id: str,
-        category: str = "all",
-        limit: int = 5
-    ) -> Dict[str, Any]:
-        """
-        Get consultation history with temporal context for goal evolution tracking.
-
-        This tool enables the coach to:
-        - Reference past consultations with temporal context ("You mentioned 3 months ago...")
-        - Track how goals/preferences evolved over time
-        - Compare consultations to identify changes
-        - Understand user's journey and progress
-
-        Args:
-            user_id: User's UUID
-            category: Focus on specific category or "all" for complete history
-            limit: Maximum number of consultations to include (default 5)
-
-        Returns:
-            Formatted consultation timeline with temporal references and evolution data
-        """
-        try:
-            logger.info(f"[Tool:get_consultation_timeline] Fetching history for user {user_id}, category={category}")
-
-            from app.services.consultation_service import get_consultation_service
-            consultation_service = get_consultation_service()
-
-            # Get consultation history
-            history = await consultation_service.get_consultation_history(
-                user_id=user_id,
-                limit=limit
-            )
-
-            if not history:
-                return {
-                    "success": True,
-                    "message": "No consultation history found. User hasn't completed any consultations yet.",
-                    "history": [],
-                    "evolution": None
-                }
-
-            # If category specified, get evolution for that category
-            evolution = None
-            if category and category != "all":
-                evolution_data = await consultation_service.get_goal_evolution(
-                    user_id=user_id,
-                    category=category
-                )
-                evolution = evolution_data if not evolution_data.get("error") else None
-
-            # Format timeline for coach context
-            formatted_timeline = await consultation_service.format_consultation_timeline(
-                user_id=user_id,
-                limit=limit
-            )
-
-            # Build response with temporal context
-            response = {
-                "success": True,
-                "total_consultations": len(history),
-                "formatted_timeline": formatted_timeline,
-                "history": []
-            }
-
-            # Add detailed history with temporal references
-            for consultation in history:
-                time_ago = self._format_time_ago(consultation['completed_at'])
-
-                entry = {
-                    "session_id": consultation['session_id'],
-                    "specialist_type": consultation['specialist_type'],
-                    "completed": time_ago,
-                    "completed_at": consultation['completed_at'],
-                    "duration_minutes": consultation['duration_minutes']
-                }
-
-                # Add category-specific data if requested
-                if category == "all":
-                    entry["data"] = consultation['summary']
-                elif category in consultation['summary']:
-                    entry["data"] = consultation['summary'][category]
-
-                response["history"].append(entry)
-
-            # Add evolution data if available
-            if evolution:
-                response["evolution"] = {
-                    "category": category,
-                    "total_changes": evolution.get("total_changes", 0),
-                    "timeline": evolution.get("timeline", []),
-                    "changes": evolution.get("evolution", [])
-                }
-
-            logger.info(f"[Tool:get_consultation_timeline] Retrieved {len(history)} consultations")
-
-            return response
-
-        except Exception as e:
-            logger.error(f"[Tool:get_consultation_timeline] Failed: {e}", exc_info=True)
-            return {
-                "success": False,
-                "error": str(e)
-            }
-
-    def _format_time_ago(self, timestamp: str) -> str:
-        """Format timestamp as 'X days/weeks/months ago'."""
-        from datetime import datetime
-
-        past = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-        now = datetime.utcnow()
-
-        delta = now - past.replace(tzinfo=None)
-        days = delta.days
-
-        if days == 0:
-            return "today"
-        elif days == 1:
-            return "1 day ago"
-        elif days < 7:
-            return f"{days} days ago"
-        elif days < 30:
-            weeks = days // 7
-            return f"{weeks} week{'s' if weeks > 1 else ''} ago"
-        elif days < 365:
-            months = days // 30
-            return f"{months} month{'s' if months > 1 else ''} ago"
-        else:
-            years = days // 365
-            return f"{years} year{'s' if years > 1 else ''} ago"
-
-    # ====== EVENT TOOLS (NEW: Event awareness) ======
-
-    async def get_upcoming_events(self, user_id: str, days_ahead: int = 90) -> Dict[str, Any]:
-        """
-        Get user's upcoming events (races, competitions, shows).
-
-        Enables the coach to:
-        - See all upcoming events in next N days
-        - Reference events in conversation ("I see you have a marathon coming up...")
-        - Provide event-specific advice
-
-        Args:
-            user_id: User's UUID
-            days_ahead: Days to look ahead (default 90)
-
-        Returns:
-            List of upcoming events with countdown data
-        """
-        try:
-            logger.info(f"[Tool:get_upcoming_events] Fetching events for next {days_ahead} days")
-
-            from app.services.event_service import get_event_service
-            event_service = get_event_service()
-
-            events = await event_service.get_upcoming_events(user_id, days_ahead=days_ahead)
-
-            logger.info(f"[Tool:get_upcoming_events] Found {len(events)} upcoming events")
-
-            return {
-                "success": True,
-                "count": len(events),
-                "events": events
-            }
-
-        except Exception as e:
-            logger.error(f"[Tool:get_upcoming_events] Failed: {e}", exc_info=True)
-            return {
-                "success": False,
-                "error": str(e)
-            }
-
-    async def get_primary_event_countdown(self, user_id: str) -> Dict[str, Any]:
-        """
-        Get user's primary event with detailed countdown information.
-
-        Enables the coach to:
-        - Reference event countdown ("You have 30 days until the marathon!")
-        - Understand current training phase (base/build/peak/taper)
-        - Provide phase-appropriate advice (taper week, peak week, etc.)
-        - Adjust recommendations based on proximity to event
-
-        Args:
-            user_id: User's UUID
-
-        Returns:
-            Primary event data with countdown, training phase, and milestones
-        """
-        try:
-            logger.info(f"[Tool:get_primary_event_countdown] Fetching primary event")
-
-            from app.services.event_service import get_event_service
-            event_service = get_event_service()
-
-            primary_event = await event_service.get_primary_event(user_id)
-
-            if not primary_event:
-                logger.info(f"[Tool:get_primary_event_countdown] No primary event found")
-                return {
-                    "success": True,
-                    "has_primary_event": False,
-                    "event": None,
-                    "message": "User has no primary event set"
-                }
-
-            logger.info(
-                f"[Tool:get_primary_event_countdown] Found: {primary_event.get('event_name')} "
-                f"in {primary_event.get('days_until_event')} days"
-            )
-
-            return {
-                "success": True,
-                "has_primary_event": True,
-                "event": primary_event
-            }
-
-        except Exception as e:
-            logger.error(f"[Tool:get_primary_event_countdown] Failed: {e}", exc_info=True)
             return {
                 "success": False,
                 "error": str(e)
@@ -1791,140 +1386,6 @@ COACH_TOOLS = [
                 }
             },
             "required": []
-        }
-    },
-    # ====== CONSULTATION DATA TOOLS ======
-    {
-        "name": "get_consultation_profile_summary",
-        "description": "Get user's complete profile from consultation including nutrition targets, goals, preferences, and measurements. Use this to understand their personalized targets and goals set during consultation.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "user_id": {
-                    "type": "string",
-                    "description": "The user's UUID"
-                }
-            },
-            "required": ["user_id"]
-        }
-    },
-    {
-        "name": "get_user_goals_from_consultation",
-        "description": "Get user's stated goals from consultation (primary goal, goal weight, specific targets). Use this when user asks about their goals or what they're working towards.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "user_id": {
-                    "type": "string",
-                    "description": "The user's UUID"
-                }
-            },
-            "required": ["user_id"]
-        }
-    },
-    {
-        "name": "get_user_preferences_from_consultation",
-        "description": "Get dietary restrictions, training preferences, equipment access from consultation. Use when user asks 'Can I eat X?' or 'What equipment can I use?'",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "user_id": {
-                    "type": "string",
-                    "description": "The user's UUID"
-                }
-            },
-            "required": ["user_id"]
-        }
-    },
-    {
-        "name": "get_nutrition_targets_with_progress",
-        "description": "Get daily macro targets (calories, protein, carbs, fat) with current progress and remaining amounts. Perfect for 'How much protein do I have left?' or 'Did I hit my calorie goal?'",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "user_id": {
-                    "type": "string",
-                    "description": "The user's UUID"
-                },
-                "date": {
-                    "type": "string",
-                    "description": "Date in YYYY-MM-DD format (defaults to today if not specified)"
-                }
-            },
-            "required": ["user_id"]
-        }
-    },
-    {
-        "name": "get_todays_recommendations_from_consultation",
-        "description": "Get today's meal and workout recommendations with next suggested action. Use this to answer 'What should I do next?' or 'What should I eat/train today?'",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "user_id": {
-                    "type": "string",
-                    "description": "The user's UUID"
-                }
-            },
-            "required": ["user_id"]
-        }
-    },
-    # ====== CONSULTATION HISTORY TOOLS (Feature 8) ======
-    {
-        "name": "get_consultation_timeline",
-        "description": "Get user's consultation history with temporal context. Use this to reference past consultations with phrases like 'You mentioned 3 months ago that...', track goal evolution, and compare how preferences/goals changed over time. Perfect for understanding long-term progress and changes.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "user_id": {
-                    "type": "string",
-                    "description": "The user's UUID"
-                },
-                "category": {
-                    "type": "string",
-                    "description": "Optional: Focus on specific category evolution (goals, preferences, measurements, health_history)",
-                    "enum": ["goals", "preferences", "measurements", "health_history", "all"]
-                },
-                "limit": {
-                    "type": "integer",
-                    "description": "Maximum number of consultations to retrieve (default 5)",
-                    "default": 5
-                }
-            },
-            "required": ["user_id"]
-        }
-    },
-    # ====== EVENT TOOLS (NEW: Event awareness) ======
-    {
-        "name": "get_upcoming_events",
-        "description": "Get user's upcoming events (races, competitions, shows) in the next N days. Use this to see all their planned events and reference them in conversation ('I see you have a marathon coming up!', 'What events are you training for?'). Perfect for providing event-specific guidance.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "user_id": {
-                    "type": "string",
-                    "description": "The user's UUID"
-                },
-                "days_ahead": {
-                    "type": "integer",
-                    "description": "Number of days to look ahead (default 90)",
-                    "default": 90
-                }
-            },
-            "required": ["user_id"]
-        }
-    },
-    {
-        "name": "get_primary_event_countdown",
-        "description": "Get user's primary event with detailed countdown and training phase information. Use this to understand their main goal event, how many days until it, what training phase they're in (base/build/peak/taper), and provide phase-appropriate advice. CRITICAL for event-aware coaching - call this when discussing workouts, nutrition, or training plans!",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "user_id": {
-                    "type": "string",
-                    "description": "The user's UUID"
-                }
-            },
-            "required": ["user_id"]
         }
     }
 ]

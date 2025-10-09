@@ -5,7 +5,7 @@ Garmin Connect integration for activity sync.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 from datetime import datetime, timedelta
 
 try:

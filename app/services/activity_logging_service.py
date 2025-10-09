@@ -7,7 +7,6 @@ Handles all activity CRUD operations with database integration.
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
-from uuid import UUID
 
 from app.services.supabase_service import get_service_client
 from app.activity_config.activity_types import get_activity_type_config, get_all_activity_types

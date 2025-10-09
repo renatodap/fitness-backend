@@ -11,8 +11,6 @@ Celery tasks for generating embeddings for all user data:
 
 import logging
 import asyncio
-from typing import Dict, Any, Optional
-from datetime import datetime
 from celery import shared_task
 
 from app.services.multimodal_embedding_service import get_multimodal_service

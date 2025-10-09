@@ -3,7 +3,7 @@ Pydantic schemas for Coach Chat API
 Following TDD: These are the interface definitions
 """
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 
 
@@ -13,7 +13,8 @@ class ChatMessage(BaseModel):
     content: str = Field(..., description="Message content")
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
-    @validator('role')
+    @field_validator('role')
+    @classmethod
     def validate_role(cls, v):
         if v not in ['user', 'assistant', 'system']:
             raise ValueError("Role must be 'user', 'assistant', or 'system'")
@@ -26,13 +27,15 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=1000, description="User's message")
     conversation_id: Optional[str] = Field(None, description="Optional conversation ID to continue")
 
-    @validator('coach_type')
+    @field_validator('coach_type')
+    @classmethod
     def validate_coach_type(cls, v):
         if v not in ['trainer', 'nutritionist']:
             raise ValueError("Coach type must be 'trainer' or 'nutritionist'")
         return v
 
-    @validator('message')
+    @field_validator('message')
+    @classmethod
     def validate_message(cls, v):
         if not v.strip():
             raise ValueError("Message cannot be empty or whitespace only")

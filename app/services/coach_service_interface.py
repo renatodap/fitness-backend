@@ -5,7 +5,6 @@ Following TDD: This defines the contract for the coach service
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Any
 from app.api.v1.schemas.coach_schemas import (
-    ChatRequest,
     ChatResponse,
     UserContext,
     CoachPersona

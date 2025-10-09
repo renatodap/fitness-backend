@@ -189,7 +189,7 @@ async def quick_entry_preview(
     User must call /confirm endpoint to actually save.
     """
     logger.info("=" * 80)
-    logger.info(f"[API] 🚀 QUICK ENTRY PREVIEW REQUEST")
+    logger.info("[API] 🚀 QUICK ENTRY PREVIEW REQUEST")
     logger.info(f"[API] User ID: {current_user.get('id')}")
     logger.info(f"[API] User email: {current_user.get('email')}")
     logger.info(f"[API] Text input: '{text[:100] if text else 'None'}...'")
@@ -233,7 +233,7 @@ async def quick_entry_preview(
             parsed_metadata['manual_type'] = manual_type
 
         # Process entry WITHOUT saving (preview only)
-        logger.info(f"[API] ⚙️  Calling service.process_entry_preview()...")
+        logger.info("[API] ⚙️  Calling service.process_entry_preview()...")
         result = await service.process_entry_preview(
             user_id=current_user["id"],
             text=text,
@@ -252,7 +252,7 @@ async def quick_entry_preview(
 
     except Exception as e:
         logger.error("=" * 80)
-        logger.error(f"[API] ❌ QUICK ENTRY PREVIEW FAILED")
+        logger.error("[API] ❌ QUICK ENTRY PREVIEW FAILED")
         logger.error(f"[API] Error type: {type(e).__name__}")
         logger.error(f"[API] Error message: {str(e)}")
         import traceback

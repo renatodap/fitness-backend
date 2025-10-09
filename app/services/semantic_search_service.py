@@ -84,7 +84,7 @@ class SemanticSearchService:
             }).execute()
 
             if not result.data:
-                logger.info(f"[SemanticSearch] No results found")
+                logger.info("[SemanticSearch] No results found")
                 return []
 
             logger.info(f"[SemanticSearch] Found {len(result.data)} results")

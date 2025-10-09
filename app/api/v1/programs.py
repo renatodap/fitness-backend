@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from datetime import date, datetime
 
 from app.services.program_service import ProgramService
@@ -277,7 +277,7 @@ async def get_active_program(
             generation_context=program.get("generation_context")
         )
 
-    except Exception as e:
+    except Exception:
         # Return None if no active program found
         return None
 

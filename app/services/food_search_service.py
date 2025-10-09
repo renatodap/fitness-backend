@@ -10,7 +10,6 @@ Provides intelligent food search with:
 
 import logging
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
 from app.services.supabase_service import get_service_client
 
 logger = logging.getLogger(__name__)

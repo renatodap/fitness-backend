@@ -5,13 +5,10 @@ Celery Application Configuration
 from celery import Celery
 from celery.schedules import crontab
 
-from app.config import settings, get_settings
+from app.config import get_settings
 
-# Ensure settings is initialized
-if settings is None:
-    _settings = get_settings()
-else:
-    _settings = settings
+# Get settings
+_settings = get_settings()
 
 # Create Celery app
 celery_app = Celery(

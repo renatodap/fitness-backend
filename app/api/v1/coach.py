@@ -14,9 +14,7 @@ Cost: $0.16/user/month
 """
 
 import logging
-from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, Query
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.api.v1.schemas.unified_coach_schemas import (
@@ -175,14 +173,14 @@ async def send_message(
        - Vectorize both user message and AI response
     4. Save all messages to database
     """
-    logger.info(f"[COACH_ENDPOINT] Received message request")
+    logger.info("[COACH_ENDPOINT] Received message request")
 
     try:
         # STEP 1: Extract user ID with detailed logging
         logger.info(f"[COACH_ENDPOINT] Current user data: {current_user}")
 
         if not current_user:
-            logger.error(f"[COACH_ENDPOINT] current_user is None")
+            logger.error("[COACH_ENDPOINT] current_user is None")
             raise HTTPException(status_code=401, detail="Authentication required")
 
         if "id" not in current_user:
@@ -197,14 +195,14 @@ async def send_message(
         logger.info(f"[COACH_ENDPOINT] Request conversation_id: {request.conversation_id}")
 
         if not request.message or not request.message.strip():
-            logger.error(f"[COACH_ENDPOINT] Empty message received")
+            logger.error("[COACH_ENDPOINT] Empty message received")
             raise HTTPException(status_code=400, detail="Message cannot be empty")
 
         # STEP 3: Initialize coach service
-        logger.info(f"[COACH_ENDPOINT] Initializing unified coach service...")
+        logger.info("[COACH_ENDPOINT] Initializing unified coach service...")
         try:
             coach_service = get_unified_coach_service()
-            logger.info(f"[COACH_ENDPOINT] Coach service initialized successfully")
+            logger.info("[COACH_ENDPOINT] Coach service initialized successfully")
         except Exception as svc_err:
             logger.error(f"[COACH_ENDPOINT] Failed to initialize coach service: {svc_err}", exc_info=True)
             raise HTTPException(
@@ -248,7 +246,7 @@ async def send_message(
             raise
 
         # STEP 6: Return response
-        logger.info(f"[COACH_ENDPOINT] Returning response to client")
+        logger.info("[COACH_ENDPOINT] Returning response to client")
         return response
 
     except HTTPException:

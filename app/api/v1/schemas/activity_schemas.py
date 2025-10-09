@@ -6,7 +6,7 @@ Pydantic models for activity logging requests and responses.
 
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 # ============================================================================
@@ -124,7 +124,8 @@ class CreateActivityRequest(BaseModel):
     # Strength training exercises (detailed tracking)
     exercises: Optional[List['ActivityExerciseRequest']] = Field(default_factory=list, description="Exercises for strength training activities")
 
-    @validator("mood")
+    @field_validator("mood")
+    @classmethod
     def validate_mood(cls, v):
         if v is not None:
             allowed = ["terrible", "bad", "okay", "good", "amazing"]
@@ -132,7 +133,8 @@ class CreateActivityRequest(BaseModel):
                 raise ValueError(f"mood must be one of {allowed}")
         return v
 
-    @validator("source")
+    @field_validator("source")
+    @classmethod
     def validate_source(cls, v):
         allowed = ["manual", "quick_entry", "strava", "garmin", "apple", "fitbit"]
         if v not in allowed:

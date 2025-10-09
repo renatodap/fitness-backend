@@ -11,7 +11,7 @@ from typing import Dict, Optional
 
 from supabase import Client, create_client
 
-from app.config import settings
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ class SupabaseService:
             if access_token in self._user_clients:
                 return self._user_clients[access_token]
 
-            logger.debug(f"Creating new user-scoped Supabase client")
+            logger.debug("Creating new user-scoped Supabase client")
             client = self._create_user_client(access_token)
 
             # Cache client
@@ -144,6 +144,7 @@ class SupabaseService:
             Exception: If client creation fails
         """
         try:
+            settings = get_settings()
             return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
         except Exception as e:
             logger.error(f"Failed to create service role client: {e}")
@@ -163,6 +164,7 @@ class SupabaseService:
             Exception: If client creation fails
         """
         try:
+            settings = get_settings()
             return create_client(
                 settings.SUPABASE_URL,
                 settings.SUPABASE_KEY,

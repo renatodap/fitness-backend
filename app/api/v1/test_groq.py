@@ -2,7 +2,7 @@
 Test endpoint to verify Groq API is working
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 import logging
 from openai import OpenAI
 from app.config import get_settings

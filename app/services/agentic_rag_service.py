@@ -18,7 +18,7 @@ This ensures the coach has access to ALL user data:
 """
 
 import logging
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 
 from app.services.supabase_service import get_service_client
@@ -215,14 +215,14 @@ class AgenticRAGService:
 
         # ALWAYS get profile (critical for personalization)
         if "profile" in data_sources:
-            logger.info(f"[AgenticRAG] Retrieving profile data...")
+            logger.info("[AgenticRAG] Retrieving profile data...")
             context_data["profile"] = await self._get_profile_data(user_id)
             if context_data["profile"]:
                 context_data["sources_used"].append("profile")
 
         # Get meals if nutrition-related
         if "meals" in data_sources:
-            logger.info(f"[AgenticRAG] Retrieving meal logs...")
+            logger.info("[AgenticRAG] Retrieving meal logs...")
             context_data["meals"] = await self._get_meal_logs(user_id, lookback_days)
             if context_data["meals"]:
                 context_data["sources_used"].append("meals")
@@ -230,7 +230,7 @@ class AgenticRAGService:
 
         # Get activities if training-related
         if "activities" in data_sources:
-            logger.info(f"[AgenticRAG] Retrieving activity logs...")
+            logger.info("[AgenticRAG] Retrieving activity logs...")
             context_data["activities"] = await self._get_activity_logs(user_id, lookback_days)
             if context_data["activities"]:
                 context_data["sources_used"].append("activities")
@@ -238,7 +238,7 @@ class AgenticRAGService:
 
         # Get nutrition program if nutrition-related
         if "nutrition_program" in data_sources:
-            logger.info(f"[AgenticRAG] Retrieving nutrition program...")
+            logger.info("[AgenticRAG] Retrieving nutrition program...")
             nutrition_program = await self._get_active_nutrition_program(user_id)
             if nutrition_program:
                 context_data["programs"].append(nutrition_program)
@@ -246,7 +246,7 @@ class AgenticRAGService:
 
         # Get workout program if training-related
         if "workout_program" in data_sources:
-            logger.info(f"[AgenticRAG] Retrieving workout program...")
+            logger.info("[AgenticRAG] Retrieving workout program...")
             workout_program = await self._get_active_workout_program(user_id)
             if workout_program:
                 context_data["programs"].append(workout_program)
@@ -254,7 +254,7 @@ class AgenticRAGService:
 
         # Get body measurements if measurement-related
         if "body_measurements" in data_sources:
-            logger.info(f"[AgenticRAG] Retrieving body measurements...")
+            logger.info("[AgenticRAG] Retrieving body measurements...")
             context_data["measurements"] = await self._get_body_measurements(user_id, lookback_days)
             if context_data["measurements"]:
                 context_data["sources_used"].append("body_measurements")
@@ -262,7 +262,7 @@ class AgenticRAGService:
 
         # ALWAYS do semantic search on quick_entry_embeddings (RAG core)
         if "quick_entry" in data_sources:
-            logger.info(f"[AgenticRAG] Performing semantic search on quick_entry...")
+            logger.info("[AgenticRAG] Performing semantic search on quick_entry...")
             context_data["quick_entry"] = await self._semantic_search_quick_entry(user_id, query, limit=10)
             if context_data["quick_entry"]:
                 context_data["sources_used"].append("quick_entry_rag")
@@ -270,7 +270,7 @@ class AgenticRAGService:
 
         # Get conversation history if needed
         if "conversation_history" in data_sources:
-            logger.info(f"[AgenticRAG] Retrieving conversation history...")
+            logger.info("[AgenticRAG] Retrieving conversation history...")
             context_data["conversation"] = await self._get_conversation_history(user_id, limit=10)
             if context_data["conversation"]:
                 context_data["sources_used"].append("conversation_history")

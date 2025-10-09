@@ -5,7 +5,7 @@ Retrieval-Augmented Generation service for building context for AI coaching.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from datetime import datetime, timedelta
 
 from app.services.supabase_service import get_service_client

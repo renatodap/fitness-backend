@@ -8,7 +8,7 @@ import logging
 from typing import Any, Dict, List, Optional
 from openai import AsyncOpenAI
 
-from app.config import settings
+from app.config import get_settings
 from app.services.supabase_service import get_service_client
 
 logger = logging.getLogger(__name__)
@@ -24,6 +24,7 @@ class EmbeddingService:
 
     def __init__(self):
         """Initialize with OpenAI and Supabase clients."""
+        settings = get_settings()
         self.openai = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         self.supabase = get_service_client()
         self.model = "text-embedding-3-small"

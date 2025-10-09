@@ -6,7 +6,6 @@ Handles manual meal logging and meal management.
 
 import logging
 from typing import Optional, List
-from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 

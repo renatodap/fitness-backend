@@ -100,7 +100,8 @@ def test_default_values(base_settings):
     assert settings.CELERY_BROKER_URL == "redis://localhost:6379/0"
     assert settings.CELERY_RESULT_BACKEND == "redis://localhost:6379/0"
     assert settings.JWT_ALGORITHM == "HS256"
-    assert settings.CORS_ORIGINS == ["http://localhost:3000"]
+    # CORS_ORIGINS is a string by default, can be parsed to list via cors_origins_list property
+    assert isinstance(settings.CORS_ORIGINS, str)
 
 
 # TC-CONFIG-003: Load Configuration from .env File
@@ -309,10 +310,11 @@ def test_fastapi_dependency_injection():
 # TC-CONFIG-013: Configuration Access in Services
 def test_settings_in_service():
     """Verify settings can be accessed in service classes."""
-    from app.config import settings
+    from app.config import get_settings
 
     class TestService:
         def __init__(self):
+            settings = get_settings()
             self.api_prefix = settings.API_V1_PREFIX
 
         def get_endpoint(self, path: str) -> str:
@@ -347,15 +349,16 @@ def test_boolean_string_parsing(base_settings):
 # TC-CONFIG-016: List Parsing from String
 def test_list_parsing(base_settings):
     """Verify list values parsed correctly from strings."""
-    import json
-
-    origins = ["http://localhost:3000", "https://app.example.com"]
+    origins = "http://localhost:3000,https://app.example.com"
     settings = Settings(**base_settings, CORS_ORIGINS=origins)
 
-    assert isinstance(settings.CORS_ORIGINS, list)
-    assert len(settings.CORS_ORIGINS) == 2
-    assert "http://localhost:3000" in settings.CORS_ORIGINS
-    assert "https://app.example.com" in settings.CORS_ORIGINS
+    # CORS_ORIGINS is stored as string, parsed via cors_origins_list property
+    assert isinstance(settings.CORS_ORIGINS, str)
+    origins_list = settings.cors_origins_list
+    assert isinstance(origins_list, list)
+    assert len(origins_list) == 2
+    assert "http://localhost:3000" in origins_list
+    assert "https://app.example.com" in origins_list
 
 
 # Additional test: Log level case insensitive

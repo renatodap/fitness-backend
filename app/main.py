@@ -142,7 +142,7 @@ async def health_check():
 
 # Import and include routers
 from app.api.v1.router import api_router
-app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+app.include_router(api_router, prefix=_settings.API_V1_PREFIX)
 
 
 if __name__ == "__main__":
@@ -152,6 +152,6 @@ if __name__ == "__main__":
         "app.main:app",
         host="0.0.0.0",
         port=8000,
-        reload=settings.DEBUG,
-        log_level=settings.LOG_LEVEL.lower(),
+        reload=_settings.DEBUG,
+        log_level=_settings.LOG_LEVEL.lower(),
     )

@@ -14,7 +14,10 @@ class TestCoachAPIIntegration:
     def client(self):
         """Create test client"""
         from app.main import app
-        return TestClient(app)
+        # TestClient in newer starlette requires context manager
+        from starlette.testclient import TestClient as StarletteTestClient
+        with StarletteTestClient(app) as c:
+            yield c
 
     @pytest.fixture
     def auth_headers(self, mock_user):

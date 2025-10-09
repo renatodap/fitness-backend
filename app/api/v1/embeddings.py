@@ -4,7 +4,7 @@ Embedding API Endpoints
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Optional
 
 from app.api.middleware.auth import get_current_user, verify_webhook_secret
 from app.services.embedding_service import EmbeddingService

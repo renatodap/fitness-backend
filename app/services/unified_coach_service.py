@@ -10,7 +10,7 @@ This replaces separate AI Chat and Quick Entry features.
 
 import logging
 import uuid
-from typing import Dict, Any, Optional, AsyncGenerator
+from typing import Dict, Any, Optional
 from datetime import datetime
 
 from app.services.message_classifier_service import get_message_classifier
@@ -131,7 +131,7 @@ class UnifiedCoachService:
                 raise
 
             # STEP 1: Classify message type
-            logger.info(f"[UnifiedCoach.process_message] Classifying message...")
+            logger.info("[UnifiedCoach.process_message] Classifying message...")
             try:
                 classification = await self.classifier.classify_message(
                     message=message,
@@ -166,7 +166,7 @@ class UnifiedCoachService:
                 )
             else:
                 # CHAT MODE
-                logger.info(f"[UnifiedCoach.process_message] Routing to CHAT MODE")
+                logger.info("[UnifiedCoach.process_message] Routing to CHAT MODE")
                 return await self._handle_chat_mode(
                     user_id=user_id,
                     conversation_id=conversation_id,
@@ -213,7 +213,7 @@ class UnifiedCoachService:
         try:
             # STEP 0: ANALYZE IMAGE FIRST (if present) using isolated vision service
             if image_base64:
-                logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Image detected - analyzing with food vision service...")
+                logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Image detected - analyzing with food vision service...")
                 try:
                     food_analysis = await self.food_vision.analyze_food_image(
                         image_base64=image_base64,
@@ -242,7 +242,7 @@ Estimated Nutrition:
 Meal Type: {food_analysis.get('meal_type', 'Unknown')}
 Confidence: {food_analysis.get('confidence', 0) * 100:.0f}%
 """
-                        logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Food context created")
+                        logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Food context created")
                     else:
                         # Not food or low confidence
                         food_context = f"\n=== IMAGE ANALYSIS ===\n{food_analysis.get('description', 'Image analyzed but no food detected')}\n"
@@ -252,9 +252,6 @@ Confidence: {food_analysis.get('confidence', 0) * 100:.0f}%
                     food_context = "\n=== IMAGE ===\nUser uploaded an image but analysis failed.\n"
 
             # STEP 1: NEW AGENTIC APPROACH - Call Claude with TOOLS, not full context!
-
-            # Get consultation status for proactive suggestions
-            consultation_status = await self._get_consultation_status(user_id)
 
             # Build AGENTIC system prompt with tool instructions
             base_system_prompt = """You are WAGNER - the AI coach for Iron Discipline, a hardcore fitness platform.
@@ -270,14 +267,7 @@ AGENTIC WORKFLOW (IMPORTANT):
 You have access to TOOLS to get user data on-demand AND to PROACTIVELY LOG their activities.
 
 DATA RETRIEVAL TOOLS:
-- get_user_profile: **USE THIS FIRST** - Returns EVERYTHING about the user in one call:
-  * Goals: primary goal, user persona, experience level
-  * Body: age, sex, weight, height, BMI
-  * Training: frequency, time preferences, injury limitations, equipment, facilities
-  * Nutrition: dietary restrictions, meal preferences
-  * Programs: active nutrition/workout programs
-  * Location: city, weather adaptations
-  → Call this tool EARLY to personalize ALL responses!
+- get_user_profile: Get goals, preferences, body stats, macro targets
 - get_daily_nutrition_summary: Get today's nutrition totals
 - get_recent_meals: Get meals from last N days
 - get_recent_activities: Get workouts from last N days
@@ -334,11 +324,7 @@ RESPONSE RULES:
             if food_context:
                 base_system_prompt += f"\n\n{food_context}"
 
-            # Add consultation status context (proactive suggestions)
-            if consultation_status:
-                base_system_prompt += f"\n\n{consultation_status}"
-
-            logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Calling Claude with TOOLS...")
+            logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Calling Claude with TOOLS...")
             logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Available tools: {len(COACH_TOOLS)}")
 
             # AGENTIC LOOP: Call Claude with tools, execute tools, repeat until final answer
@@ -499,7 +485,7 @@ RESPONSE RULES:
             )
 
             # STEP 2: Save AI response to database
-            logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Saving AI response to database...")
+            logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Saving AI response to database...")
             try:
                 ai_message_id = await self._save_ai_message(
                     user_id=user_id,
@@ -515,16 +501,16 @@ RESPONSE RULES:
                 raise
 
             # STEP 3: Vectorize both messages (async, non-blocking)
-            logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Vectorizing messages...")
+            logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Vectorizing messages...")
             try:
                 await self._vectorize_message(user_id, user_message_id, message, "user")
                 await self._vectorize_message(user_id, ai_message_id, ai_response_text, "assistant")
-                logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Messages vectorized successfully")
+                logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Messages vectorized successfully")
             except Exception as vec_err:
                 logger.error(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Vectorization failed (non-critical): {vec_err}")
 
             # STEP 4: Return response (matching UnifiedMessageResponse schema)
-            logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Returning chat response")
+            logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Returning chat response")
 
             # Prepare response with optional food analysis data
             response = {
@@ -561,7 +547,7 @@ RESPONSE RULES:
                     "confidence": food_analysis.get("confidence"),
                     "description": food_analysis.get("description")
                 }
-                logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Food data included in response for potential logging")
+                logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Food data included in response for potential logging")
 
             return response
 
@@ -607,7 +593,7 @@ RESPONSE RULES:
         try:
             # SPECIAL CASE: If meal log with [SYSTEM_CONTEXT], parse food items and match to database
             if classification['log_type'] == 'meal' and '[SYSTEM_CONTEXT]' in message:
-                logger.info(f"[UnifiedCoach] Meal with SYSTEM_CONTEXT detected - parsing and matching to database")
+                logger.info("[UnifiedCoach] Meal with SYSTEM_CONTEXT detected - parsing and matching to database")
 
                 # Parse detected foods from SYSTEM_CONTEXT
                 import re
@@ -696,9 +682,9 @@ RESPONSE RULES:
                             "error": None
                         }
                     else:
-                        logger.warning(f"[UnifiedCoach] Could not parse food items from SYSTEM_CONTEXT")
+                        logger.warning("[UnifiedCoach] Could not parse food items from SYSTEM_CONTEXT")
                 else:
-                    logger.warning(f"[UnifiedCoach] No 'Detected Foods' found in SYSTEM_CONTEXT")
+                    logger.warning("[UnifiedCoach] No 'Detected Foods' found in SYSTEM_CONTEXT")
 
             # Default: Use existing Quick Entry preview logic
             preview_result = await self.quick_entry.process_entry_preview(
@@ -711,14 +697,14 @@ RESPONSE RULES:
 
             if not preview_result.get("success"):
                 # Failed to extract - fall back to chat mode
-                logger.warning(f"[UnifiedCoach] Log extraction failed, falling back to chat")
+                logger.warning("[UnifiedCoach] Log extraction failed, falling back to chat")
                 return await self._handle_chat_mode(
                     user_id, conversation_id, user_message_id, message, image_base64, classification
                 )
 
             # SPECIAL CASE: If TEXT-BASED MEAL, match foods to database (same as image flow)
             if preview_result.get("entry_type") == "meal":
-                logger.info(f"[UnifiedCoach] Text-based meal detected - checking for foods to match")
+                logger.info("[UnifiedCoach] Text-based meal detected - checking for foods to match")
                 logger.info(f"[UnifiedCoach] Preview data keys: {list(preview_result.get('data', {}).keys())}")
                 logger.info(f"[UnifiedCoach] Preview data: {preview_result.get('data', {})}")
 
@@ -754,7 +740,7 @@ RESPONSE RULES:
                         logger.info(f"[UnifiedCoach] Converted food: {food.get('name')} → {quantity} {unit}")
                 else:
                     # FALLBACK: AI didn't extract foods, try manual parsing
-                    logger.warning(f"[UnifiedCoach] No foods in AI extraction, trying manual parsing")
+                    logger.warning("[UnifiedCoach] No foods in AI extraction, trying manual parsing")
 
                     # Try to parse "I ate X, Y, Z" or "X and Y" format
                     import re
@@ -841,7 +827,7 @@ RESPONSE RULES:
                         "error": None
                     }
                 else:
-                    logger.warning(f"[UnifiedCoach] No foods extracted from text-based meal")
+                    logger.warning("[UnifiedCoach] No foods extracted from text-based meal")
 
             # Update user message type to log_preview
             self.supabase.table("coach_messages").update({
@@ -1093,36 +1079,6 @@ RESPONSE RULES:
             elif tool_name == "create_body_measurement_log":
                 return await self.tool_service.create_body_measurement_log(**tool_input)
 
-            # CONSULTATION DATA TOOLS (NEW!)
-            elif tool_name == "get_consultation_profile_summary":
-                from app.services.consultation_service import get_consultation_service
-                consultation_service = get_consultation_service()
-                return await consultation_service.get_user_profile_summary(**tool_input)
-
-            elif tool_name == "get_user_goals_from_consultation":
-                from app.services.consultation_service import get_consultation_service
-                consultation_service = get_consultation_service()
-                return await consultation_service.get_user_goals(**tool_input)
-
-            elif tool_name == "get_user_preferences_from_consultation":
-                from app.services.consultation_service import get_consultation_service
-                consultation_service = get_consultation_service()
-                return await consultation_service.get_user_preferences(**tool_input)
-
-            elif tool_name == "get_nutrition_targets_with_progress":
-                from app.services.consultation_service import get_consultation_service
-                consultation_service = get_consultation_service()
-                return await consultation_service.get_nutrition_targets_with_progress(**tool_input)
-
-            elif tool_name == "get_todays_recommendations_from_consultation":
-                from app.services.consultation_service import get_consultation_service
-                consultation_service = get_consultation_service()
-                return await consultation_service.get_todays_recommendations_for_coach(**tool_input)
-
-            # Feature 8: Multi-Modal Consultation History
-            elif tool_name == "get_consultation_timeline":
-                return await self.tool_service.get_consultation_timeline(**tool_input)
-
             else:
                 logger.error(f"[_execute_tool] Unknown tool: {tool_name}")
                 return {
@@ -1213,15 +1169,7 @@ RESPONSE RULES:
         }
 
         result = self.supabase.table("coach_messages").insert(message_data).execute()
-        ai_message_id = result.data[0]["id"]
-
-        # GENERATE CONVERSATION TITLE (if this is the first AI response)
-        try:
-            await self._generate_conversation_title_if_needed(conversation_id, user_id)
-        except Exception as e:
-            logger.warning(f"[_save_ai_message] Title generation failed (non-critical): {e}")
-
-        return ai_message_id
+        return result.data[0]["id"]
 
     async def _save_system_message(
         self,
@@ -1252,71 +1200,34 @@ RESPONSE RULES:
         """
         Vectorize message for RAG (both user and AI messages).
 
-        Stores embeddings in coach_message_embeddings table for semantic search.
-        This enables the AI to retrieve relevant past conversations when answering.
-
-        IMPORTANT: This runs asynchronously and should NOT block the response.
+        Stores in a new coach_message_embeddings table.
         """
         try:
-            logger.info(f"[_vectorize_message] START - role={role}, message_id={message_id}, content_len={len(content)}")
+            # Generate embedding
+            embedding = await self.embedding_service.embed_text(content)
 
-            # Validate content
-            if not content or len(content.strip()) == 0:
-                logger.warning(f"[_vectorize_message] Skipping empty content for {message_id}")
-                return
-
-            # Truncate very long content (embeddings have token limits)
-            content_to_embed = content[:5000].strip()
-
-            # Generate embedding (FREE model)
-            logger.debug(f"[_vectorize_message] Generating embedding for {message_id}...")
-            embedding = await self.embedding_service.embed_text(content_to_embed)
-
-            # Validate embedding
-            if embedding is None:
-                logger.error(f"[_vectorize_message] Embedding service returned None for {message_id}")
-                return
-
-            # Convert to list if numpy array
-            embedding_list = embedding.tolist() if hasattr(embedding, 'tolist') else embedding
-
-            # Validate embedding dimensions
-            if not isinstance(embedding_list, list) or len(embedding_list) == 0:
-                logger.error(f"[_vectorize_message] Invalid embedding format for {message_id}: {type(embedding_list)}")
-                return
-
-            logger.info(f"[_vectorize_message] Generated {len(embedding_list)}-dimensional embedding for {message_id}")
-
-            # Store in coach_message_embeddings table
+            # Store in coach_message_embeddings
             embedding_data = {
                 "message_id": message_id,
                 "user_id": user_id,
                 "role": role,
-                "embedding": embedding_list,
-                "content_text": content_to_embed,
+                "embedding": embedding.tolist() if hasattr(embedding, 'tolist') else embedding,
+                "content_text": content[:5000],
                 "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
-                "embedding_dimensions": len(embedding_list),
                 "created_at": datetime.utcnow().isoformat()
             }
 
-            insert_response = self.supabase.table("coach_message_embeddings").insert(embedding_data).execute()
+            self.supabase.table("coach_message_embeddings").insert(embedding_data).execute()
 
-            if insert_response.data:
-                logger.info(f"[_vectorize_message] Embedding saved to database: {insert_response.data[0].get('id')}")
+            # Update message with vectorization flag
+            self.supabase.table("coach_messages").update({
+                "is_vectorized": True
+            }).eq("id", message_id).execute()
 
-                # Update message with vectorization flag
-                self.supabase.table("coach_messages").update({
-                    "is_vectorized": True,
-                    "updated_at": datetime.utcnow().isoformat()
-                }).eq("id", message_id).execute()
-
-                logger.info(f"[_vectorize_message] SUCCESS - {role} message {message_id} vectorized and flagged")
-            else:
-                logger.error(f"[_vectorize_message] Failed to insert embedding into database for {message_id}")
+            logger.info(f"[UnifiedCoach] Vectorized {role} message: {message_id}")
 
         except Exception as e:
-            logger.error(f"[_vectorize_message] FAILED for {message_id}: {e}", exc_info=True)
-            # Non-critical error - don't raise, just log
+            logger.error(f"[UnifiedCoach] Vectorization failed for {message_id}: {e}")
 
     def _build_success_message(self, log_type: str, log_data: Dict[str, Any]) -> str:
         """Build success message for confirmed log."""
@@ -1342,156 +1253,6 @@ RESPONSE RULES:
 
         else:
             return f"✅ {log_type} logged successfully!"
-
-    async def _generate_conversation_title_if_needed(self, conversation_id: str, user_id: str):
-        """
-        Generate conversation title from first user message if title is null.
-
-        Uses the first 50 characters of the user's first message as the title.
-        This runs AFTER the first AI response is saved.
-        """
-        try:
-            # Check if conversation already has a title
-            conv_response = self.supabase.table("coach_conversations")\
-                .select("title, id")\
-                .eq("id", conversation_id)\
-                .eq("user_id", user_id)\
-                .single()\
-                .execute()
-
-            if not conv_response.data:
-                logger.warning(f"[_generate_conversation_title] Conversation not found: {conversation_id}")
-                return
-
-            # If title already exists, skip
-            if conv_response.data.get("title"):
-                logger.debug(f"[_generate_conversation_title] Conversation already has title: {conv_response.data['title']}")
-                return
-
-            # Get first user message
-            first_msg_response = self.supabase.table("coach_messages")\
-                .select("content")\
-                .eq("conversation_id", conversation_id)\
-                .eq("role", "user")\
-                .order("created_at", desc=False)\
-                .limit(1)\
-                .execute()
-
-            if not first_msg_response.data:
-                logger.warning(f"[_generate_conversation_title] No user messages found for conversation {conversation_id}")
-                return
-
-            # Generate title from first message (first 50 chars)
-            first_message = first_msg_response.data[0]["content"]
-            title = first_message[:50].strip()
-            if len(first_message) > 50:
-                # Find last complete word within 50 chars
-                last_space = title.rfind(' ')
-                if last_space > 20:  # Only trim if we have at least 20 chars
-                    title = title[:last_space]
-                title += "..."
-
-            # Update conversation title
-            self.supabase.table("coach_conversations").update({
-                "title": title,
-                "updated_at": datetime.utcnow().isoformat()
-            }).eq("id", conversation_id).execute()
-
-            logger.info(f"[_generate_conversation_title] Generated title for {conversation_id}: '{title}'")
-
-        except Exception as e:
-            logger.error(f"[_generate_conversation_title] Failed: {e}", exc_info=True)
-            # Non-critical error - don't raise
-
-    async def _get_consultation_status(self, user_id: str) -> str:
-        """
-        Get user's consultation status for system prompt injection.
-
-        Returns formatted string describing:
-        - Whether user has completed consultation
-        - Last consultation date (if completed)
-        - Prompt to suggest consultation (if not completed)
-
-        This enables coach to proactively reference consultation data or suggest completing it.
-
-        Args:
-            user_id: User's UUID
-
-        Returns:
-            Formatted consultation status string for system prompt
-        """
-        try:
-            from app.services.consultation_service import get_consultation_service
-            consultation_service = get_consultation_service()
-
-            # Check if user has completed consultation
-            has_completed = await consultation_service.has_completed_consultation(user_id)
-
-            if has_completed:
-                # Get latest consultation session
-                latest_session = self.supabase.table('consultation_sessions')\
-                    .select('completed_at, specialist_type')\
-                    .eq('user_id', user_id)\
-                    .eq('status', 'completed')\
-                    .order('completed_at', desc=True)\
-                    .limit(1)\
-                    .execute()
-
-                if latest_session.data:
-                    completed_at = latest_session.data[0]['completed_at']
-                    specialist = latest_session.data[0]['specialist_type']
-
-                    # Calculate days since consultation
-                    from datetime import datetime
-                    completed_date = datetime.fromisoformat(completed_at.replace('Z', '+00:00'))
-                    days_since = (datetime.utcnow() - completed_date.replace(tzinfo=None)).days
-
-                    if days_since >= 90:
-                        # Suggest re-consultation after 3 months
-                        return f"""
-=== CONSULTATION STATUS ===
-User completed consultation {days_since} days ago with {specialist}.
-→ SUGGEST RE-CONSULTATION: It's been 3+ months. Goals may have changed.
-→ Say: "It's been {days_since // 30} months since your consultation. Want to update your goals and preferences?"
-"""
-                    else:
-                        # Consultation is recent - reference the data
-                        return f"""
-=== CONSULTATION STATUS ===
-User completed consultation {days_since} days ago with {specialist}.
-→ Consultation data is available through RAG and tools.
-→ Reference user's goals, preferences, and targets from consultation when relevant.
-"""
-                else:
-                    return "=== CONSULTATION STATUS ===\nUser has consultation data (completion date unknown).\n"
-
-            else:
-                # No consultation completed - suggest it!
-                return """
-=== CONSULTATION STATUS ===
-User has NOT completed consultation yet.
-
-CRITICAL: User CANNOT generate AI programs or get daily recommendations without completing consultation.
-
-→ PROACTIVELY SUGGEST when user asks about:
-  - "Create a program" → "To create a personalized program, you'll need to complete a quick consultation (10-15 min) so I can understand your goals, current fitness level, equipment access, and dietary preferences. Want to start now?"
-  - "What should I eat today?" → "I can give you general advice, but for personalized daily meal recommendations tailored to YOUR goals and targets, complete the consultation first! It takes 10-15 minutes and unlocks custom daily plans."
-  - "Give me a workout" → "I can suggest exercises, but for a FULL personalized training program with progressive overload, complete the consultation so I know your goals, equipment, injuries, and experience level."
-
-→ Benefits to emphasize:
-  - Personalized AI-generated 12-week programs (training + nutrition)
-  - Daily meal and workout recommendations
-  - Accurate calorie and macro targets (calculated from your measurements)
-  - Programs that adapt to YOUR equipment, injuries, schedule, and preferences
-  - AI understands your "typical day" and builds around your lifestyle
-
-→ Tone: Encouraging but firm. This is a REQUIREMENT, not optional.
-"""
-
-        except Exception as e:
-            logger.error(f"[_get_consultation_status] Failed: {e}", exc_info=True)
-            # Return empty on error (non-critical)
-            return ""
 
     def _calculate_claude_cost(self, input_tokens: int, output_tokens: int, cache_read_tokens: int = 0, cache_write_tokens: int = 0) -> float:
         """

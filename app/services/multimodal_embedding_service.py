@@ -16,7 +16,7 @@ from datetime import datetime
 from openai import AsyncOpenAI
 
 from app.services.supabase_service import get_service_client
-from app.config import settings
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,7 @@ class MultimodalEmbeddingService:
         if self._initialized:
             return
 
+        settings = get_settings()
         self.supabase = get_service_client()
         self.openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         self._initialized = True

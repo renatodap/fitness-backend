@@ -18,12 +18,13 @@ from app.api.middleware.auth import (
     verify_cron_secret,
     verify_webhook_secret,
 )
-from app.config import settings
+from app.config import get_settings
 
 
 @pytest.fixture
 def valid_token():
     """Generate valid JWT token for testing."""
+    settings = get_settings()
     payload = {
         "sub": "test-user-id",
         "exp": datetime.utcnow() + timedelta(hours=1),
@@ -37,6 +38,7 @@ def valid_token():
 @pytest.fixture
 def expired_token():
     """Generate expired JWT token."""
+    settings = get_settings()
     payload = {
         "sub": "test-user-id",
         "exp": datetime.utcnow() - timedelta(hours=1),
@@ -48,6 +50,7 @@ def expired_token():
 @pytest.fixture
 def token_without_sub():
     """Generate token missing 'sub' claim."""
+    settings = get_settings()
     payload = {
         "exp": datetime.utcnow() + timedelta(hours=1),
         "iat": datetime.utcnow(),
@@ -127,9 +130,10 @@ async def test_verify_malformed_token():
 @pytest.mark.asyncio
 async def test_get_current_user_valid(valid_token):
     """Test get_current_user with valid token."""
-    user_id = await get_current_user(f"Bearer {valid_token}")
+    user = await get_current_user(f"Bearer {valid_token}")
 
-    assert user_id == "test-user-id"
+    assert user["user_id"] == "test-user-id"
+    assert "email" in user
 
 
 @pytest.mark.asyncio
@@ -188,6 +192,7 @@ async def test_get_current_user_optional_expired(expired_token):
 @pytest.mark.asyncio
 async def test_verify_cron_secret_valid():
     """Test cron secret verification with valid secret."""
+    settings = get_settings()
     # Should not raise exception
     await verify_cron_secret(f"Bearer {settings.CRON_SECRET}")
 
@@ -205,6 +210,7 @@ async def test_verify_cron_secret_invalid():
 @pytest.mark.asyncio
 async def test_verify_cron_secret_missing_bearer():
     """Test cron secret without Bearer prefix."""
+    settings = get_settings()
     with pytest.raises(HTTPException) as exc_info:
         await verify_cron_secret(settings.CRON_SECRET)
 
@@ -215,6 +221,7 @@ async def test_verify_cron_secret_missing_bearer():
 @pytest.mark.asyncio
 async def test_verify_webhook_secret_valid():
     """Test webhook secret verification with valid secret."""
+    settings = get_settings()
     # Should not raise exception
     await verify_webhook_secret(f"Bearer {settings.WEBHOOK_SECRET}")
 
@@ -239,8 +246,8 @@ async def test_auth_with_fastapi_route(valid_token):
     app = FastAPI()
 
     @app.get("/protected")
-    async def protected_route(user_id: str = Depends(get_current_user)):
-        return {"user_id": user_id}
+    async def protected_route(user: dict = Depends(get_current_user)):
+        return {"user_id": user["user_id"]}
 
     client = TestClient(app)
 

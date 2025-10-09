@@ -18,7 +18,7 @@ Expected cost: ~$0.09/user/month (well under $0.50 budget)
 
 import logging
 import json
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from openai import OpenAI
 from app.config import get_settings
 from app.services.food_search_service import get_food_search_service

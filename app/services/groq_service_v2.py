@@ -14,7 +14,7 @@ import base64
 import json
 import tempfile
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from openai import OpenAI
 
 from app.config import get_settings
@@ -77,7 +77,7 @@ class GroqServiceV2:
         if historical_pattern:
             logger.info(f"[GroqV2] Using historical pattern: {historical_pattern.get('sample_size')} similar logs")
         else:
-            logger.info(f"[GroqV2] No historical pattern - using baseline estimation")
+            logger.info("[GroqV2] No historical pattern - using baseline estimation")
 
         if force_type:
             classification_instruction = f"""This is a **{force_type}** entry. Extract all relevant {force_type} data."""
@@ -775,7 +775,7 @@ You can use this user's typical behavior to make SMARTER estimates:
                 if historical_pattern.get('common_exercises'):
                     pattern_context += f"\n- Common exercises: {', '.join(historical_pattern['common_exercises'])}"
                 pattern_context += f"\n- Pattern confidence: {historical_pattern['confidence']:.2f}"
-                pattern_context += f"\n\nUse these patterns for estimation! User typically does these exercises."
+                pattern_context += "\n\nUse these patterns for estimation! User typically does these exercises."
 
             elif historical_pattern['type'] == 'meal':
                 if historical_pattern.get('calories_avg'):
@@ -783,7 +783,7 @@ You can use this user's typical behavior to make SMARTER estimates:
                 if historical_pattern.get('protein_avg'):
                     pattern_context += f"\n- Typical protein: {historical_pattern['protein_avg']:.0f}g"
                 pattern_context += f"\n- Pattern confidence: {historical_pattern['confidence']:.2f}"
-                pattern_context += f"\n\nUse these values! User typically eats this portion for this meal."
+                pattern_context += "\n\nUse these values! User typically eats this portion for this meal."
 
             user_prompt = f"""{pattern_context}
 
@@ -812,13 +812,13 @@ Return structured JSON with primary_fields (show by default) and secondary_field
                 max_tokens=2048
             )
 
-            logger.info(f"[GroqV2] Received response, parsing JSON...")
+            logger.info("[GroqV2] Received response, parsing JSON...")
             raw_content = response.choices[0].message.content
             logger.info(f"[GroqV2] Raw response: {raw_content[:500] if raw_content else 'EMPTY'}")
 
             # Handle empty or malformed response
             if not raw_content or not raw_content.strip():
-                logger.error(f"[GroqV2] Empty response from Groq API")
+                logger.error("[GroqV2] Empty response from Groq API")
                 raise ValueError("Empty response from Groq API")
 
             # Try to parse JSON, with better error handling
@@ -831,7 +831,7 @@ Return structured JSON with primary_fields (show by default) and secondary_field
 
                 # Try to extract JSON from markdown code blocks if present
                 if "```json" in raw_content or "```" in raw_content:
-                    logger.info(f"[GroqV2] 🔧 Attempting to extract JSON from markdown...")
+                    logger.info("[GroqV2] 🔧 Attempting to extract JSON from markdown...")
                     json_start = raw_content.find("```json")
                     if json_start != -1:
                         json_start += 7
@@ -844,10 +844,10 @@ Return structured JSON with primary_fields (show by default) and secondary_field
                         logger.info(f"[GroqV2] 🔧 Extracted JSON: {raw_content[:200]}...")
                         result = json.loads(raw_content)
                     else:
-                        logger.error(f"[GroqV2] ❌ Could not find closing ``` in markdown")
+                        logger.error("[GroqV2] ❌ Could not find closing ``` in markdown")
                         raise
                 else:
-                    logger.error(f"[GroqV2] ❌ Not markdown format, raising original error")
+                    logger.error("[GroqV2] ❌ Not markdown format, raising original error")
                     raise
 
             # Override type if forced
@@ -940,7 +940,7 @@ Return structured JSON with primary_fields (show by default) and secondary_field
             )
 
             result = response.choices[0].message.content
-            logger.info(f"[GroqV2] ✅ Image analyzed")
+            logger.info("[GroqV2] ✅ Image analyzed")
             return result
 
         except Exception as e:
@@ -971,7 +971,7 @@ Return structured JSON with primary_fields (show by default) and secondary_field
                     )
 
                 transcription = transcription_response if isinstance(transcription_response, str) else transcription_response.text
-                logger.info(f"[GroqV2] ✅ Audio transcribed")
+                logger.info("[GroqV2] ✅ Audio transcribed")
                 return transcription
 
             finally:

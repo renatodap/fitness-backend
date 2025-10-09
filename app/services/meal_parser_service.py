@@ -11,7 +11,6 @@ from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel
 import json
 
-from app.config import settings
 from app.services.supabase_service import get_service_client
 from app.services.dual_model_router import dual_router, TaskType, TaskConfig
 

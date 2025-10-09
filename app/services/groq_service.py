@@ -19,7 +19,7 @@ import base64
 import json
 import tempfile
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from openai import OpenAI
 
 from app.config import get_settings

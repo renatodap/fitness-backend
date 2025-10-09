@@ -4,7 +4,7 @@ Pydantic schemas for Unified Coach API (ChatGPT-like interface)
 This replaces the old AI Chat + Quick Entry with a single unified "Coach" interface.
 """
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from enum import Enum
 
@@ -78,7 +78,8 @@ class UnifiedMessageRequest(BaseModel):
         description="Optional image URLs for multimodal processing"
     )
 
-    @validator('message')
+    @field_validator('message')
+    @classmethod
     def validate_message(cls, v):
         if not v.strip():
             raise ValueError("Message cannot be empty or whitespace only")

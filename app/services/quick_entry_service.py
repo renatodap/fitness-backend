@@ -15,22 +15,19 @@ Uses ONLY FREE top-tier models for max cost efficiency:
 """
 
 import logging
-import json
 import base64
 import uuid
 from typing import Any, Dict, List, Literal, Optional
 from datetime import datetime
-from io import BytesIO
 from openai import OpenAI
 
 from app.config import get_settings
 from app.services.supabase_service import get_service_client
-from app.services.dual_model_router import dual_router, TaskType, TaskConfig
+from app.services.dual_model_router import dual_router
 from app.services.multimodal_embedding_service import get_multimodal_service
 from app.services.groq_service_v2 import get_groq_service_v2
 from app.services.enrichment_service import get_enrichment_service
 from app.services.semantic_search_service import get_semantic_search_service
-from app.workers.embedding_worker import embed_meal_log, embed_activity
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -78,7 +75,7 @@ class QuickEntryService:
             Classification result with type, confidence, extracted data, suggestions
         """
         logger.info("╔" + "═" * 78 + "╗")
-        logger.info(f"║ [QuickEntry] 🔍 PREVIEW MODE START")
+        logger.info("║ [QuickEntry] 🔍 PREVIEW MODE START")
         logger.info(f"║ User ID: {user_id}")
         logger.info(f"║ Text: '{text[:80] if text else 'None'}{'...' if text and len(text) > 80 else ''}'")
         logger.info(f"║ Image: {bool(image_base64)}")
@@ -88,7 +85,7 @@ class QuickEntryService:
         logger.info("╚" + "═" * 78 + "╝")
 
         # Step 1: Extract text from all inputs
-        logger.info(f"[QuickEntry] 📝 STEP 1: Extracting text from all inputs...")
+        logger.info("[QuickEntry] 📝 STEP 1: Extracting text from all inputs...")
         try:
             extracted_text = await self._extract_all_text(
                 text=text,
@@ -104,7 +101,7 @@ class QuickEntryService:
             raise
 
         if not extracted_text:
-            logger.warning(f"[QuickEntry] ⚠️  No content extracted - returning error")
+            logger.warning("[QuickEntry] ⚠️  No content extracted - returning error")
             return {
                 "success": False,
                 "error": "No content to process",
@@ -116,7 +113,7 @@ class QuickEntryService:
         # Step 2: Classify and extract data
         manual_type = metadata.get('manual_type') if metadata else None
 
-        logger.info(f"[QuickEntry] 🤖 STEP 2: Classifying and extracting data...")
+        logger.info("[QuickEntry] 🤖 STEP 2: Classifying and extracting data...")
         logger.info(f"[QuickEntry] Text to classify: '{extracted_text[:150]}{'...' if len(extracted_text) > 150 else ''}'")
         logger.info(f"[QuickEntry] Manual type override: {manual_type or 'None (auto-detect)'}")
         logger.info(f"[QuickEntry] Has image context: {image_base64 is not None}")
@@ -131,28 +128,28 @@ class QuickEntryService:
                     force_type=manual_type
                 )
             else:
-                logger.info(f"[QuickEntry] Auto-detecting entry type...")
+                logger.info("[QuickEntry] Auto-detecting entry type...")
                 classification = await self._classify_and_extract(
                     extracted_text,
                     user_id=user_id,
                     has_image=image_base64 is not None
                 )
 
-            logger.info(f"[QuickEntry] ✅ Classification complete:")
+            logger.info("[QuickEntry] ✅ Classification complete:")
             logger.info(f"[QuickEntry]    └─ Type: {classification.get('type')}")
             logger.info(f"[QuickEntry]    └─ Confidence: {classification.get('confidence')}")
             logger.info(f"[QuickEntry]    └─ Data fields: {list(classification.get('data', {}).keys())}")
 
             # If classification failed, log the error details
             if classification.get('type') == 'unknown' or classification.get('confidence', 0) == 0:
-                logger.error(f"[QuickEntry] ❌❌❌ CLASSIFICATION FAILED ❌❌❌")
+                logger.error("[QuickEntry] ❌❌❌ CLASSIFICATION FAILED ❌❌❌")
                 logger.error(f"[QuickEntry] Type: {classification.get('type')}")
                 logger.error(f"[QuickEntry] Confidence: {classification.get('confidence')}")
                 logger.error(f"[QuickEntry] Validation errors: {classification.get('validation', {}).get('errors', [])}")
                 logger.error(f"[QuickEntry] Validation warnings: {classification.get('validation', {}).get('warnings', [])}")
                 logger.error(f"[QuickEntry] Missing critical: {classification.get('validation', {}).get('missing_critical', [])}")
                 logger.error(f"[QuickEntry] Suggestions: {classification.get('suggestions', [])}")
-                logger.error(f"[QuickEntry] FULL CLASSIFICATION OBJECT:")
+                logger.error("[QuickEntry] FULL CLASSIFICATION OBJECT:")
                 logger.error(f"{classification}")
 
         except Exception as e:
@@ -1390,7 +1387,7 @@ Return JSON classification and data extraction."""
                 embedding_model='clip-vit-base-patch32'
             )
 
-            logger.info(f"✅ Image vectorized successfully")
+            logger.info("✅ Image vectorized successfully")
 
         except Exception as e:
             logger.error(f"❌ Image vectorization failed: {e}")
