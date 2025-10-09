@@ -19,6 +19,8 @@ from app.api.v1 import (
     foods,
     meals,
     activities,
+    consultation,
+    events,
     test_groq,
     debug
 )
@@ -38,5 +40,7 @@ api_router.include_router(quick_entry.router, tags=["quick-entry"])  # No prefix
 api_router.include_router(foods.router, tags=["foods"])  # Food search and database
 api_router.include_router(meals.router, tags=["meals"])  # Meal logging CRUD
 api_router.include_router(activities.router, tags=["activities"])  # Activity logging CRUD
+api_router.include_router(consultation.router)  # Consultation endpoints (prefix defined in router)
+api_router.include_router(events.router)  # Events & Calendar endpoints (prefix defined in router)
 api_router.include_router(test_groq.router, tags=["test"])  # Test endpoints
 api_router.include_router(debug.router, tags=["debug"])  # Debug endpoints (remove in production)
