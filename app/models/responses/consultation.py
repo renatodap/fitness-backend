@@ -41,6 +41,17 @@ class ConsultationMessageResponse(BaseModel):
     wrap_up_message: Optional[str] = None
     extraction_summary: Optional[Dict[str, Any]] = None
 
+    # Goal-driven consultation fields
+    goals_met: Optional[int] = Field(None, description="Number of goals completed")
+    goals_total: Optional[int] = Field(None, description="Total number of goals")
+    goals_detail: Optional[Dict[str, str]] = Field(None, description="Detailed status of each goal (✅/⏳)")
+    logged_items: Optional[List[Dict[str, Any]]] = Field(None, description="Items auto-logged during consultation")
+
+    # Limit tracking fields
+    minutes_elapsed: Optional[int] = Field(None, description="Minutes since consultation started")
+    messages_sent: Optional[int] = Field(None, description="Number of messages sent in consultation")
+    approaching_limit: Optional[bool] = Field(None, description="True if approaching time/message limit")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -55,7 +66,24 @@ class ConsultationMessageResponse(BaseModel):
                 },
                 "conversation_stage": "eating_patterns",
                 "progress_percentage": 40,
-                "is_complete": False
+                "is_complete": False,
+                "goals_met": 4,
+                "goals_total": 10,
+                "goals_detail": {
+                    "primary_fitness_goal": "✅ Identified",
+                    "measurements": "✅ Collected",
+                    "typical_eating_patterns": "⏳ Pending",
+                    "food_preferences": "⏳ Pending"
+                },
+                "logged_items": [
+                    {
+                        "type": "meal",
+                        "content": "Breakfast: 3 eggs, oatmeal, banana"
+                    }
+                ],
+                "minutes_elapsed": 8,
+                "messages_sent": 12,
+                "approaching_limit": False
             }
         }
 

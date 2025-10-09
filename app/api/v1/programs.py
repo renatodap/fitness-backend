@@ -132,12 +132,33 @@ async def start_program_generation(
     """
     Start program generation process.
     Returns personalized questions for the user to answer.
+
+    REQUIRES: User must have completed consultation first.
     """
     try:
+        user_id = current_user.get("user_id") or current_user.get("id")
+
+        # CONSULTATION REQUIREMENT CHECK
+        from app.services.consultation_service import get_consultation_service
+        consultation_service = get_consultation_service()
+
+        has_completed_consultation = await consultation_service.has_completed_consultation(user_id)
+
+        if not has_completed_consultation:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "consultation_required",
+                    "message": "Complete a consultation before generating your personalized program. This helps us understand your goals, equipment, injuries, and preferences.",
+                    "action": "redirect_to_consultation",
+                    "consultation_url": "/consultation"
+                }
+            )
+
         supabase = get_service_client()
         program_service = ProgramService(supabase)
         result = await program_service.generate_program_questions(
-            user_id=current_user["id"]
+            user_id=user_id
         )
 
         if not result or "error" in result:

@@ -1470,8 +1470,22 @@ User completed consultation {days_since} days ago with {specialist}.
                 return """
 === CONSULTATION STATUS ===
 User has NOT completed consultation yet.
-→ PROACTIVELY SUGGEST: "I notice you haven't set your goals yet. Complete a 5-minute consultation to unlock personalized meal plans and workout programs!"
-→ Be encouraging but not pushy. Mention benefits: personalized recommendations, accurate nutrition targets, workout programs.
+
+CRITICAL: User CANNOT generate AI programs or get daily recommendations without completing consultation.
+
+→ PROACTIVELY SUGGEST when user asks about:
+  - "Create a program" → "To create a personalized program, you'll need to complete a quick consultation (10-15 min) so I can understand your goals, current fitness level, equipment access, and dietary preferences. Want to start now?"
+  - "What should I eat today?" → "I can give you general advice, but for personalized daily meal recommendations tailored to YOUR goals and targets, complete the consultation first! It takes 10-15 minutes and unlocks custom daily plans."
+  - "Give me a workout" → "I can suggest exercises, but for a FULL personalized training program with progressive overload, complete the consultation so I know your goals, equipment, injuries, and experience level."
+
+→ Benefits to emphasize:
+  - Personalized AI-generated 12-week programs (training + nutrition)
+  - Daily meal and workout recommendations
+  - Accurate calorie and macro targets (calculated from your measurements)
+  - Programs that adapt to YOUR equipment, injuries, schedule, and preferences
+  - AI understands your "typical day" and builds around your lifestyle
+
+→ Tone: Encouraging but firm. This is a REQUIREMENT, not optional.
 """
 
         except Exception as e:

@@ -273,9 +273,29 @@ async def generate_daily_plan(
     request: GenerateDailyPlanRequest,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Generate daily plan with recommendations."""
+    """
+    Generate daily plan with recommendations.
+
+    REQUIRES: User must have completed consultation first.
+    """
     try:
         user_id = current_user["user_id"]
+
+        # CONSULTATION REQUIREMENT CHECK
+        consultation_service = get_consultation_service()
+        has_completed_consultation = await consultation_service.has_completed_consultation(user_id)
+
+        if not has_completed_consultation:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "consultation_required",
+                    "message": "Complete a consultation to unlock daily meal and workout recommendations. This ensures recommendations are tailored to your goals, calorie targets, and preferences.",
+                    "action": "redirect_to_consultation",
+                    "consultation_url": "/consultation"
+                }
+            )
+
         recommendation_service = get_recommendation_service()
 
         recommendations = await recommendation_service.generate_daily_plan(
@@ -568,4 +588,56 @@ async def check_active_session(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to check for active consultation session."
+        )
+
+
+@router.get(
+    "/history",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        500: {"model": ErrorResponse, "description": "Server error"}
+    },
+    summary="Get consultation history",
+    description="""
+    Get all past completed consultations for the user.
+
+    Returns consultations in reverse chronological order (newest first) with:
+    - Session ID and specialist type
+    - Completion date and duration
+    - Full extracted data summary
+    - Goal evolution tracking
+
+    Optional filters:
+    - specialist_type: Filter by specialist (unified_coach, nutritionist, etc.)
+    - limit: Maximum number of consultations to return (default 10)
+    """
+)
+async def get_consultation_history(
+    specialist_type: Optional[str] = None,
+    limit: int = 10,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """Get user's consultation history."""
+    try:
+        user_id = current_user["user_id"]
+        consultation_service = get_consultation_service()
+
+        history = await consultation_service.get_consultation_history(
+            user_id=user_id,
+            specialist_type=specialist_type,
+            limit=limit
+        )
+
+        logger.info(f"Retrieved {len(history)} consultation(s) for user {user_id}")
+
+        return {
+            "total": len(history),
+            "consultations": history
+        }
+
+    except Exception as e:
+        logger.error(f"Error retrieving consultation history: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve consultation history."
         )
