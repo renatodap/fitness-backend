@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from datetime import date, datetime
 
 from app.services.program_service import ProgramService
+from app.services.supabase_service import get_service_client
 from app.api.middleware.auth import get_current_user
 from app.api.middleware.rate_limit import program_generation_rate_limit
 
@@ -38,6 +39,7 @@ class CompleteProgramGenerationRequest(BaseModel):
     """Request to complete program generation with answers"""
     session_id: str
     answers: List[QuestionAnswer]
+    event_id: Optional[str] = Field(None, description="Optional event ID to periodize program around")
 
 
 class CompleteProgramGenerationResponse(BaseModel):
@@ -132,7 +134,8 @@ async def start_program_generation(
     Returns personalized questions for the user to answer.
     """
     try:
-        program_service = ProgramService()
+        supabase = get_service_client()
+        program_service = ProgramService(supabase)
         result = await program_service.generate_program_questions(
             user_id=current_user["id"]
         )
@@ -173,9 +176,13 @@ async def complete_program_generation(
     """
     Complete program generation with user's answers.
     Generates full 12-week program and saves to database.
+
+    Optionally provide event_id to generate an event-specific program
+    that periodizes training to peak at the event date.
     """
     try:
-        program_service = ProgramService()
+        supabase = get_service_client()
+        program_service = ProgramService(supabase)
 
         # Convert answers to dict format
         answers = [
@@ -189,7 +196,8 @@ async def complete_program_generation(
         result = await program_service.generate_full_program(
             user_id=current_user["id"],
             session_id=request.session_id,
-            answers=answers
+            answers=answers,
+            event_id=request.event_id  # Pass optional event_id
         )
 
         if not result or "error" in result:
@@ -221,7 +229,8 @@ async def get_active_program(
     Returns None if no active program.
     """
     try:
-        program_service = ProgramService()
+        supabase = get_service_client()
+        program_service = ProgramService(supabase)
 
         # Query active program
         result = await program_service.supabase.table("user_active_programs")\
@@ -262,7 +271,8 @@ async def get_program_day(
     Get specific day's meals and workouts.
     """
     try:
-        program_service = ProgramService()
+        supabase = get_service_client()
+        program_service = ProgramService(supabase)
 
         # Verify program belongs to user
         program_result = await program_service.supabase.table("ai_generated_programs")\
@@ -372,7 +382,8 @@ async def get_program_calendar(
     Optionally filter by day range for weekly/monthly views.
     """
     try:
-        program_service = ProgramService()
+        supabase = get_service_client()
+        program_service = ProgramService(supabase)
 
         # Verify program belongs to user
         program_result = await program_service.supabase.table("ai_generated_programs")\
@@ -478,7 +489,8 @@ async def mark_meal_completed(
     Mark a meal as completed/uncompleted.
     """
     try:
-        program_service = ProgramService()
+        supabase = get_service_client()
+        program_service = ProgramService(supabase)
 
         # Verify meal belongs to user's program
         meal_result = await program_service.supabase.table("ai_program_meals")\
@@ -529,7 +541,8 @@ async def mark_workout_completed(
     Mark a workout as completed/uncompleted.
     """
     try:
-        program_service = ProgramService()
+        supabase = get_service_client()
+        program_service = ProgramService(supabase)
 
         # Verify workout belongs to user's program
         workout_result = await program_service.supabase.table("ai_program_workouts")\

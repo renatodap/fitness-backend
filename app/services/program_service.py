@@ -191,7 +191,8 @@ Generate questions that will help create the best possible program for THIS spec
         self,
         user_id: str,
         session_id: str,
-        answers: List[Dict[str, str]]
+        answers: List[Dict[str, str]],
+        event_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Generate complete 3-month program based on user data and answers.
@@ -202,6 +203,16 @@ Generate questions that will help create the best possible program for THIS spec
         - Daily workout schedules (strength, cardio, sports, flexibility, rest)
         - Proper periodization and progression
         - Medical safety and nutrition guidelines followed
+        - Event-specific periodization if event_id provided
+
+        Args:
+            user_id: User's unique identifier
+            session_id: Program generation session ID
+            answers: User's answers to program questions
+            event_id: Optional event ID to periodize program around
+
+        Returns:
+            Dict containing program_id and program summary
         """
         # Get session and user data
         session_response = self.supabase.table('program_generation_sessions')\
@@ -213,11 +224,29 @@ Generate questions that will help create the best possible program for THIS spec
 
         user_data = session.get('user_profile_snapshot', {})
 
+        # Get event data if event_id provided
+        event_context = None
+        if event_id:
+            from app.services.event_service import get_event_service
+            event_service = get_event_service()
+
+            try:
+                # Get event with countdown information
+                event_context = await event_service.get_event_countdown(event_id)
+                print(f"✅ Generating program for event: {event_context.get('event_name')}")
+            except Exception as e:
+                print(f"⚠️ Failed to load event context: {e}")
+
         # Build comprehensive prompt
         context_summary = self._build_context_summary(user_data)
         answers_summary = self._build_answers_summary(session.get('questions', []), answers)
 
-        system_prompt = """You are an expert fitness coach and nutritionist creating a comprehensive 3-month personalized program.
+        # Build event-specific instructions if event provided
+        event_instructions = ""
+        if event_context:
+            event_instructions = self._build_event_instructions(event_context)
+
+        system_prompt = f"""You are an expert fitness coach and nutritionist creating a comprehensive 3-month personalized program.
 
 You must create a complete, day-by-day program including:
 1. **Workouts**: Strength training, cardio, sports, flexibility, active recovery
@@ -233,6 +262,8 @@ CRITICAL REQUIREMENTS:
 - Ensure adequate recovery
 - Progressive overload with proper progression
 - Realistic and sustainable
+
+{event_instructions}
 
 Return a JSON object with this structure:
 {
@@ -305,6 +336,19 @@ Return a JSON object with this structure:
 
 Generate ALL 12 weeks with ALL 84 days. Be comprehensive and detailed."""
 
+        # Build event context string for user prompt
+        event_context_str = ""
+        if event_context:
+            event_context_str = f"""
+
+EVENT TARGET:
+- Event: {event_context.get('event_name')} ({event_context.get('event_type')})
+- Event Date: {event_context.get('event_date')}
+- Days Until Event: {event_context.get('days_until_event')}
+- Current Phase: {event_context.get('current_training_phase')}
+- Goal: {event_context.get('goal_performance', 'Not specified')}
+"""
+
         user_prompt = f"""Create a complete 3-month program for this user:
 
 USER DATA:
@@ -312,6 +356,7 @@ USER DATA:
 
 USER ANSWERS:
 {answers_summary}
+{event_context_str}
 
 Generate the COMPLETE program with all 84 days of meals and workouts."""
 
@@ -341,8 +386,23 @@ Generate the COMPLETE program with all 84 days of meals and workouts."""
                 user_id=user_id,
                 program_data=program_data,
                 generation_context=user_data,
-                questions_answers=answers
+                questions_answers=answers,
+                event_id=event_id
             )
+
+            # Link program to event if event_id provided
+            if event_id:
+                from app.services.event_service import get_event_service
+                event_service = get_event_service()
+                try:
+                    await event_service.update_event(
+                        event_id=event_id,
+                        user_id=user_id,
+                        updates={'linked_program_id': program_id}
+                    )
+                    print(f"✅ Linked program {program_id} to event {event_id}")
+                except Exception as e:
+                    print(f"⚠️ Failed to link program to event: {e}")
 
             # Update session
             self.supabase.table('program_generation_sessions').update({
@@ -367,9 +427,22 @@ Generate the COMPLETE program with all 84 days of meals and workouts."""
         user_id: str,
         program_data: Dict[str, Any],
         generation_context: Dict[str, Any],
-        questions_answers: List[Dict[str, str]]
+        questions_answers: List[Dict[str, str]],
+        event_id: Optional[str] = None
     ) -> str:
-        """Save generated program to database."""
+        """
+        Save generated program to database.
+
+        Args:
+            user_id: User's unique identifier
+            program_data: AI-generated program JSON
+            generation_context: User data used for generation
+            questions_answers: User's answers to program questions
+            event_id: Optional event ID to link program to
+
+        Returns:
+            str: Created program ID
+        """
         program_info = program_data.get('program', {})
         weeks = program_data.get('weeks', [])
 
@@ -625,3 +698,143 @@ RECENT ACTIVITY:
             print(f"❌ Error creating program embedding: {e}")
             # Don't fail program generation if embedding fails
             pass
+
+    def _build_event_instructions(self, event_context: Dict[str, Any]) -> str:
+        """
+        Build event-specific periodization instructions for AI prompt.
+
+        Args:
+            event_context: Event countdown data with training phases
+
+        Returns:
+            str: Formatted instructions for event-specific programming
+        """
+        event_name = event_context.get('event_name', 'the event')
+        event_type = event_context.get('event_type', '')
+        event_date = event_context.get('event_date', '')
+        days_until = event_context.get('days_until_event', 0)
+        current_phase = event_context.get('current_training_phase', 'build')
+        goal = event_context.get('goal_performance', '')
+
+        # Get milestones from event context
+        milestones = event_context.get('milestones', {})
+
+        instructions = f"""
+🎯 **EVENT-SPECIFIC PERIODIZATION REQUIRED**
+
+The user is training for: **{event_name}** ({event_type})
+- Event Date: {event_date}
+- Days Until Event: {days_until}
+- Current Training Phase: {current_phase}
+- Goal Performance: {goal}
+
+**CRITICAL EVENT REQUIREMENTS:**
+
+1. **Periodization Strategy:**
+   - The program MUST peak at the event date ({event_date})
+   - Current phase is "{current_phase}" - adjust training intensity accordingly
+   - Follow sport-specific periodization for {event_type}
+
+2. **Training Phases to Include:**
+"""
+
+        # Add phase-specific guidance based on event type
+        if event_type in ['marathon', 'half_marathon', '10k', '5k']:
+            instructions += """
+   - Base Building: Aerobic capacity, easy miles
+   - Build Phase: Tempo runs, interval training, progressive mileage
+   - Peak Phase: Race pace workouts, longest long runs
+   - Taper: Volume reduction (50-70%), maintain intensity, rest focus
+
+3. **Nutrition Strategy for Endurance Event:**
+   - Carbohydrate periodization (higher on long run days)
+   - Hydration protocol practice
+   - Race nutrition testing (gels, drinks)
+   - Final week: Carb loading protocol (3 days before race)
+   - Race day nutrition plan (pre-race meal, during race fueling)
+"""
+
+        elif event_type in ['powerlifting_meet', 'weightlifting_meet', 'strongman']:
+            instructions += """
+   - Hypertrophy Phase: Higher volume, moderate intensity (65-75% 1RM)
+   - Strength Phase: Lower volume, higher intensity (80-90% 1RM)
+   - Peaking Phase: Competition lift specificity, 90-100% 1RM
+   - Deload/Taper: Reduced volume, maintain intensity, CNS recovery
+
+3. **Nutrition Strategy for Strength Event:**
+   - High protein intake (1.8-2.2g/kg bodyweight)
+   - Caloric surplus during hypertrophy (if gaining weight)
+   - Strategic water manipulation (final week if making weight)
+   - Sodium loading/depletion protocol (if weight cutting)
+   - Competition day: Timing of meals, energy availability
+"""
+
+        elif event_type in ['triathlon', 'cycling_race', 'swimming_meet']:
+            instructions += """
+   - Base Phase: Aerobic conditioning across all disciplines
+   - Build Phase: Sport-specific intervals, brick workouts
+   - Peak Phase: Race simulation, transition practice
+   - Taper: Reduced volume, maintain race intensity
+
+3. **Nutrition Strategy for Multi-Sport Event:**
+   - Carb-focused diet for glycogen loading
+   - Practice race-day nutrition in training
+   - Hydration and electrolyte strategy
+   - Transition nutrition planning
+"""
+
+        elif event_type in ['bodybuilding_show', 'physique_competition']:
+            instructions += """
+   - Mass Building Phase: Caloric surplus, progressive overload
+   - Cutting Phase: Caloric deficit, maintain muscle mass
+   - Final Prep: Water manipulation, sodium management, carb depletion/loading
+   - Peak Week: Detailed daily protocol for visual peak
+
+3. **Nutrition Strategy for Physique Event:**
+   - Macronutrient cycling (higher carbs on training days)
+   - Progressive caloric deficit for fat loss
+   - Peak week protocol:
+     * Day 7-5 before: Water depletion start
+     * Day 4-3 before: Carb depletion
+     * Day 2-1 before: Carb loading, sodium reduction
+     * Day of show: Final water/sodium manipulation
+"""
+
+        else:
+            # Generic event periodization
+            instructions += """
+   - Foundation: Build general fitness and work capacity
+   - Build: Increase sport-specific training
+   - Peak: Maximize performance capabilities
+   - Taper: Reduce fatigue, maintain fitness
+
+3. **General Nutrition Strategy:**
+   - Align calories with training demands
+   - Proper pre/post workout nutrition
+   - Taper week: Maintain calories, reduce volume
+"""
+
+        # Add milestone-based guidance
+        if milestones:
+            instructions += "\n4. **Key Milestones:**\n"
+            for milestone_name, milestone_date in milestones.items():
+                instructions += f"   - {milestone_name}: {milestone_date}\n"
+
+        instructions += f"""
+5. **Weekly Progression:**
+   - Ensure program peaks around {event_date}
+   - Include proper recovery weeks (every 3-4 weeks)
+   - Final 7-14 days: Taper with reduced volume
+   - Day before event: Light movement, rest focus
+   - Event day: Pre-event routine, race execution plan
+
+6. **Event-Day Protocol:**
+   - Morning routine (wake time, pre-race meal timing)
+   - Warm-up protocol specific to {event_type}
+   - Race/competition execution strategy
+   - Post-event recovery nutrition
+
+**Remember:** Every workout and meal should support peaking at {event_name} on {event_date}!
+"""
+
+        return instructions

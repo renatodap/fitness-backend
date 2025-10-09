@@ -21,6 +21,8 @@ from app.api.v1 import (
     activities,
     consultation,
     events,
+    garmin,
+    merge_requests,
     test_groq,
     debug
 )
@@ -42,5 +44,7 @@ api_router.include_router(meals.router, tags=["meals"])  # Meal logging CRUD
 api_router.include_router(activities.router, tags=["activities"])  # Activity logging CRUD
 api_router.include_router(consultation.router)  # Consultation endpoints (prefix defined in router)
 api_router.include_router(events.router)  # Events & Calendar endpoints (prefix defined in router)
+api_router.include_router(garmin.router)  # Garmin health integration (prefix: /garmin)
+api_router.include_router(merge_requests.router, tags=["merge-requests"])  # Activity deduplication & merge requests
 api_router.include_router(test_groq.router, tags=["test"])  # Test endpoints
 api_router.include_router(debug.router, tags=["debug"])  # Debug endpoints (remove in production)

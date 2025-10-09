@@ -90,7 +90,21 @@ class ContextBuilder:
                 context_parts.append(rag_context)
                 context_parts.append("")
 
-        # 6. Recent Coach Interactions
+        # 6. Recovery Metrics (Garmin Health Data)
+        recovery_metrics = await self._get_recovery_metrics(user_id, days_lookback)
+        if recovery_metrics:
+            context_parts.append("## Recovery & Health Metrics")
+            context_parts.append(recovery_metrics)
+            context_parts.append("")
+
+        # 6b. Recovery-Performance Correlations
+        recovery_correlations = await self._get_recovery_performance_correlations(user_id, days_lookback)
+        if recovery_correlations:
+            context_parts.append("## Recovery-Performance Insights")
+            context_parts.append(recovery_correlations)
+            context_parts.append("")
+
+        # 7. Recent Coach Interactions
         recent_interactions = await self._get_recent_coach_interactions(
             user_id=user_id,
             coach_type="trainer",
@@ -266,6 +280,24 @@ class ContextBuilder:
         if compliance:
             context_parts.append("## Nutrition Compliance")
             context_parts.append(compliance)
+            context_parts.append("")
+
+        # === RECOVERY & HEALTH DATA ===
+        context_parts.append("# RECOVERY & HEALTH DATA")
+        context_parts.append("")
+
+        # 8. Recovery Metrics (Garmin Health Data)
+        recovery_metrics = await self._get_recovery_metrics(user_id, days_lookback)
+        if recovery_metrics:
+            context_parts.append("## Recovery & Health Metrics")
+            context_parts.append(recovery_metrics)
+            context_parts.append("")
+
+        # 8b. Recovery-Performance Correlations
+        recovery_correlations = await self._get_recovery_performance_correlations(user_id, days_lookback)
+        if recovery_correlations:
+            context_parts.append("## Recovery-Performance Insights")
+            context_parts.append(recovery_correlations)
             context_parts.append("")
 
         # === HISTORICAL CONTEXT (RAG) ===
@@ -768,6 +800,560 @@ class ContextBuilder:
 
         except Exception as e:
             logger.error(f"Error getting nutrition compliance: {e}")
+            return ""
+
+    async def _get_recovery_metrics(self, user_id: str, days: int) -> str:
+        """
+        Get Garmin recovery and health metrics.
+
+        Fetches:
+        - Sleep data (duration, quality, stages, HRV during sleep)
+        - HRV status (daily averages, trends)
+        - Stress levels (current, daily average, rest periods)
+        - Body Battery (current level, charge/drain, daily patterns)
+        - Readiness score (overall recovery status)
+
+        Args:
+            user_id: User's unique identifier
+            days: Number of days to look back
+
+        Returns:
+            Formatted recovery metrics string with trends and insights
+        """
+        try:
+            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            parts = []
+
+            # === SLEEP DATA ===
+            sleep_response = (
+                self.supabase.table("garmin_sleep_data")
+                .select("*")
+                .eq("user_id", user_id)
+                .gte("calendar_date", cutoff_date.date().isoformat())
+                .order("calendar_date", desc=True)
+                .limit(7)  # Last 7 nights
+                .execute()
+            )
+
+            if sleep_response.data:
+                sleep_data = sleep_response.data
+                parts.append("### Sleep Quality")
+
+                # Latest sleep
+                latest_sleep = sleep_data[0]
+                total_duration = latest_sleep.get("total_sleep_seconds", 0) / 3600  # Convert to hours
+                sleep_score = latest_sleep.get("overall_score")
+                deep_sleep = latest_sleep.get("deep_sleep_seconds", 0) / 3600
+                rem_sleep = latest_sleep.get("rem_sleep_seconds", 0) / 3600
+                light_sleep = latest_sleep.get("light_sleep_seconds", 0) / 3600
+                awake_time = latest_sleep.get("awake_sleep_seconds", 0) / 60  # Convert to minutes
+                avg_hrv = latest_sleep.get("average_hrv_ms")
+
+                parts.append(f"Last Night ({latest_sleep.get('calendar_date')}):")
+                parts.append(f"  - Total Sleep: {total_duration:.1f} hours")
+                if sleep_score:
+                    parts.append(f"  - Sleep Score: {sleep_score}/100")
+                parts.append(f"  - Deep Sleep: {deep_sleep:.1f}h | REM: {rem_sleep:.1f}h | Light: {light_sleep:.1f}h")
+                if awake_time > 0:
+                    parts.append(f"  - Awake Time: {awake_time:.0f} minutes")
+                if avg_hrv:
+                    parts.append(f"  - Average HRV: {avg_hrv} ms")
+
+                # 7-day average
+                if len(sleep_data) >= 3:
+                    avg_duration = sum(s.get("total_sleep_seconds", 0) for s in sleep_data) / len(sleep_data) / 3600
+                    avg_score = sum(s.get("overall_score", 0) for s in sleep_data if s.get("overall_score")) / len([s for s in sleep_data if s.get("overall_score")])
+                    parts.append(f"\n7-Day Average:")
+                    parts.append(f"  - Sleep Duration: {avg_duration:.1f} hours")
+                    if avg_score > 0:
+                        parts.append(f"  - Sleep Score: {avg_score:.1f}/100")
+
+                parts.append("")
+
+            # === HRV STATUS ===
+            hrv_response = (
+                self.supabase.table("garmin_hrv_data")
+                .select("*")
+                .eq("user_id", user_id)
+                .gte("calendar_date", cutoff_date.date().isoformat())
+                .order("calendar_date", desc=True)
+                .limit(7)
+                .execute()
+            )
+
+            if hrv_response.data:
+                hrv_data = hrv_response.data
+                parts.append("### Heart Rate Variability (HRV)")
+
+                # Latest HRV
+                latest_hrv = hrv_data[0]
+                last_night_avg = latest_hrv.get("last_night_avg_ms")
+                weekly_avg = latest_hrv.get("weekly_avg_ms")
+                status = latest_hrv.get("status", "").replace("_", " ").title()
+
+                parts.append(f"Latest ({latest_hrv.get('calendar_date')}):")
+                if last_night_avg:
+                    parts.append(f"  - Last Night: {last_night_avg} ms")
+                if weekly_avg:
+                    parts.append(f"  - Weekly Average: {weekly_avg} ms")
+                if status:
+                    parts.append(f"  - Status: {status}")
+
+                # Trend
+                if len(hrv_data) >= 3:
+                    recent_avg = sum(h.get("last_night_avg_ms", 0) for h in hrv_data[:3] if h.get("last_night_avg_ms")) / len([h for h in hrv_data[:3] if h.get("last_night_avg_ms")])
+                    older_avg = sum(h.get("last_night_avg_ms", 0) for h in hrv_data[3:] if h.get("last_night_avg_ms")) / len([h for h in hrv_data[3:] if h.get("last_night_avg_ms")]) if len(hrv_data) > 3 else recent_avg
+
+                    if recent_avg > 0 and older_avg > 0:
+                        trend = "improving" if recent_avg > older_avg else "declining" if recent_avg < older_avg else "stable"
+                        parts.append(f"  - Trend: {trend}")
+
+                parts.append("")
+
+            # === STRESS LEVELS ===
+            stress_response = (
+                self.supabase.table("garmin_stress_data")
+                .select("*")
+                .eq("user_id", user_id)
+                .gte("calendar_date", cutoff_date.date().isoformat())
+                .order("calendar_date", desc=True)
+                .limit(7)
+                .execute()
+            )
+
+            if stress_response.data:
+                stress_data = stress_response.data
+                parts.append("### Stress Levels")
+
+                # Latest stress
+                latest_stress = stress_data[0]
+                avg_stress = latest_stress.get("avg_stress_level")
+                max_stress = latest_stress.get("max_stress_level")
+                rest_time = latest_stress.get("rest_stress_duration_seconds", 0) / 3600  # Convert to hours
+                low_time = latest_stress.get("low_stress_duration_seconds", 0) / 3600
+                medium_time = latest_stress.get("medium_stress_duration_seconds", 0) / 3600
+                high_time = latest_stress.get("high_stress_duration_seconds", 0) / 3600
+
+                parts.append(f"Latest ({latest_stress.get('calendar_date')}):")
+                if avg_stress:
+                    parts.append(f"  - Average Stress: {avg_stress}/100")
+                if max_stress:
+                    parts.append(f"  - Peak Stress: {max_stress}/100")
+                parts.append(f"  - Time Distribution:")
+                parts.append(f"    • Rest: {rest_time:.1f}h | Low: {low_time:.1f}h | Medium: {medium_time:.1f}h | High: {high_time:.1f}h")
+
+                # Weekly average
+                if len(stress_data) >= 3:
+                    weekly_avg_stress = sum(s.get("avg_stress_level", 0) for s in stress_data if s.get("avg_stress_level")) / len([s for s in stress_data if s.get("avg_stress_level")])
+                    parts.append(f"\n7-Day Average Stress: {weekly_avg_stress:.1f}/100")
+
+                parts.append("")
+
+            # === BODY BATTERY ===
+            battery_response = (
+                self.supabase.table("garmin_body_battery")
+                .select("*")
+                .eq("user_id", user_id)
+                .gte("calendar_date", cutoff_date.date().isoformat())
+                .order("calendar_date", desc=True)
+                .limit(7)
+                .execute()
+            )
+
+            if battery_response.data:
+                battery_data = battery_response.data
+                parts.append("### Body Battery (Energy Levels)")
+
+                # Latest body battery
+                latest_battery = battery_data[0]
+                highest = latest_battery.get("highest_body_battery")
+                lowest = latest_battery.get("lowest_body_battery")
+                charged = latest_battery.get("body_battery_charged")
+                drained = latest_battery.get("body_battery_drained")
+
+                parts.append(f"Latest ({latest_battery.get('calendar_date')}):")
+                if highest is not None and lowest is not None:
+                    parts.append(f"  - Range: {lowest} to {highest}/100")
+                if charged:
+                    parts.append(f"  - Charged: +{charged}")
+                if drained:
+                    parts.append(f"  - Drained: -{drained}")
+                if charged and drained:
+                    net = charged - drained
+                    net_label = f"+{net}" if net > 0 else str(net)
+                    parts.append(f"  - Net Change: {net_label}")
+
+                # 7-day pattern
+                if len(battery_data) >= 3:
+                    avg_highest = sum(b.get("highest_body_battery", 0) for b in battery_data) / len(battery_data)
+                    avg_lowest = sum(b.get("lowest_body_battery", 0) for b in battery_data) / len(battery_data)
+                    parts.append(f"\n7-Day Pattern:")
+                    parts.append(f"  - Average Peak: {avg_highest:.1f}/100")
+                    parts.append(f"  - Average Low: {avg_lowest:.1f}/100")
+
+                parts.append("")
+
+            # === READINESS SCORE ===
+            readiness_response = (
+                self.supabase.table("garmin_readiness")
+                .select("*")
+                .eq("user_id", user_id)
+                .gte("calendar_date", cutoff_date.date().isoformat())
+                .order("calendar_date", desc=True)
+                .limit(7)
+                .execute()
+            )
+
+            if readiness_response.data:
+                readiness_data = readiness_response.data
+                parts.append("### Training Readiness")
+
+                # Latest readiness
+                latest_readiness = readiness_data[0]
+                score = latest_readiness.get("overall_score")
+                message = latest_readiness.get("readiness_message")
+
+                parts.append(f"Latest ({latest_readiness.get('calendar_date')}):")
+                if score is not None:
+                    parts.append(f"  - Readiness Score: {score}/100")
+                    if score >= 75:
+                        recommendation = "HIGH - Ready for intense training"
+                    elif score >= 50:
+                        recommendation = "MODERATE - Good for moderate training"
+                    else:
+                        recommendation = "LOW - Focus on recovery, light activity only"
+                    parts.append(f"  - Status: {recommendation}")
+                if message:
+                    parts.append(f"  - Message: {message}")
+
+                # 7-day trend
+                if len(readiness_data) >= 3:
+                    avg_readiness = sum(r.get("overall_score", 0) for r in readiness_data if r.get("overall_score")) / len([r for r in readiness_data if r.get("overall_score")])
+                    parts.append(f"\n7-Day Average: {avg_readiness:.1f}/100")
+
+                parts.append("")
+
+            # === RECOVERY INSIGHTS ===
+            if sleep_response.data or hrv_response.data or readiness_response.data:
+                parts.append("### Recovery Insights")
+
+                # Determine overall recovery status
+                recovery_signals = []
+
+                if sleep_response.data:
+                    latest_sleep = sleep_response.data[0]
+                    sleep_hours = latest_sleep.get("total_sleep_seconds", 0) / 3600
+                    if sleep_hours >= 7:
+                        recovery_signals.append("Good sleep duration")
+                    elif sleep_hours < 6:
+                        recovery_signals.append("⚠️ Insufficient sleep (<6h)")
+
+                if hrv_response.data:
+                    latest_hrv = hrv_response.data[0]
+                    status = latest_hrv.get("status", "")
+                    if "balanced" in status.lower() or "high" in status.lower():
+                        recovery_signals.append("HRV is balanced/high")
+                    elif "low" in status.lower():
+                        recovery_signals.append("⚠️ Low HRV detected")
+
+                if stress_response.data:
+                    latest_stress = stress_response.data[0]
+                    avg_stress = latest_stress.get("avg_stress_level", 0)
+                    if avg_stress < 30:
+                        recovery_signals.append("Low stress levels")
+                    elif avg_stress > 50:
+                        recovery_signals.append("⚠️ Elevated stress levels")
+
+                if readiness_response.data:
+                    latest_readiness = readiness_response.data[0]
+                    score = latest_readiness.get("overall_score", 0)
+                    if score >= 75:
+                        recovery_signals.append("High training readiness")
+                    elif score < 50:
+                        recovery_signals.append("⚠️ Low training readiness")
+
+                if recovery_signals:
+                    for signal in recovery_signals:
+                        parts.append(f"  • {signal}")
+                    parts.append("")
+
+                    # Training recommendation
+                    warning_count = sum(1 for s in recovery_signals if "⚠️" in s)
+                    if warning_count == 0:
+                        parts.append("**Training Recommendation**: Fully recovered, ready for high-intensity training")
+                    elif warning_count == 1:
+                        parts.append("**Training Recommendation**: Moderate recovery, suitable for moderate intensity")
+                    else:
+                        parts.append("**Training Recommendation**: Poor recovery, prioritize rest and light activity")
+
+            if not parts:
+                return "No recovery data available from Garmin. Consider connecting your Garmin device for personalized recovery insights."
+
+            return "\n".join(parts)
+
+        except Exception as e:
+            logger.error(f"Error getting recovery metrics: {e}")
+            return ""
+
+    async def _get_recovery_performance_correlations(self, user_id: str, days: int) -> str:
+        """
+        Analyze correlations between recovery metrics and training performance.
+
+        Identifies patterns such as:
+        - How sleep quality affects workout performance (RPE, completion)
+        - HRV trends vs training load tolerance
+        - Stress impact on recovery and performance
+        - Body battery patterns and workout energy
+        - Readiness score vs workout completion rates
+
+        Args:
+            user_id: User's unique identifier
+            days: Number of days to analyze (minimum 14 for meaningful correlations)
+
+        Returns:
+            Formatted insights string with actionable recommendations
+        """
+        try:
+            if days < 14:
+                return ""  # Need at least 2 weeks of data for correlations
+
+            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            parts = []
+
+            # Fetch recovery data
+            sleep_data = (
+                self.supabase.table("garmin_sleep_data")
+                .select("calendar_date, total_sleep_seconds, overall_score, average_hrv_ms")
+                .eq("user_id", user_id)
+                .gte("calendar_date", cutoff_date.date().isoformat())
+                .order("calendar_date", desc=False)
+                .execute()
+            ).data or []
+
+            hrv_data = (
+                self.supabase.table("garmin_hrv_data")
+                .select("calendar_date, last_night_avg_ms, weekly_avg_ms, status")
+                .eq("user_id", user_id)
+                .gte("calendar_date", cutoff_date.date().isoformat())
+                .order("calendar_date", desc=False)
+                .execute()
+            ).data or []
+
+            stress_data = (
+                self.supabase.table("garmin_stress_data")
+                .select("calendar_date, avg_stress_level, max_stress_level")
+                .eq("user_id", user_id)
+                .gte("calendar_date", cutoff_date.date().isoformat())
+                .order("calendar_date", desc=False)
+                .execute()
+            ).data or []
+
+            readiness_data = (
+                self.supabase.table("garmin_readiness")
+                .select("calendar_date, overall_score")
+                .eq("user_id", user_id)
+                .gte("calendar_date", cutoff_date.date().isoformat())
+                .order("calendar_date", desc=False)
+                .execute()
+            ).data or []
+
+            # Fetch workout performance data
+            workouts = (
+                self.supabase.table("workout_completions")
+                .select("completed_at, rpe, duration_minutes, exercises")
+                .eq("user_id", user_id)
+                .gte("completed_at", cutoff_date.isoformat())
+                .order("completed_at", desc=False)
+                .execute()
+            ).data or []
+
+            # Fetch activities for additional performance data
+            activities = (
+                self.supabase.table("activities")
+                .select("start_date, duration_minutes, average_heartrate, perceived_exertion")
+                .eq("user_id", user_id)
+                .gte("start_date", cutoff_date.isoformat())
+                .order("start_date", desc=False)
+                .execute()
+            ).data or []
+
+            if not (sleep_data or hrv_data or readiness_data) or not (workouts or activities):
+                return ""  # Need both recovery and performance data
+
+            # === CORRELATION 1: Sleep Quality vs Workout Performance ===
+            if sleep_data and workouts:
+                # Map sleep data to workout days
+                sleep_by_date = {s['calendar_date']: s for s in sleep_data}
+
+                good_sleep_workouts = []
+                poor_sleep_workouts = []
+
+                for workout in workouts:
+                    workout_date = workout['completed_at'].split('T')[0]
+                    prev_night = sleep_by_date.get(workout_date)
+
+                    if prev_night:
+                        sleep_hours = prev_night.get('total_sleep_seconds', 0) / 3600
+                        sleep_score = prev_night.get('overall_score', 0)
+                        rpe = workout.get('rpe', 0)
+
+                        # Categorize sleep quality
+                        if sleep_hours >= 7 and sleep_score >= 70:
+                            good_sleep_workouts.append({'rpe': rpe, 'duration': workout.get('duration_minutes', 0)})
+                        elif sleep_hours < 6 or sleep_score < 50:
+                            poor_sleep_workouts.append({'rpe': rpe, 'duration': workout.get('duration_minutes', 0)})
+
+                if good_sleep_workouts and poor_sleep_workouts:
+                    good_avg_rpe = sum(w['rpe'] for w in good_sleep_workouts if w['rpe']) / len([w for w in good_sleep_workouts if w['rpe']]) if any(w['rpe'] for w in good_sleep_workouts) else 0
+                    poor_avg_rpe = sum(w['rpe'] for w in poor_sleep_workouts if w['rpe']) / len([w for w in poor_sleep_workouts if w['rpe']]) if any(w['rpe'] for w in poor_sleep_workouts) else 0
+
+                    if good_avg_rpe > 0 and poor_avg_rpe > 0:
+                        parts.append("### Sleep Quality → Workout Performance")
+                        parts.append(f"After good sleep (7+ hours, score ≥70): Average RPE {good_avg_rpe:.1f}/10")
+                        parts.append(f"After poor sleep (<6 hours, score <50): Average RPE {poor_avg_rpe:.1f}/10")
+
+                        if poor_avg_rpe > good_avg_rpe:
+                            diff = poor_avg_rpe - good_avg_rpe
+                            parts.append(f"\n💡 **Insight**: Poor sleep increases workout difficulty by {diff:.1f} RPE points. Prioritize 7-8 hours of sleep before hard training days.")
+                        parts.append("")
+
+            # === CORRELATION 2: HRV Trends vs Training Load ===
+            if hrv_data and (workouts or activities):
+                # Calculate weekly training load (total duration)
+                weekly_loads = {}
+
+                for workout in workouts:
+                    week = workout['completed_at'][:10]  # Use date as week proxy
+                    weekly_loads[week] = weekly_loads.get(week, 0) + workout.get('duration_minutes', 0)
+
+                for activity in activities:
+                    week = activity['start_date'][:10]
+                    weekly_loads[week] = weekly_loads.get(week, 0) + activity.get('duration_minutes', 0)
+
+                # Map HRV to weeks
+                hrv_by_week = {}
+                for hrv in hrv_data:
+                    week = hrv['calendar_date']
+                    hrv_by_week[week] = hrv.get('last_night_avg_ms', 0)
+
+                # Find correlations
+                high_load_low_hrv_count = 0
+                moderate_load_balanced_hrv_count = 0
+
+                for week, load in weekly_loads.items():
+                    hrv_val = hrv_by_week.get(week, 0)
+
+                    if load > 300 and hrv_val > 0:  # High load weeks (5+ hours training)
+                        if hrv_val < 50:  # Low HRV
+                            high_load_low_hrv_count += 1
+                    elif 120 <= load <= 300 and hrv_val >= 50:  # Moderate load, balanced HRV
+                        moderate_load_balanced_hrv_count += 1
+
+                if high_load_low_hrv_count > 0:
+                    parts.append("### HRV Trends → Training Load Tolerance")
+                    parts.append(f"⚠️ Detected {high_load_low_hrv_count} week(s) with high training load (5+ hours) and low HRV (<50ms)")
+                    parts.append("\n💡 **Insight**: Your HRV drops during heavy training weeks. Consider:")
+                    parts.append("  • Incorporating more deload weeks (50-60% volume)")
+                    parts.append("  • Adding extra rest days when HRV drops below personal baseline")
+                    parts.append("  • Prioritizing sleep quality during high-volume training blocks")
+                    parts.append("")
+
+            # === CORRELATION 3: Readiness Score vs Workout Completion ===
+            if readiness_data and workouts:
+                readiness_by_date = {r['calendar_date']: r for r in readiness_data}
+
+                high_readiness_workouts = 0
+                low_readiness_workouts = 0
+                high_readiness_total = 0
+                low_readiness_total = 0
+
+                for workout in workouts:
+                    workout_date = workout['completed_at'].split('T')[0]
+                    readiness = readiness_by_date.get(workout_date)
+
+                    if readiness:
+                        score = readiness.get('overall_score', 0)
+
+                        if score >= 75:
+                            high_readiness_workouts += 1
+                            high_readiness_total += 1
+                        elif score < 50:
+                            low_readiness_workouts += 1
+                            low_readiness_total += 1
+
+                # Count days with readiness scores
+                high_readiness_days = len([r for r in readiness_data if r.get('overall_score', 0) >= 75])
+                low_readiness_days = len([r for r in readiness_data if r.get('overall_score', 0) < 50])
+
+                if high_readiness_days > 0 and low_readiness_days > 0:
+                    parts.append("### Training Readiness → Workout Patterns")
+                    parts.append(f"High readiness days (≥75): {high_readiness_workouts} workouts completed")
+                    parts.append(f"Low readiness days (<50): {low_readiness_workouts} workouts completed")
+
+                    if low_readiness_workouts > high_readiness_workouts:
+                        parts.append("\n💡 **Insight**: You often train on low readiness days. This may lead to:")
+                        parts.append("  • Increased injury risk")
+                        parts.append("  • Slower recovery")
+                        parts.append("  • Reduced performance gains")
+                        parts.append("\n**Recommendation**: When readiness <50, consider active recovery (walking, yoga, stretching) instead of intense training.")
+                    parts.append("")
+
+            # === CORRELATION 4: Stress Patterns ===
+            if stress_data:
+                high_stress_days = len([s for s in stress_data if s.get('avg_stress_level', 0) > 50])
+                total_days = len(stress_data)
+
+                if total_days > 0:
+                    stress_pct = (high_stress_days / total_days) * 100
+
+                    if stress_pct > 30:
+                        parts.append("### Stress Management")
+                        parts.append(f"High stress days (>50): {high_stress_days}/{total_days} days ({stress_pct:.0f}%)")
+                        parts.append("\n💡 **Insight**: Elevated stress levels detected frequently. High stress impairs:")
+                        parts.append("  • Recovery quality (slower muscle repair)")
+                        parts.append("  • Sleep quality (disrupted REM sleep)")
+                        parts.append("  • Training adaptations (elevated cortisol)")
+                        parts.append("\n**Recommendations**:")
+                        parts.append("  • Practice stress management: meditation, deep breathing, nature walks")
+                        parts.append("  • Schedule easier training days after high-stress workdays")
+                        parts.append("  • Consider adaptogenic supplements (ashwagandha, rhodiola) - consult your doctor first")
+                        parts.append("")
+
+            # === SUMMARY RECOMMENDATIONS ===
+            if parts:
+                parts.append("### Personalized Recovery Strategy")
+
+                # Sleep recommendation
+                if sleep_data:
+                    avg_sleep = sum(s.get('total_sleep_seconds', 0) for s in sleep_data) / len(sleep_data) / 3600
+                    if avg_sleep < 7:
+                        parts.append(f"🎯 **Priority #1**: Increase sleep to 7-9 hours (current average: {avg_sleep:.1f}h)")
+
+                # HRV recommendation
+                if hrv_data:
+                    recent_hrv = hrv_data[-7:] if len(hrv_data) >= 7 else hrv_data
+                    avg_recent_hrv = sum(h.get('last_night_avg_ms', 0) for h in recent_hrv if h.get('last_night_avg_ms')) / len([h for h in recent_hrv if h.get('last_night_avg_ms')]) if any(h.get('last_night_avg_ms') for h in recent_hrv) else 0
+
+                    if avg_recent_hrv > 0 and avg_recent_hrv < 50:
+                        parts.append(f"🎯 **Priority #2**: Improve HRV (current: {avg_recent_hrv:.0f}ms) through stress reduction and better sleep")
+
+                # Training load recommendation
+                if workouts or activities:
+                    total_workouts = len(workouts) + len(activities)
+                    avg_per_week = (total_workouts / days) * 7
+
+                    if avg_per_week > 6:
+                        parts.append(f"🎯 **Priority #3**: Reduce training frequency (current: {avg_per_week:.1f} sessions/week) - add 1-2 rest days")
+                    elif avg_per_week < 3:
+                        parts.append(f"🎯 **Opportunity**: Increase training frequency (current: {avg_per_week:.1f} sessions/week) for better results")
+
+            if not parts:
+                return ""
+
+            return "\n".join(parts)
+
+        except Exception as e:
+            logger.error(f"Error analyzing recovery-performance correlations: {e}")
             return ""
 
     async def _search_coach_embeddings(
