@@ -6,7 +6,7 @@ Handles adaptive AI-driven consultations with different specialists.
 
 import logging
 from fastapi import APIRouter, HTTPException, Depends, status
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from app.api.middleware.auth import get_current_user
 from app.services.consultation_service import get_consultation_service
