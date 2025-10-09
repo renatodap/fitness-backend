@@ -246,7 +246,8 @@ Generate questions that will help create the best possible program for THIS spec
         if event_context:
             event_instructions = self._build_event_instructions(event_context)
 
-        system_prompt = f"""You are an expert fitness coach and nutritionist creating a comprehensive 3-month personalized program.
+        # Build system prompt in parts to avoid f-string nesting issues
+        system_prompt_base = """You are an expert fitness coach and nutritionist creating a comprehensive 3-month personalized program.
 
 You must create a complete, day-by-day program including:
 1. **Workouts**: Strength training, cardio, sports, flexibility, active recovery
@@ -262,9 +263,9 @@ CRITICAL REQUIREMENTS:
 - Ensure adequate recovery
 - Progressive overload with proper progression
 - Realistic and sustainable
+"""
 
-{event_instructions}
-
+        json_structure = """
 Return a JSON object with this structure:
 {
   "program": {
@@ -335,6 +336,8 @@ Return a JSON object with this structure:
 }
 
 Generate ALL 12 weeks with ALL 84 days. Be comprehensive and detailed."""
+
+        system_prompt = system_prompt_base + "\n" + event_instructions + "\n" + json_structure
 
         # Build event context string for user prompt
         event_context_str = ""
