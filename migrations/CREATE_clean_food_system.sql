@@ -24,7 +24,9 @@ CREATE TABLE foods (
     
     -- Basic Info
     name VARCHAR(255) NOT NULL,
-    brand_name VARCHAR(255),
+    food_type VARCHAR(50) NOT NULL DEFAULT 'ingredient',  -- 'ingredient', 'dish', 'branded', 'restaurant'
+    brand_name VARCHAR(255),                               -- For branded/restaurant items
+    restaurant_name VARCHAR(255),                          -- For restaurant items
     description TEXT,
     
     -- Serving Information (BASE UNIT for nutrition calculation)
@@ -55,14 +57,17 @@ CREATE TABLE foods (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     
-    -- Indexes
+    -- Constraints
     CONSTRAINT foods_serving_size_positive CHECK (serving_size > 0),
-    CONSTRAINT foods_household_grams_positive CHECK (household_serving_grams IS NULL OR household_serving_grams > 0)
+    CONSTRAINT foods_household_grams_positive CHECK (household_serving_grams IS NULL OR household_serving_grams > 0),
+    CONSTRAINT foods_food_type_valid CHECK (food_type IN ('ingredient', 'dish', 'branded', 'restaurant'))
 );
 
 -- Indexes for fast lookups
 CREATE INDEX idx_foods_name ON foods(name);
+CREATE INDEX idx_foods_food_type ON foods(food_type);
 CREATE INDEX idx_foods_brand ON foods(brand_name);
+CREATE INDEX idx_foods_restaurant ON foods(restaurant_name);
 CREATE INDEX idx_foods_name_trgm ON foods USING gin(name gin_trgm_ops);
 CREATE INDEX idx_foods_created_by ON foods(created_by);
 CREATE INDEX idx_foods_is_public ON foods(is_public);
