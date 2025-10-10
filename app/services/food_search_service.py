@@ -64,7 +64,19 @@ class FoodSearchService:
                 results.extend(recent_foods)
                 logger.info(f"Found {len(recent_foods)} recent foods matching query")
 
-            # Step 2: Search user's private templates (if requested and user logged in)
+            # Step 2: Search global food database (MOVED UP - atomic foods before templates)
+            # This ensures "banana" shows Banana food before "Protein Shake with banana"
+            remaining_limit = limit - len(results)
+            if remaining_limit > 0:
+                db_foods = await self._search_food_database(
+                    query=query,
+                    limit=min(10, remaining_limit),  # Allow up to 10 atomic foods
+                    exclude_ids=[f["id"] for f in results]  # Don't duplicate recent foods
+                )
+                results.extend(db_foods)
+                logger.info(f"Found {len(db_foods)} database foods matching query")
+
+            # Step 3: Search user's private templates (if requested and user logged in)
             if include_templates and user_id:
                 remaining_limit = limit - len(results)
                 if remaining_limit > 0:
@@ -76,7 +88,7 @@ class FoodSearchService:
                     results.extend(user_templates)
                     logger.info(f"Found {len(user_templates)} user templates matching query")
 
-            # Step 3: Search public templates (restaurant + community)
+            # Step 4: Search public templates (restaurant + community)
             if include_templates:
                 remaining_limit = limit - len(results)
                 if remaining_limit > 0:
@@ -86,17 +98,6 @@ class FoodSearchService:
                     )
                     results.extend(public_templates)
                     logger.info(f"Found {len(public_templates)} public templates matching query")
-
-            # Step 4: Search global food database
-            remaining_limit = limit - len(results)
-            if remaining_limit > 0:
-                db_foods = await self._search_food_database(
-                    query=query,
-                    limit=remaining_limit,
-                    exclude_ids=[f["id"] for f in results]  # Don't duplicate recent foods
-                )
-                results.extend(db_foods)
-                logger.info(f"Found {len(db_foods)} database foods matching query")
 
             # Step 5: Track search query for analytics
             if query and len(query) >= 3:
@@ -374,12 +375,14 @@ class FoodSearchService:
         try:
             # Query public templates matching the query
             # Order: restaurant templates first (most useful), then community
+            # NOTE: Only search name/restaurant_name, NOT description
+            # This prevents "banana" from matching "Protein Shake with 1 banana" description
             response = self.supabase.table("meal_templates").select(
                 "id, name, description, category, restaurant_name, "
                 "total_calories, total_protein_g, total_carbs_g, total_fat_g, total_fiber_g, "
                 "is_restaurant, popularity_score, meal_suitability, dietary_flags, tags"
             ).eq("is_public", True).or_(
-                f"name.ilike.%{query}%,restaurant_name.ilike.%{query}%,description.ilike.%{query}%"
+                f"name.ilike.%{query}%,restaurant_name.ilike.%{query}%"
             ).order(
                 "is_restaurant", desc=True  # Restaurant templates first
             ).order(
