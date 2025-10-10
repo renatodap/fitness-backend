@@ -29,6 +29,9 @@ CREATE TABLE foods (
     restaurant_name VARCHAR(255),                          -- For restaurant items
     description TEXT,
     
+    -- Editing behavior control
+    allow_gram_editing BOOLEAN NOT NULL DEFAULT true,     -- Can users edit grams? (false for branded/restaurant)
+    
     -- Serving Information (BASE UNIT for nutrition calculation)
     serving_size DECIMAL(10,2) NOT NULL DEFAULT 100,  -- Always in grams (typically 100g)
     serving_unit VARCHAR(50) NOT NULL DEFAULT 'g',     -- Always 'g' for consistency
