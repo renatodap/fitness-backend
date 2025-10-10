@@ -38,7 +38,7 @@ class FoodNutrition(BaseModel):
 
 
 class FoodSearchResult(BaseModel):
-    """Search result for a food item."""
+    """Search result for a food item or meal template."""
     id: str
     name: str
     brand_name: Optional[str] = None
@@ -61,6 +61,18 @@ class FoodSearchResult(BaseModel):
     last_logged_at: Optional[str] = None
     log_count: Optional[int] = None
 
+    # Template-specific fields (NEW)
+    is_template: bool = False
+    is_user_template: Optional[bool] = None
+    is_restaurant: Optional[bool] = None
+    is_community: Optional[bool] = None
+    template_category: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[list[str]] = None
+    is_favorite: Optional[bool] = None
+    use_count: Optional[int] = None
+    popularity_score: Optional[int] = None
+
     class Config:
         populate_by_name = True
         allow_population_by_field_name = True
@@ -82,23 +94,34 @@ class RecentFoodsResponse(BaseModel):
 @router.get(
     "/search",
     response_model=FoodSearchResponse,
-    summary="Search foods",
+    summary="Search foods and meal templates",
     description="""
-    Search food database with intelligent ranking.
+    Search food database AND meal templates with intelligent ranking.
 
     Features:
     - Fast autocomplete with partial matching
+    - Searches both individual foods AND meal templates
     - Prioritizes user's recent foods
+    - Includes user's private meal templates
+    - Includes public templates (restaurant meals, community meals)
     - Ranks by popularity and quality
     - Case-insensitive search
 
+    **Template types:**
+    - 🕐 Recent foods (recently logged)
+    - 💾 Your meal templates (saved meals)
+    - 🍽️ Restaurant meals (Chipotle, Subway, etc.)
+    - 👥 Community templates (shared meals)
+    - 🥗 Individual foods (database)
+
     **Example queries:**
-    - "chicken breast"
-    - "greek yogurt"
-    - "brown rice"
+    - "chicken" → Shows chicken foods + templates containing chicken
+    - "chipotle" → Shows Chipotle restaurant templates
+    - "protein shake" → Shows protein shake templates + whey protein
+    - "banana" → Shows banana food + smoothie templates
     """,
     responses={
-        200: {"description": "Search results"},
+        200: {"description": "Search results (foods + templates)"},
         400: {"description": "Invalid query"},
         500: {"description": "Search failed"}
     }
@@ -107,42 +130,45 @@ async def search_foods(
     q: str = Query(..., min_length=1, max_length=100, description="Search query"),
     limit: int = Query(20, ge=1, le=100, description="Maximum results"),
     include_recent: bool = Query(True, description="Include user's recent foods"),
+    include_templates: bool = Query(True, description="Include meal templates"),
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Search foods with autocomplete and smart ranking.
+    Search foods AND meal templates with autocomplete and smart ranking.
 
     Args:
         q: Search query string (required)
         limit: Maximum number of results (default: 20)
         include_recent: Include user's recently logged foods (default: true)
+        include_templates: Include meal templates - user, restaurant, community (default: true)
         current_user: Authenticated user from JWT
 
     Returns:
-        FoodSearchResponse with matching foods
+        FoodSearchResponse with matching foods AND templates (mixed in same list)
     """
     try:
-        logger.info(f"Food search request: query='{q}', user_id={current_user['user_id']}")
+        logger.info(f"Unified search request: query='{q}', user_id={current_user['user_id']}, include_templates={include_templates}")
 
         # Get search service
         search_service = get_food_search_service()
 
-        # Search foods
+        # Search foods + templates
         result = await search_service.search_foods(
             query=q,
             user_id=current_user["user_id"],
             limit=limit,
-            include_recent=include_recent
+            include_recent=include_recent,
+            include_templates=include_templates
         )
 
         # Convert to response model
         return FoodSearchResponse(**result)
 
     except Exception as e:
-        logger.error(f"Food search failed: {e}", exc_info=True)
+        logger.error(f"Unified search failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Food search failed. Please try again."
+            detail="Search failed. Please try again."
         )
 
 

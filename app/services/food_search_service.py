@@ -26,28 +26,31 @@ class FoodSearchService:
         query: str,
         user_id: Optional[str] = None,
         limit: int = 20,
-        include_recent: bool = True
+        include_recent: bool = True,
+        include_templates: bool = True
     ) -> Dict[str, Any]:
         """
-        Search foods with intelligent ranking.
+        Search foods AND meal templates with intelligent ranking.
 
         Ranking priority:
         1. User's recent foods (if include_recent=True)
-        2. Popular foods (high search_count)
-        3. High quality foods (high data_quality_score)
-        4. Verified foods (is_verified=true)
+        2. User's private templates (if include_templates=True)
+        3. Public templates - restaurant & community (if include_templates=True)
+        4. Popular foods (high search_count)
+        5. High quality foods (high data_quality_score)
 
         Args:
             query: Search query string
             user_id: Optional user ID for personalized results
             limit: Maximum number of results
             include_recent: Include user's recent foods
+            include_templates: Include meal templates (default: True)
 
         Returns:
-            Dict with foods list and metadata
+            Dict with foods list (including templates formatted as foods) and metadata
         """
         try:
-            logger.info(f"Searching foods: query='{query}', user_id={user_id}, limit={limit}")
+            logger.info(f"Searching foods+templates: query='{query}', user_id={user_id}, limit={limit}, include_templates={include_templates}")
 
             results = []
 
@@ -61,7 +64,30 @@ class FoodSearchService:
                 results.extend(recent_foods)
                 logger.info(f"Found {len(recent_foods)} recent foods matching query")
 
-            # Step 2: Search global food database
+            # Step 2: Search user's private templates (if requested and user logged in)
+            if include_templates and user_id:
+                remaining_limit = limit - len(results)
+                if remaining_limit > 0:
+                    user_templates = await self._search_user_templates(
+                        user_id=user_id,
+                        query=query,
+                        limit=min(3, remaining_limit)  # Max 3 user templates
+                    )
+                    results.extend(user_templates)
+                    logger.info(f"Found {len(user_templates)} user templates matching query")
+
+            # Step 3: Search public templates (restaurant + community)
+            if include_templates:
+                remaining_limit = limit - len(results)
+                if remaining_limit > 0:
+                    public_templates = await self._search_public_templates(
+                        query=query,
+                        limit=min(5, remaining_limit)  # Max 5 public templates
+                    )
+                    results.extend(public_templates)
+                    logger.info(f"Found {len(public_templates)} public templates matching query")
+
+            # Step 4: Search global food database
             remaining_limit = limit - len(results)
             if remaining_limit > 0:
                 db_foods = await self._search_food_database(
@@ -72,7 +98,7 @@ class FoodSearchService:
                 results.extend(db_foods)
                 logger.info(f"Found {len(db_foods)} database foods matching query")
 
-            # Step 3: Track search query for analytics
+            # Step 5: Track search query for analytics
             if query and len(query) >= 3:
                 await self._track_search_query(query=query, user_id=user_id)
 
@@ -287,6 +313,174 @@ class FoodSearchService:
         except Exception as e:
             logger.error(f"Database food search failed: {e}", exc_info=True)
             return []
+
+    async def _search_user_templates(
+        self,
+        user_id: str,
+        query: str,
+        limit: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Search user's private meal templates.
+
+        Args:
+            user_id: User ID to filter templates
+            query: Search query string
+            limit: Maximum number of results
+
+        Returns:
+            List of templates formatted as food items
+        """
+        try:
+            # Query user's templates matching the query
+            response = self.supabase.table("meal_templates").select(
+                "id, name, description, category, "
+                "total_calories, total_protein_g, total_carbs_g, total_fat_g, total_fiber_g, "
+                "is_favorite, use_count, last_used_at, tags"
+            ).eq("user_id", user_id).eq("is_public", False).ilike("name", f"%{query}%").order(
+                "use_count", desc=True  # Most used first
+            ).order(
+                "is_favorite", desc=True  # Favorites first
+            ).limit(limit).execute()
+
+            templates = response.data if response.data else []
+
+            # Format templates as food items
+            formatted_templates = []
+            for template in templates:
+                formatted_templates.append(self._format_template_as_food(template, is_user_template=True))
+
+            return formatted_templates
+
+        except Exception as e:
+            logger.error(f"User template search failed: {e}", exc_info=True)
+            return []
+
+    async def _search_public_templates(
+        self,
+        query: str,
+        limit: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Search public meal templates (restaurant + community).
+
+        Args:
+            query: Search query string
+            limit: Maximum number of results
+
+        Returns:
+            List of templates formatted as food items
+        """
+        try:
+            # Query public templates matching the query
+            # Order: restaurant templates first (most useful), then community
+            response = self.supabase.table("meal_templates").select(
+                "id, name, description, category, restaurant_name, "
+                "total_calories, total_protein_g, total_carbs_g, total_fat_g, total_fiber_g, "
+                "is_restaurant, popularity_score, meal_suitability, dietary_flags, tags"
+            ).eq("is_public", True).or_(
+                f"name.ilike.%{query}%,restaurant_name.ilike.%{query}%,description.ilike.%{query}%"
+            ).order(
+                "is_restaurant", desc=True  # Restaurant templates first
+            ).order(
+                "popularity_score", desc=True  # Most popular first
+            ).limit(limit).execute()
+
+            templates = response.data if response.data else []
+
+            # Format templates as food items
+            formatted_templates = []
+            for template in templates:
+                formatted_templates.append(self._format_template_as_food(template, is_user_template=False))
+
+            return formatted_templates
+
+        except Exception as e:
+            logger.error(f"Public template search failed: {e}", exc_info=True)
+            return []
+
+    def _format_template_as_food(
+        self,
+        template: Dict[str, Any],
+        is_user_template: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Format a meal template to look like a food item for unified search results.
+
+        Templates are marked with:
+        - is_template=True
+        - is_user_template=True if it's the user's private template
+        - is_restaurant=True if it's a restaurant meal
+        - template_category for meal type
+
+        Args:
+            template: Template database record
+            is_user_template: Whether this is user's private template
+
+        Returns:
+            Dict formatted like a food item
+        """
+        # Build descriptive name
+        if template.get("restaurant_name"):
+            # Restaurant template: "Chipotle Chicken Bowl (Chipotle)"
+            name = f"{template['name']}"
+            brand_name = template.get("restaurant_name")
+        elif is_user_template:
+            # User template: "My Protein Shake"
+            name = template["name"]
+            brand_name = "My Meals"
+        else:
+            # Community template: "Classic Protein Shake"
+            name = template["name"]
+            brand_name = "Community"
+
+        return {
+            # Template identification
+            "id": template["id"],
+            "name": name,
+            "brand_name": brand_name,
+
+            # Template flags (CRITICAL for frontend differentiation)
+            "is_template": True,
+            "is_user_template": is_user_template,
+            "is_restaurant": template.get("is_restaurant", False),
+            "is_community": not is_user_template and not template.get("is_restaurant", False),
+
+            # Template metadata
+            "template_category": template.get("category", "other"),
+            "description": template.get("description"),
+            "tags": template.get("tags", []),
+
+            # Serving info (templates are "1 meal")
+            "food_group": "Meal Template",
+            "serving_size": 1,
+            "serving_unit": "meal",
+
+            # Aggregated nutrition (total for entire template)
+            "calories": template.get("total_calories", 0),
+            "protein_g": template.get("total_protein_g", 0),
+            "total_carbs_g": template.get("total_carbs_g", 0),
+            "total_fat_g": template.get("total_fat_g", 0),
+            "dietary_fiber_g": template.get("total_fiber_g", 0),
+
+            # Not applicable for templates
+            "total_sugars_g": None,
+            "sodium_mg": None,
+
+            # Template usage stats
+            "is_favorite": template.get("is_favorite", False),
+            "use_count": template.get("use_count", 0),
+            "last_used_at": template.get("last_used_at"),
+            "popularity_score": template.get("popularity_score", 0),
+
+            # Not from recent foods
+            "is_recent": False,
+
+            # Quality indicators
+            "is_generic": False,
+            "is_branded": template.get("is_restaurant", False),
+            "data_quality_score": 1.0,  # Templates are always high quality
+        }
 
     async def _track_search_query(
         self,
