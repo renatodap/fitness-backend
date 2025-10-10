@@ -188,7 +188,7 @@ class FoodSearchService:
 
             # Fetch full food data from foods
             foods_response = self.supabase.table("foods") \
-                .select("id, name, brand_name, food_type as food_group, serving_size, serving_unit, calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, total_sugars_g, sodium_mg") \
+                .select("id, name, brand_name, food_type, serving_size, serving_unit, calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, total_sugars_g, sodium_mg") \
                 .in_("id", sorted_food_ids) \
                 .execute()
 
@@ -670,7 +670,7 @@ class FoodSearchService:
             try:
                 # Fallback: query recent foods manually
                 response = self.supabase.from_("foods").select(
-                    "id, name, brand_name, food_type as food_group, serving_size, serving_unit, "
+                    "id, name, brand_name, food_type, serving_size, serving_unit, "
                     "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
                     "total_sugars_g, sodium_mg, data_quality_score"
                 ).gte("data_quality_score", 0.5).ilike("name", f"%{name}%").limit(1).execute()
@@ -692,7 +692,7 @@ class FoodSearchService:
             # This ensures "whey isolate" matches "Whey Isolate" exactly, not "Whey Protein"
             logger.info(f"[FoodSearch] Trying EXACT match for: '{name}'")
             response = self.supabase.from_("foods").select(
-                "id, name, brand_name, food_type as food_group, serving_size, serving_unit, "
+                "id, name, brand_name, food_type, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
                 "total_sugars_g, sodium_mg, data_quality_score"
             ).gte("data_quality_score", 0.5).ilike("name", name).order(
@@ -719,7 +719,7 @@ class FoodSearchService:
             # This searches for foods containing the search term
             logger.info(f"[FoodSearch] Trying PARTIAL match for: '{name}'")
             response = self.supabase.from_("foods").select(
-                "id, name, brand_name, food_type as food_group, serving_size, serving_unit, "
+                "id, name, brand_name, food_type, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
                 "total_sugars_g, sodium_mg, data_quality_score"
             ).gte("data_quality_score", 0.5).ilike("name", f"%{name}%").order(
@@ -766,7 +766,7 @@ class FoodSearchService:
             # Search with cooking method filter if detected
             if detected_method:
                 response = self.supabase.from_("foods").select(
-                    "id, name, brand_name, food_type as food_group, serving_size, serving_unit, "
+                    "id, name, brand_name, food_type, serving_size, serving_unit, "
                     "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
                     "total_sugars_g, sodium_mg, data_quality_score"
                 ).gte("data_quality_score", 0.5).ilike("name", f"%{base_name}%{detected_method}%").order(
@@ -778,7 +778,7 @@ class FoodSearchService:
 
             # Fallback: search just base name
             response = self.supabase.from_("foods").select(
-                "id, name, brand_name, food_type as food_group, serving_size, serving_unit, "
+                "id, name, brand_name, food_type, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
                 "total_sugars_g, sodium_mg, data_quality_score"
             ).gte("data_quality_score", 0.5).ilike("name", f"%{base_name}%").order(

@@ -42,7 +42,7 @@ class FoodSearchResult(BaseModel):
     id: str
     name: str
     brand_name: Optional[str] = None
-    food_group: Optional[str] = None
+    food_group: Optional[str] = Field(None, alias="food_type")
     serving_size: float
     serving_unit: str
     calories: Optional[float] = None
@@ -341,7 +341,7 @@ async def get_food_by_id(
 
         # Query food by ID
         response = search_service.supabase.table("foods") \
-            .select("id, name, brand_name, food_type as food_group, serving_size, serving_unit, calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, total_sugars_g, sodium_mg, data_quality_score") \
+            .select("id, name, brand_name, food_type, serving_size, serving_unit, calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, total_sugars_g, sodium_mg, data_quality_score") \
             .eq("id", food_id) \
             .limit(1) \
             .execute()
