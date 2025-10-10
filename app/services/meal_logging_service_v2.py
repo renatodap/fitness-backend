@@ -14,6 +14,8 @@ from datetime import datetime
 
 from app.services.supabase_service import get_service_client
 from app.services.food_search_service import get_food_search_service
+from app.services.quantity_converter import FoodQuantityConverter
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
@@ -101,8 +103,8 @@ class MealLoggingServiceV2:
 
             for idx, item in enumerate(food_items):
                 food_id = item["food_id"]
-                quantity = item["quantity"]
-                unit = item["unit"]
+                input_quantity = item["quantity"]
+                input_field = item.get("input_field", "grams")  # Default to grams for backward compatibility
 
                 # Get food data
                 food_data = foods_data.get(food_id)
@@ -110,43 +112,64 @@ class MealLoggingServiceV2:
                     logger.warning(f"Food not found: {food_id}, skipping")
                     continue
 
-                # Calculate scaled nutrition
+                # NEW: Calculate dual quantities using converter
                 try:
+                    quantities = FoodQuantityConverter.calculate_quantities(
+                        food_data=food_data,
+                        input_quantity=Decimal(str(input_quantity)),
+                        input_field=input_field
+                    )
+                    
+                    # Calculate nutrition from gram quantity
+                    nutrition = FoodQuantityConverter.calculate_nutrition(
+                        food_data=food_data,
+                        gram_quantity=Decimal(str(quantities['gram_quantity']))
+                    )
+                    
+                except Exception as calc_error:
+                    logger.error(
+                        f"Failed to calculate quantities for food {food_id}: {calc_error}. "
+                        f"Using fallback."
+                    )
+                    # Fallback to old method
                     scaled_nutrition = self._scale_nutrition(
                         food_data=food_data,
-                        quantity=quantity,
-                        unit=unit
+                        quantity=input_quantity,
+                        unit=item.get("unit", "g")
                     )
-                except Exception as scale_error:
-                    logger.error(
-                        f"Failed to scale nutrition for food {food_id}: {scale_error}. "
-                        f"Using unscaled values."
-                    )
-                    # Fallback to unscaled nutrition
-                    scaled_nutrition = {
-                        "calories": food_data.get("calories", 0),
-                        "protein_g": food_data.get("protein_g", 0),
-                        "carbs_g": food_data.get("total_carbs_g", 0),
-                        "fat_g": food_data.get("total_fat_g", 0),
-                        "fiber_g": food_data.get("dietary_fiber_g", 0),
-                        "sugar_g": food_data.get("total_sugars_g", 0),
-                        "sodium_mg": food_data.get("sodium_mg", 0)
+                    # Create fallback quantities
+                    quantities = {
+                        "serving_quantity": 1.0,
+                        "serving_unit": None,
+                        "gram_quantity": input_quantity,
+                        "last_edited_field": "grams"
                     }
+                    nutrition = scaled_nutrition
 
-                # Build meal_food entry
+                # Build meal_food entry with DUAL QUANTITY TRACKING
                 meal_food = {
                     "meal_log_id": meal_id,
                     "food_id": food_id,
                     "order_index": idx,  # Maintain order
-                    "quantity": quantity,
-                    "unit": unit,
-                    "calories": round(scaled_nutrition["calories"], 1),
-                    "protein_g": round(scaled_nutrition["protein_g"], 1),
-                    "carbs_g": round(scaled_nutrition["carbs_g"], 1),
-                    "fat_g": round(scaled_nutrition["fat_g"], 1),
-                    "fiber_g": round(scaled_nutrition["fiber_g"], 1),
-                    "sugar_g": round(scaled_nutrition["sugar_g"], 1),
-                    "sodium_mg": round(scaled_nutrition["sodium_mg"], 1)
+                    
+                    # OLD: Keep for backward compatibility (will remove after migration)
+                    "quantity": quantities['gram_quantity'],
+                    "unit": "g",
+                    
+                    # NEW: Dual quantity tracking
+                    "serving_quantity": quantities['serving_quantity'],
+                    "serving_unit": quantities['serving_unit'],
+                    "gram_quantity": quantities['gram_quantity'],
+                    "last_edited_field": quantities['last_edited_field'],
+                    
+                    # Nutrition (calculated from gram_quantity)
+                    "calories": round(nutrition["calories"], 1),
+                    "protein_g": round(nutrition["protein_g"], 1),
+                    "carbs_g": round(nutrition["carbs_g"], 1),
+                    "fat_g": round(nutrition["fat_g"], 1),
+                    "fiber_g": round(nutrition["fiber_g"], 1),
+                    "sugar_g": round(nutrition.get("sugar_g", 0), 1),
+                    "sodium_mg": round(nutrition.get("sodium_mg", 0), 1)
                 }
 
                 meal_foods_to_insert.append(meal_food)
@@ -209,32 +232,63 @@ class MealLoggingServiceV2:
 
                 for idx, item in enumerate(food_items):
                     food_id = item["food_id"]
-                    quantity = item["quantity"]
-                    unit = item["unit"]
+                    input_quantity = item["quantity"]
+                    input_field = item.get("input_field", "grams")
 
                     food_data = foods_data.get(food_id)
                     if not food_data:
                         continue
 
-                    scaled_nutrition = self._scale_nutrition(
-                        food_data=food_data,
-                        quantity=quantity,
-                        unit=unit
-                    )
+                    # NEW: Use dual quantity converter
+                    try:
+                        quantities = FoodQuantityConverter.calculate_quantities(
+                            food_data=food_data,
+                            input_quantity=Decimal(str(input_quantity)),
+                            input_field=input_field
+                        )
+                        
+                        nutrition = FoodQuantityConverter.calculate_nutrition(
+                            food_data=food_data,
+                            gram_quantity=Decimal(str(quantities['gram_quantity']))
+                        )
+                    except:
+                        # Fallback
+                        scaled_nutrition = self._scale_nutrition(
+                            food_data=food_data,
+                            quantity=input_quantity,
+                            unit=item.get("unit", "g")
+                        )
+                        quantities = {
+                            "serving_quantity": 1.0,
+                            "serving_unit": None,
+                            "gram_quantity": input_quantity,
+                            "last_edited_field": "grams"
+                        }
+                        nutrition = scaled_nutrition
 
                     meal_food = {
                         "meal_log_id": meal_id,
                         "food_id": food_id,
-                        "order_index": idx,  # Maintain order
-                        "quantity": quantity,
-                        "unit": unit,
-                        "calories": round(scaled_nutrition["calories"], 1),
-                        "protein_g": round(scaled_nutrition["protein_g"], 1),
-                        "carbs_g": round(scaled_nutrition["carbs_g"], 1),
-                        "fat_g": round(scaled_nutrition["fat_g"], 1),
-                        "fiber_g": round(scaled_nutrition["fiber_g"], 1),
-                        "sugar_g": round(scaled_nutrition["sugar_g"], 1),
-                        "sodium_mg": round(scaled_nutrition["sodium_mg"], 1)
+                        "order_index": idx,
+                        
+                        # OLD (keep for compatibility)
+                        "quantity": quantities['gram_quantity'],
+                        "unit": "g",
+                        
+                        # NEW: Dual quantity
+                        "serving_quantity": quantities['serving_quantity'],
+                        "serving_unit": quantities['serving_unit'],
+                        "gram_quantity": quantities['gram_quantity'],
+                        "last_edited_field": quantities['last_edited_field'],
+                        
+                        # Nutrition
+                        "calories": round(nutrition["calories"], 1),
+                        "protein_g": round(nutrition["protein_g"], 1),
+                        "carbs_g": round(nutrition["carbs_g"], 1),
+                        "fat_g": round(nutrition["fat_g"], 1),
+                        "fiber_g": round(nutrition["fiber_g"], 1),
+                        "sugar_g": round(nutrition.get("sugar_g", 0), 1),
+                        "sodium_mg": round(nutrition.get("sodium_mg", 0), 1)
                     }
 
                     meal_foods_to_insert.append(meal_food)
@@ -500,8 +554,9 @@ class MealLoggingServiceV2:
             return {}
 
         try:
+            # NEW: Include household serving fields for converter
             response = self.supabase.table("foods_enhanced") \
-                .select("id, name, brand_name, serving_size, serving_unit, calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, total_sugars_g, sodium_mg") \
+                .select("id, name, brand_name, serving_size, serving_unit, household_serving_size, household_serving_unit, calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, total_sugars_g, sodium_mg") \
                 .in_("id", food_ids) \
                 .execute()
 
