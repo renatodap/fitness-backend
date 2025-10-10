@@ -37,6 +37,10 @@ DROP TABLE IF EXISTS meal_templates CASCADE;
 DROP TABLE IF EXISTS meals CASCADE;
 DROP TABLE IF EXISTS foods_enhanced CASCADE;
 DROP TABLE IF EXISTS foods CASCADE;
+DROP TABLE IF EXISTS food_categories CASCADE;
+DROP TABLE IF EXISTS food_pairings CASCADE;
+DROP TABLE IF EXISTS food_serving_conversions CASCADE;
+DROP TABLE IF EXISTS food_servings CASCADE;
 
 -- ============================================================================
 -- Step 3: Drop daily summaries that reference meals
