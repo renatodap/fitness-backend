@@ -111,11 +111,27 @@ class MealLoggingServiceV2:
                     continue
 
                 # Calculate scaled nutrition
-                scaled_nutrition = self._scale_nutrition(
-                    food_data=food_data,
-                    quantity=quantity,
-                    unit=unit
-                )
+                try:
+                    scaled_nutrition = self._scale_nutrition(
+                        food_data=food_data,
+                        quantity=quantity,
+                        unit=unit
+                    )
+                except Exception as scale_error:
+                    logger.error(
+                        f"Failed to scale nutrition for food {food_id}: {scale_error}. "
+                        f"Using unscaled values."
+                    )
+                    # Fallback to unscaled nutrition
+                    scaled_nutrition = {
+                        "calories": food_data.get("calories", 0),
+                        "protein_g": food_data.get("protein_g", 0),
+                        "carbs_g": food_data.get("total_carbs_g", 0),
+                        "fat_g": food_data.get("total_fat_g", 0),
+                        "fiber_g": food_data.get("dietary_fiber_g", 0),
+                        "sugar_g": food_data.get("total_sugars_g", 0),
+                        "sodium_mg": food_data.get("sodium_mg", 0)
+                    }
 
                 # Build meal_food entry
                 meal_food = {
@@ -517,9 +533,18 @@ class MealLoggingServiceV2:
         Returns:
             Scaled nutrition dict
         """
-        # Get base serving info
-        base_serving_size = food_data["serving_size"]  # e.g., 100
-        base_serving_unit = food_data["serving_unit"]  # e.g., "g"
+        # Get base serving info with safe defaults
+        base_serving_size = food_data.get("serving_size")
+        base_serving_unit = food_data.get("serving_unit")
+        
+        # Handle missing serving information
+        if base_serving_size is None or base_serving_unit is None:
+            logger.warning(
+                f"Missing serving info for food {food_data.get('name', 'unknown')} "
+                f"(id: {food_data.get('id', 'unknown')}). Using default 100g."
+            )
+            base_serving_size = 100
+            base_serving_unit = "g"
 
         # Calculate scale factor
         if unit == "serving":
