@@ -136,9 +136,7 @@ class MealLoggingServiceV2:
                 # Build meal_food entry
                 meal_food = {
                     "meal_log_id": meal_id,
-                    "item_type": "food",  # All items in this function are foods
                     "food_id": food_id,
-                    "template_id": None,  # Not a template
                     "order_index": idx,  # Maintain order
                     "quantity": quantity,
                     "unit": unit,
@@ -226,9 +224,7 @@ class MealLoggingServiceV2:
 
                     meal_food = {
                         "meal_log_id": meal_id,
-                        "item_type": "food",  # All items in this function are foods
                         "food_id": food_id,
-                        "template_id": None,  # Not a template
                         "order_index": idx,  # Maintain order
                         "quantity": quantity,
                         "unit": unit,
