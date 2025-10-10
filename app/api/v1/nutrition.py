@@ -81,18 +81,27 @@ async def get_nutrition_summary_today(
     logger.info(f"Fetching nutrition summary for user: {user_id}")
     
     try:
-        # Get user's nutrition targets from users table
+        # Get user's nutrition targets from profiles or user_onboarding table
+        user_data = {}
         try:
-            user_response = supabase.table("users")\
-                .select("daily_calorie_target, daily_protein_target_g, daily_carbs_target_g, daily_fat_target_g")\
+            # Try profiles table first
+            user_response = supabase.table("profiles")\
+                .select("id")\
                 .eq("id", user_id)\
                 .single()\
                 .execute()
             
-            user_data = user_response.data if user_response.data else {}
+            # Try user_onboarding for nutrition goals
+            onboarding_response = supabase.table("user_onboarding")\
+                .select("daily_calorie_target, daily_protein_target_g, daily_carbs_target_g, daily_fat_target_g")\
+                .eq("user_id", user_id)\
+                .single()\
+                .execute()
+            
+            if onboarding_response.data:
+                user_data = onboarding_response.data
         except Exception as e:
             logger.warning(f"Could not fetch user nutrition targets: {e}")
-            user_data = {}
         
         # Default targets if not set
         targets = {

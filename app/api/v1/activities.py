@@ -76,7 +76,7 @@ async def get_activity_summary_today(
         start_of_day = datetime.combine(today, datetime.min.time())
         end_of_day = datetime.combine(today, datetime.max.time())
         
-        activities_response = supabase.table("activity_logs")\
+        activities_response = supabase.table("activities")\
             .select("duration_minutes, calories, distance_meters")\
             .eq("user_id", user_id)\
             .gte("start_date", start_of_day.isoformat())\
