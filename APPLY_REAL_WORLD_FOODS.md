@@ -2,7 +2,7 @@
 
 ## What This Is
 
-**350+ REAL FOODS people actually eat** - not fitness influencer bullshit.
+**480+ REAL FOODS people actually eat** - not fitness influencer bullshit.
 
 This fixes the database to include:
 - Fast food (McDonald's, Burger King, Taco Bell, Chipotle)
@@ -14,16 +14,18 @@ This fixes the database to include:
 - Asian food (Chinese takeout, sushi, Thai)
 - Brazilian food (Feijoada, Churrasco, Coxinha)
 - Snacks (chips, protein bars, popcorn)
+- **NEW:** Produce (dried fruits, frozen fruits, keto substitutes, pickled items, salad toppings)
 
 ## Quick Start
 
-Run these 3 migrations in Supabase SQL Editor:
+Run these 4 migrations in Supabase SQL Editor:
 
 1. **Phase 1**: Fast food & essentials (100 foods)
 2. **Phase 2**: Desserts, drinks, pasta, Asian (150 foods)
 3. **Phase 3**: Brazilian & snacks (100 foods)
+4. **Phase 4**: Produce - fruits & vegetables (130 foods)
 
-**Time**: ~10 minutes total
+**Time**: ~15 minutes total
 
 ---
 
@@ -179,12 +181,70 @@ SELECT COUNT(*) as total_foods FROM foods_enhanced;
 
 ---
 
-## Step 5: Final Verification
+## Step 5: Run Phase 4 - Produce (130 foods)
+
+**File:** `migrations/003g_seed_real_world_produce_phase4.sql`
+
+**What it adds:**
+- **TIER 1 (50 items):** Must-have essentials
+  - 15 essential fruits (lemon, lime, tangerine, dried fruits, canned fruits, applesauce)
+  - 5 frozen fruits (strawberries, blueberries, mixed berries, mango, banana)
+  - 30 essential vegetables (keto substitutes, pre-cut, canned, frozen, pickled, salad toppings)
+- **TIER 2 (50 items):** Should-have items
+  - 10 tropical/specialty fruits (dragonfruit, lychee, guava, passion fruit, persimmon)
+  - 10 Asian vegetables (snap peas, baby corn, water chestnuts, bamboo shoots)
+  - 15 more vegetables (bell peppers, squash, leafy greens, artichoke hearts)
+- **TIER 3 (30 items):** Nice-to-have items
+  - 10 fresh herbs (basil, cilantro, parsley, mint, ginger)
+  - 5 vegetable chips (kale chips, sweet potato chips, beet chips)
+  - 10 misc produce (fruit leather, dried figs, rhubarb, leeks)
+
+**Key highlights:**
+- **Dried fruits** (calorie-dense - people think they're healthy but they're not!)
+- **Keto substitutes** (cauliflower rice, zoodles, spaghetti squash - HUGE trend)
+- **Frozen produce** (for smoothies and convenience)
+- **Pickled/fermented** (kimchi, pickles, olives - forgotten toppings)
+- **Salad toppings** (croutons, bacon bits - hidden calories!)
+- **Canned vegetables** (budget staples)
+- **Asian vegetables** (stir-fry essentials)
+
+**How to run:**
+1. SQL Editor → New Query
+2. Copy `migrations/003g_seed_real_world_produce_phase4.sql`
+3. Paste and click "Run"
+4. Wait ~30 seconds
+
+**Verify:**
+```sql
+-- Should return dried fruits
+SELECT name, calories FROM foods_enhanced WHERE name LIKE '%Raisins%' OR name LIKE '%Craisins%' OR name LIKE '%Dates%';
+
+-- Should return keto substitutes
+SELECT name, calories FROM foods_enhanced WHERE name LIKE '%Cauliflower Rice%' OR name LIKE '%Zoodles%' OR name LIKE '%Spaghetti Squash%';
+
+-- Should return frozen fruits
+SELECT name, calories FROM foods_enhanced WHERE name LIKE 'Frozen%';
+
+-- Should return pickled items
+SELECT name, calories FROM foods_enhanced WHERE name LIKE '%Pickles%' OR name LIKE '%Kimchi%' OR name LIKE '%Olives%';
+
+-- Should return salad toppings
+SELECT name, calories FROM foods_enhanced WHERE name LIKE '%Croutons%' OR name LIKE '%Bacon Bits%';
+
+-- Total should be ~480+ foods now
+SELECT COUNT(*) as total_foods FROM foods_enhanced;
+```
+
+**Success:** You should see raisins, cauliflower rice, frozen berries, kimchi, croutons, etc.
+
+---
+
+## Step 6: Final Verification
 
 Run this comprehensive check:
 
 ```sql
--- Total food count (should be 350+)
+-- Total food count (should be 480+)
 SELECT COUNT(*) as total_foods FROM foods_enhanced;
 
 -- Breakdown by category
@@ -219,11 +279,13 @@ SELECT name, calories FROM foods_enhanced WHERE name ILIKE '%chicken%' LIMIT 5;
 ```
 
 **Expected Results:**
-- Total foods: **350+**
+- Total foods: **480+**
 - Protein: ~120 foods
 - Grains: ~150 foods
+- Fruits: ~55 foods
+- Vegetables: ~95 foods
 - Beverages: ~50 foods
-- You should see Big Mac, pizzas, Oreos, Ben & Jerry's, sodas, beer, etc.
+- You should see Big Mac, pizzas, Oreos, Ben & Jerry's, sodas, beer, cauliflower rice, raisins, kimchi, etc.
 
 ---
 
@@ -259,7 +321,8 @@ WHERE a.id > b.id
 2. Verify backend is deployed (latest commit)
 3. Clear browser cache
 4. Try searching for "Big Mac" (should return McDonald's Big Mac)
-5. Check if data quality filter is removed in backend code
+5. Try searching for "cauliflower rice" (should return Cauliflower Rice)
+6. Check if data quality filter is removed in backend code
 
 ---
 
