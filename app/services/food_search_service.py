@@ -277,9 +277,9 @@ class FoodSearchService:
 
             # Build query
             select_query = self.supabase.table("foods").select(
-                "id, name, brand_name, food_type as food_group, serving_size, serving_unit, "
+                "id, name, brand_name, food_type, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
-                "total_sugars_g, sodium_mg, data_quality_score, verified as is_verified, "
+                "total_sugars_g, sodium_mg, data_quality_score, verified, "
                 "popularity_score, global_use_count"
             )
 
