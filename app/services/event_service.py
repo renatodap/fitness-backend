@@ -207,15 +207,21 @@ class EventService:
         Returns:
             Primary event dict or None if no primary event
         """
-        response = self.supabase.table('user_events')\
-            .select('*')\
-            .eq('user_id', user_id)\
-            .eq('is_primary_goal', True)\
-            .gte('event_date', date.today().isoformat())\
-            .single()\
-            .execute()
+        try:
+            response = self.supabase.table('user_events')\
+                .select('*')\
+                .eq('user_id', user_id)\
+                .eq('is_primary_goal', True)\
+                .gte('event_date', date.today().isoformat())\
+                .single()\
+                .execute()
 
-        return response.data if response.data else None
+            return response.data if response.data else None
+        except Exception as e:
+            # .single() raises an exception when no records found
+            # Return None to indicate no primary event exists
+            logger.debug(f"No primary event found for user {user_id}: {e}")
+            return None
 
     async def get_event_countdown(self, event_id: str) -> Dict[str, Any]:
         """
@@ -228,13 +234,20 @@ class EventService:
             - training_phase_progress (%)
             - key_milestones
         """
-        event = self.supabase.table('user_events')\
-            .select('*')\
-            .eq('id', event_id)\
-            .single()\
-            .execute().data
-
-        if not event:
+        try:
+            response = self.supabase.table('user_events')\
+                .select('*')\
+                .eq('id', event_id)\
+                .single()\
+                .execute()
+            
+            event = response.data
+            
+            if not event:
+                raise ValueError(f"Event {event_id} not found")
+        except Exception as e:
+            # .single() raises an exception when no records found
+            logger.debug(f"Event {event_id} not found: {e}")
             raise ValueError(f"Event {event_id} not found")
 
         event_date = date.fromisoformat(event['event_date'])

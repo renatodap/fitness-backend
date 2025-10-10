@@ -53,6 +53,57 @@ async def get_activity_types():
     return config
 
 
+@router.get(
+    "/summary/today",
+    summary="Get today's activity summary",
+    description="Get aggregated activity summary for today including count, duration, calories, and distance"
+)
+async def get_activity_summary_today(
+    current_user: dict = Depends(get_current_user)
+):
+    """Get activity summary for today with aggregated metrics."""
+    from app.services.supabase_service import get_service_client
+    from datetime import datetime, date
+    
+    supabase = get_service_client()
+    user_id = current_user.get("id")
+    
+    try:
+        # Get today's activities
+        today = date.today()
+        start_of_day = datetime.combine(today, datetime.min.time())
+        end_of_day = datetime.combine(today, datetime.max.time())
+        
+        activities_response = supabase.table("activity_logs")\
+            .select("duration_minutes, calories, distance_meters")\
+            .eq("user_id", user_id)\
+            .gte("start_date", start_of_day.isoformat())\
+            .lte("start_date", end_of_day.isoformat())\
+            .execute()
+        
+        activities = activities_response.data if activities_response.data else []
+        
+        # Calculate aggregated metrics
+        count = len(activities)
+        duration = sum(activity.get("duration_minutes", 0) or 0 for activity in activities) * 60  # Convert to seconds
+        calories = sum(activity.get("calories", 0) or 0 for activity in activities)
+        distance = sum(activity.get("distance_meters", 0) or 0 for activity in activities)
+        
+        return {
+            "count": count,
+            "duration": int(duration),
+            "calories": int(calories),
+            "distance": int(distance)
+        }
+    
+    except Exception as e:
+        logger.error(f"Failed to fetch activity summary: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch activity summary: {str(e)}"
+        )
+
+
 # ============================================================================
 # CRUD OPERATIONS
 # ============================================================================
