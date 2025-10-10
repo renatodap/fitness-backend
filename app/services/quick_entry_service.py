@@ -898,7 +898,7 @@ Return JSON classification and data extraction."""
                     "updated_at": datetime.utcnow().isoformat()
                 }
 
-                result = self.supabase.table("meal_logs").insert(meal_data).execute()
+                result = self.supabase.table("meals").insert(meal_data).execute()
                 structured_log_id = result.data[0]["id"]
 
                 # Update quick_entry_logs with meal_log_id link

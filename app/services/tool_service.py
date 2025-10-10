@@ -203,7 +203,7 @@ class CoachToolService:
             start_of_day = date_obj.replace(hour=0, minute=0, second=0, microsecond=0)
             end_of_day = date_obj.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-            response = self.supabase.table("meal_logs")\
+            response = self.supabase.table("meals")\
                 .select("*")\
                 .eq("user_id", user_id)\
                 .gte("logged_at", start_of_day.isoformat())\
@@ -266,7 +266,7 @@ class CoachToolService:
 
             cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
 
-            response = self.supabase.table("meal_logs")\
+            response = self.supabase.table("meals")\
                 .select("*")\
                 .eq("user_id", user_id)\
                 .gte("logged_at", cutoff)\
@@ -723,7 +723,7 @@ class CoachToolService:
                         "created_at": datetime.utcnow().isoformat()
                     }
 
-                    saved_meal = self.supabase.table("meal_logs")\
+                    saved_meal = self.supabase.table("meals")\
                         .insert(meal_log_entry)\
                         .execute()
 

@@ -129,7 +129,7 @@ class MealLoggingServiceV2:
                 "total_sodium_mg": 0
             }
 
-            response = self.supabase.table("meal_logs").insert(meal_data).execute()
+            response = self.supabase.table("meals").insert(meal_data).execute()
             meal = response.data[0]
             meal_id = meal["id"]
 
@@ -185,20 +185,16 @@ class MealLoggingServiceV2:
 
                 # Build meal_food entry with DUAL QUANTITY TRACKING
                 meal_food = {
-                    "meal_log_id": meal_id,
+                    "meal_id": meal_id,
                     "food_id": food_id,
-                    "order_index": idx,  # Maintain order
-                    
-                    # OLD: Keep for backward compatibility (will remove after migration)
-                    "quantity": quantities['gram_quantity'],
-                    "unit": "g",
-                    
-                    # NEW: Dual quantity tracking
+                    "display_order": idx,  # Maintain order
+
+                    # Dual quantity tracking
                     "serving_quantity": quantities['serving_quantity'],
                     "serving_unit": quantities['serving_unit'],
                     "gram_quantity": quantities['gram_quantity'],
                     "last_edited_field": quantities['last_edited_field'],
-                    
+
                     # Nutrition (calculated from gram_quantity)
                     "calories": round(nutrition["calories"], 1),
                     "protein_g": round(nutrition["protein_g"], 1),
@@ -260,7 +256,7 @@ class MealLoggingServiceV2:
                 normalized_items = [self._normalize_food_item(item) for item in food_items]
 
                 # Delete existing meal_foods
-                self.supabase.table("meal_foods").delete().eq("meal_log_id", meal_id).execute()
+                self.supabase.table("meal_foods").delete().eq("meal_id", meal_id).execute()
                 logger.info(f"Deleted existing meal_foods for meal {meal_id}")
 
                 # Fetch food data
@@ -307,20 +303,16 @@ class MealLoggingServiceV2:
                         nutrition = scaled_nutrition
 
                     meal_food = {
-                        "meal_log_id": meal_id,
+                        "meal_id": meal_id,
                         "food_id": food_id,
-                        "order_index": idx,
-                        
-                        # OLD (keep for compatibility)
-                        "quantity": quantities['gram_quantity'],
-                        "unit": "g",
-                        
-                        # NEW: Dual quantity
+                        "display_order": idx,
+
+                        # Dual quantity
                         "serving_quantity": quantities['serving_quantity'],
                         "serving_unit": quantities['serving_unit'],
                         "gram_quantity": quantities['gram_quantity'],
                         "last_edited_field": quantities['last_edited_field'],
-                        
+
                         # Nutrition
                         "calories": round(nutrition["calories"], 1),
                         "protein_g": round(nutrition["protein_g"], 1),
@@ -341,7 +333,7 @@ class MealLoggingServiceV2:
             if updates:
                 updates["updated_at"] = datetime.utcnow().isoformat()
 
-                response = self.supabase.table("meal_logs") \
+                response = self.supabase.table("meals") \
                     .update(updates) \
                     .eq("id", meal_id) \
                     .eq("user_id", user_id) \
@@ -379,8 +371,8 @@ class MealLoggingServiceV2:
         try:
             logger.info(f"Deleting meal (V2): meal_id={meal_id}, user_id={user_id}")
 
-            # Delete from meal_logs (CASCADE will delete meal_foods)
-            response = self.supabase.table("meal_logs") \
+            # Delete from meals (CASCADE will delete meal_foods)
+            response = self.supabase.table("meals") \
                 .delete() \
                 .eq("id", meal_id) \
                 .eq("user_id", user_id) \
@@ -424,7 +416,7 @@ class MealLoggingServiceV2:
             logger.info(f"Getting meals (V2): user_id={user_id}, limit={limit}, offset={offset}")
 
             # Build query
-            query = self.supabase.table("meal_logs") \
+            query = self.supabase.table("meals") \
                 .select("*", count="exact") \
                 .eq("user_id", user_id)
 
@@ -480,8 +472,8 @@ class MealLoggingServiceV2:
         try:
             logger.info(f"Getting meal (V2): meal_id={meal_id}, user_id={user_id}")
 
-            # Get meal_log
-            response = self.supabase.table("meal_logs") \
+            # Get meal
+            response = self.supabase.table("meals") \
                 .select("*") \
                 .eq("id", meal_id) \
                 .eq("user_id", user_id) \
@@ -543,33 +535,32 @@ class MealLoggingServiceV2:
             # Note: Supabase Python client doesn't support raw SQL well
             # Use table query with select
             response = self.supabase.table("meal_foods") \
-                .select("*, foods_enhanced(name, brand_name, serving_size, serving_unit)") \
-                .eq("meal_log_id", meal_id) \
-                .order("created_at") \
+                .select("*, foods(name, brand_name, serving_size, serving_unit)") \
+                .eq("meal_id", meal_id) \
+                .order("added_at") \
                 .execute()
 
             # Transform response to flat structure
             foods = []
             for item in response.data:
-                food_enhanced = item.pop("foods_enhanced", {})
+                food_info = item.pop("foods", {})
 
                 food = {
                     "id": item["id"],
                     "food_id": item["food_id"],
-                    "name": food_enhanced.get("name"),
-                    "brand_name": food_enhanced.get("brand_name"),
-                    "quantity": item["quantity"],
-                    "unit": item["unit"],
-                    "serving_size": food_enhanced.get("serving_size"),
-                    "serving_unit": food_enhanced.get("serving_unit"),
+                    "name": food_info.get("name"),
+                    "brand_name": food_info.get("brand_name"),
+                    "serving_quantity": item.get("serving_quantity", 1),
+                    "serving_unit": item.get("serving_unit"),
+                    "gram_quantity": item["gram_quantity"],
+                    "serving_size": food_info.get("serving_size"),
                     "calories": item["calories"],
                     "protein_g": item["protein_g"],
                     "carbs_g": item["carbs_g"],
                     "fat_g": item["fat_g"],
                     "fiber_g": item["fiber_g"],
                     "sugar_g": item.get("sugar_g", 0),
-                    "sodium_mg": item.get("sodium_mg", 0),
-                    "notes": item.get("notes")
+                    "sodium_mg": item.get("sodium_mg", 0)
                 }
 
                 foods.append(food)
@@ -595,8 +586,8 @@ class MealLoggingServiceV2:
 
         try:
             # NEW: Include household serving fields for converter
-            response = self.supabase.table("foods_enhanced") \
-                .select("id, name, brand_name, serving_size, serving_unit, household_serving_size, household_serving_unit, calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, total_sugars_g, sodium_mg") \
+            response = self.supabase.table("foods") \
+                .select("id, name, brand_name, serving_size, serving_unit, household_serving_grams, household_serving_unit, calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, total_sugars_g, sodium_mg") \
                 .in_("id", food_ids) \
                 .execute()
 

@@ -688,7 +688,7 @@ class ContextBuilder:
             cutoff_date = datetime.utcnow() - timedelta(days=days)
 
             response = (
-                self.supabase.table("meal_logs")
+                self.supabase.table("meals")
                 .select("*")
                 .eq("user_id", user_id)
                 .gte("logged_at", cutoff_date.isoformat())

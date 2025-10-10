@@ -53,7 +53,7 @@ class ProgramService:
 
         # Get recent meals (last 14 days)
         fourteen_days_ago = (datetime.now() - timedelta(days=14)).isoformat()
-        meals_response = self.supabase.table('meal_logs')\
+        meals_response = self.supabase.table('meals')\
             .select('*')\
             .eq('user_id', user_id)\
             .gte('logged_at', fourteen_days_ago)\

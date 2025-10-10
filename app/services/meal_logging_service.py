@@ -92,7 +92,7 @@ class MealLoggingService:
                 "updated_at": datetime.utcnow().isoformat()
             }
 
-            response = self.supabase.table("meal_logs").insert(meal_data).execute()
+            response = self.supabase.table("meals").insert(meal_data).execute()
             created_meal = response.data[0]
             meal_id = created_meal["id"]
 
@@ -121,13 +121,13 @@ class MealLoggingService:
 
                 # Build meal_foods record
                 meal_food_record = {
-                    "meal_log_id": meal_id,
-                    "item_type": "food",  # All items in this function are foods
+                    "meal_id": meal_id,
                     "food_id": food_id,
-                    "template_id": None,  # Not a template
-                    "order_index": idx,  # Maintain order
-                    "quantity": quantity,
-                    "unit": unit,
+                    "serving_quantity": 1,
+                    "serving_unit": unit,
+                    "gram_quantity": quantity if unit == "g" else quantity,
+                    "last_edited_field": "grams",
+                    "display_order": idx,
                     "calories": round(scaled_nutrition.get("calories", 0), 1),
                     "protein_g": round(scaled_nutrition.get("protein_g", 0), 1),
                     "carbs_g": round(scaled_nutrition.get("carbs_g", 0), 1),
@@ -188,7 +188,7 @@ class MealLoggingService:
                 # Delete existing meal_foods (triggers will auto-update totals to 0)
                 self.supabase.table("meal_foods") \
                     .delete() \
-                    .eq("meal_log_id", meal_id) \
+                    .eq("meal_id", meal_id) \
                     .execute()
 
                 # Fetch food data
@@ -215,13 +215,13 @@ class MealLoggingService:
                     )
 
                     meal_food_record = {
-                        "meal_log_id": meal_id,
-                        "item_type": "food",  # All items in this function are foods
+                        "meal_id": meal_id,
                         "food_id": food_id,
-                        "template_id": None,  # Not a template
-                        "order_index": idx,  # Maintain order
-                        "quantity": quantity,
-                        "unit": unit,
+                        "serving_quantity": 1,
+                        "serving_unit": unit,
+                        "gram_quantity": quantity if unit == "g" else quantity,
+                        "last_edited_field": "grams",
+                        "display_order": idx,
                         "calories": round(scaled_nutrition.get("calories", 0), 1),
                         "protein_g": round(scaled_nutrition.get("protein_g", 0), 1),
                         "carbs_g": round(scaled_nutrition.get("carbs_g", 0), 1),
@@ -242,7 +242,7 @@ class MealLoggingService:
             if updates:
                 updates["updated_at"] = datetime.utcnow().isoformat()
 
-                response = self.supabase.table("meal_logs") \
+                response = self.supabase.table("meals") \
                     .update(updates) \
                     .eq("id", meal_id) \
                     .eq("user_id", user_id) \
@@ -281,7 +281,7 @@ class MealLoggingService:
             logger.info(f"Deleting meal: meal_id={meal_id}, user_id={user_id}")
 
             # Delete from database
-            response = self.supabase.table("meal_logs") \
+            response = self.supabase.table("meals") \
                 .delete() \
                 .eq("id", meal_id) \
                 .eq("user_id", user_id) \
@@ -325,7 +325,7 @@ class MealLoggingService:
             logger.info(f"Getting meals: user_id={user_id}, limit={limit}, offset={offset}")
 
             # Build query
-            query = self.supabase.table("meal_logs") \
+            query = self.supabase.table("meals") \
                 .select("*", count="exact") \
                 .eq("user_id", user_id)
 
@@ -352,15 +352,15 @@ class MealLoggingService:
 
                 # Get meal_foods with food details joined
                 meal_foods_response = self.supabase.table("meal_foods") \
-                    .select("*, foods_enhanced(id, name, brand_name, serving_size, serving_unit)") \
-                    .eq("meal_log_id", meal_id) \
-                    .order("created_at") \
+                    .select("*, foods(id, name, brand_name, serving_size, serving_unit)") \
+                    .eq("meal_id", meal_id) \
+                    .order("added_at") \
                     .execute()
 
                 # Build foods array
                 foods = []
                 for idx, mf in enumerate(meal_foods_response.data, 1):
-                    food_info = mf.get("foods_enhanced", {})
+                    food_info = mf.get("foods", {})
 
                     food_item = {
                         "food_id": mf["food_id"],
@@ -416,7 +416,7 @@ class MealLoggingService:
             logger.info(f"Getting meal: meal_id={meal_id}, user_id={user_id}")
 
             # Get meal log
-            response = self.supabase.table("meal_logs") \
+            response = self.supabase.table("meals") \
                 .select("*") \
                 .eq("id", meal_id) \
                 .eq("user_id", user_id) \
@@ -430,15 +430,15 @@ class MealLoggingService:
 
             # Get meal_foods with food details joined
             meal_foods_response = self.supabase.table("meal_foods") \
-                .select("*, foods_enhanced(id, name, brand_name, serving_size, serving_unit)") \
-                .eq("meal_log_id", meal_id) \
-                .order("created_at") \
+                .select("*, foods(id, name, brand_name, serving_size, serving_unit)") \
+                .eq("meal_id", meal_id) \
+                .order("added_at") \
                 .execute()
 
             # Build foods array for API response (matching FoodItem schema)
             foods = []
             for idx, mf in enumerate(meal_foods_response.data, 1):
-                food_info = mf.get("foods_enhanced", {})
+                food_info = mf.get("foods", {})
 
                 food_item = {
                     "food_id": mf["food_id"],
@@ -484,7 +484,7 @@ class MealLoggingService:
             return {}
 
         try:
-            response = self.supabase.table("foods_enhanced") \
+            response = self.supabase.table("foods") \
                 .select("id, name, brand_name, serving_size, serving_unit, calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, total_sugars_g, sodium_mg") \
                 .in_("id", food_ids) \
                 .execute()

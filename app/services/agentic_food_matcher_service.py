@@ -331,7 +331,7 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
             logger.info(f"[AgenticMatcher] ✅ Nutrition validated for '{food_data['name']}'")
 
             # Insert
-            db_response = self.supabase.table("foods_enhanced").insert(food_data).execute()
+            db_response = self.supabase.table("foods").insert(food_data).execute()
 
             if db_response.data:
                 created_food = db_response.data[0]

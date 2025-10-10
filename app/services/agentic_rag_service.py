@@ -368,7 +368,7 @@ class AgenticRAGService:
         try:
             cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
 
-            response = self.supabase.table("meal_logs")\
+            response = self.supabase.table("meals")\
                 .select("*")\
                 .eq("user_id", user_id)\
                 .gte("logged_at", cutoff)\

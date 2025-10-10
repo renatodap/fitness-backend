@@ -367,7 +367,7 @@ class MealTemplateService:
             await self._increment_template_usage(template_id)
 
             # Fetch created meal
-            meal_response = await self.supabase.table("meal_logs").select(
+            meal_response = await self.supabase.table("meals").select(
                 "*, foods:meal_foods(*, food:foods_enhanced(*))"
             ).eq("id", meal_id).execute()
 

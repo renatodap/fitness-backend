@@ -1825,7 +1825,7 @@ Specialist: {summary.get('_metadata', {}).get('specialist_type')}"""
             }
 
             # Get logged meals for date
-            meals = self.supabase.table('meal_logs')\
+            meals = self.supabase.table('meals')\
                 .select('calories, protein_g, carbs_g, fat_g')\
                 .eq('user_id', user_id)\
                 .gte('logged_at', f"{date}T00:00:00")\

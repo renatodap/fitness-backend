@@ -318,7 +318,7 @@ class DailyRecommendationService:
         date_str = target_date.isoformat()
 
         # Get meals logged today
-        meals = self.supabase.table('meal_logs')\
+        meals = self.supabase.table('meals')\
             .select('*')\
             .eq('user_id', user_id)\
             .gte('logged_at', f'{date_str}T00:00:00')\
