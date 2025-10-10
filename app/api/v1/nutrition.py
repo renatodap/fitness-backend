@@ -118,7 +118,7 @@ async def get_nutrition_summary_today(
         
         meals = []
         try:
-            meals_response = supabase.table("meal_logs")\
+            meals_response = supabase.table("meals")\
                 .select("total_calories, total_protein_g, total_carbs_g, total_fat_g")\
                 .eq("user_id", user_id)\
                 .gte("logged_at", start_of_day.isoformat())\
@@ -127,7 +127,7 @@ async def get_nutrition_summary_today(
             
             meals = meals_response.data if meals_response.data else []
         except Exception as e:
-            logger.warning(f"Could not fetch meal logs (table may not exist): {e}")
+            logger.warning(f"Could not fetch meals (table may not exist): {e}")
             # Return empty list - table may not exist yet in database
             meals = []
         
