@@ -66,6 +66,39 @@
 
 ---
 
+### Phase 4: React Components Updated ✅
+**Commit:** `3b901c5`  
+**Files Changed:** `components/nutrition/MealEditor.tsx`, `components/nutrition/FoodSearch.tsx`
+
+**What was done:**
+- ✅ Fixed `household_serving_size` → `household_serving_grams` in foodToMealFood()
+- ✅ Updated DualQuantityEditor instantiation with correct field
+- ✅ Used total_carbs_g, total_fat_g, dietary_fiber_g, total_sugars_g
+- ✅ Added getFoodTypeBadge() to display food type with colors
+- ✅ Display allergen warnings with ⚠️ icon
+- ✅ Used brand_name instead of brand
+- ✅ Show household_serving_grams with household_serving_unit
+
+**Impact:** UI now displays food categorization, allergens, and uses V2 field names!
+
+---
+
+### Phase 5: Backend API Routes Updated ✅
+**Commit:** `56711ed`  
+**Files Changed:** `app/api/nutrition/meals/route.ts`
+
+**What was done:**
+- ✅ Updated SELECT queries to include total_carbs_g, total_fat_g, dietary_fiber_g
+- ✅ Added household_serving_grams and household_serving_unit to queries
+- ✅ Fixed nutrition calculation to use gram_quantity (source of truth)
+- ✅ Updated foodInserts with dual quantity tracking:
+  - serving_quantity, serving_unit, gram_quantity, last_edited_field
+- ✅ Maintained backwards compatibility with fallback logic
+
+**Impact:** Backend API now calculates nutrition from gram_quantity and stores dual tracking!
+
+---
+
 ## 🔄 NEXT STEPS
 
 ### Immediate Next: Phase 4 - Update React Components
@@ -100,9 +133,9 @@ code app/nutrition/log/page.tsx
 | 1. TypeScript Types | ✅ DONE | `types/nutrition-v2.ts` | 2336f22 |
 | 2. Quantity Converter | ✅ DONE | `lib/utils/food-quantity-converter.ts` | c3d6b36 |
 | 3. API Utilities | ✅ DONE | `lib/api/foods.ts`, `lib/api/meals.ts` | 25fddaa |
-| 4. React Components | 🔄 NEXT | MealEditor, FoodSearch, log page | - |
-| 5. Backend API Routes | ⏳ TODO | `app/api/nutrition/**` | - |
-| 6. Database Migration | ⏳ TODO | Run V2 schema on Supabase | - |
+| 4. React Components | ✅ DONE | MealEditor, FoodSearch | 3b901c5 |
+| 5. Backend API Routes | ✅ DONE | `app/api/nutrition/meals/route.ts` | 56711ed |
+| 6. Database Migration | 🔄 NEXT | Run V2 schema on Supabase | - |
 | 7. Testing | ⏳ TODO | E2E tests | - |
 
 ---
