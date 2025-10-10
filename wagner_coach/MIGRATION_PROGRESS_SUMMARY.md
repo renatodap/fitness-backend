@@ -50,27 +50,45 @@
 
 ---
 
+### Phase 3: API Utilities Updated ✅
+**Commit:** `25fddaa`  
+**Files Changed:** `lib/api/foods.ts`, `lib/api/meals.ts`
+
+**What was done:**
+- ✅ Imported V2 types (Food, FoodType, Meal, MealFood, MealCategory)
+- ✅ Extended FoodV2 with usage stats and template fields
+- ✅ Updated MealFoodItem with dual quantity tracking fields
+- ✅ Updated CreateMealRequest and UpdateMealRequest for V2 schema
+- ✅ Removed duplicate type definitions
+- ✅ All API clients properly typed with V2 schema
+
+**Impact:** API layer now fully aligned with V2 types and dual quantity tracking!
+
+---
+
 ## 🔄 NEXT STEPS
 
-### Immediate Next: Phase 3 - Update API Utilities
-**Estimated Time:** 30-45 minutes
+### Immediate Next: Phase 4 - Update React Components
+**Estimated Time:** 60-90 minutes
 
-**Files to update:**
-1. `lib/api/foods.ts`
-2. `lib/api/meals.ts`
+**Priority files to update:**
+1. `components/nutrition/MealEditor.tsx` - Update to use new field names
+2. `components/nutrition/FoodSearch.tsx` - Add food_type filtering
+3. `app/nutrition/log/page.tsx` - Update meal display
 
 **Required changes:**
-- Update field mappings: `brand` → `brand_name`
-- Update field mappings: `carbs_g` → `total_carbs_g`
-- Update field mappings: `fat_g` → `total_fat_g`
-- Add support for new fields (food_type, barcodes, allergens)
-- Update query builders for V2 schema
+- Update all references to use V2 field names
+- Display food_type badges (ingredient/dish/branded/restaurant)
+- Show allergen warnings if present
+- Ensure dual quantity tracking works in UI
+- Add micronutrient displays (optional, expandable)
 
 **Commands to run:**
 ```bash
 cd C:\Users\pradord\Documents\Projects\wagner_coach\wagner-coach-clean
-code lib/api/foods.ts
-code lib/api/meals.ts
+code components/nutrition/MealEditor.tsx
+code components/nutrition/FoodSearch.tsx
+code app/nutrition/log/page.tsx
 ```
 
 ---
@@ -81,8 +99,8 @@ code lib/api/meals.ts
 |-------|--------|-------|--------|
 | 1. TypeScript Types | ✅ DONE | `types/nutrition-v2.ts` | 2336f22 |
 | 2. Quantity Converter | ✅ DONE | `lib/utils/food-quantity-converter.ts` | c3d6b36 |
-| 3. API Utilities | 🔄 NEXT | `lib/api/foods.ts`, `lib/api/meals.ts` | - |
-| 4. React Components | ⏳ TODO | MealEditor, FoodSearch, log page | - |
+| 3. API Utilities | ✅ DONE | `lib/api/foods.ts`, `lib/api/meals.ts` | 25fddaa |
+| 4. React Components | 🔄 NEXT | MealEditor, FoodSearch, log page | - |
 | 5. Backend API Routes | ⏳ TODO | `app/api/nutrition/**` | - |
 | 6. Database Migration | ⏳ TODO | Run V2 schema on Supabase | - |
 | 7. Testing | ⏳ TODO | E2E tests | - |
