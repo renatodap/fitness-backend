@@ -116,14 +116,20 @@ async def get_nutrition_summary_today(
         start_of_day = datetime.combine(today, datetime.min.time())
         end_of_day = datetime.combine(today, datetime.max.time())
         
-        meals_response = supabase.table("meal_logs")\
-            .select("total_calories, total_protein_g, total_carbs_g, total_fat_g")\
-            .eq("user_id", user_id)\
-            .gte("logged_at", start_of_day.isoformat())\
-            .lte("logged_at", end_of_day.isoformat())\
-            .execute()
-        
-        meals = meals_response.data if meals_response.data else []
+        meals = []
+        try:
+            meals_response = supabase.table("meal_logs")\
+                .select("total_calories, total_protein_g, total_carbs_g, total_fat_g")\
+                .eq("user_id", user_id)\
+                .gte("logged_at", start_of_day.isoformat())\
+                .lte("logged_at", end_of_day.isoformat())\
+                .execute()
+            
+            meals = meals_response.data if meals_response.data else []
+        except Exception as e:
+            logger.warning(f"Could not fetch meal logs (table may not exist): {e}")
+            # Return empty list - table may not exist yet in database
+            meals = []
         
         # Calculate totals
         current = {
