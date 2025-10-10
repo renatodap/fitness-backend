@@ -250,24 +250,37 @@ async def get_primary_event_countdown(
     Returns countdown data for the primary event.
     Returns 404 if no primary event is set.
     """
+    import logging
+    import traceback
+    logger = logging.getLogger(__name__)
+    
     try:
+        logger.info(f"Getting primary event countdown for user: {current_user.get('id') or current_user.get('user_id')}")
         event_service = get_event_service()
 
-        event = await event_service.get_primary_event(current_user["id"])
+        user_id = current_user.get("id") or current_user.get("user_id")
+        logger.info(f"Calling get_primary_event with user_id: {user_id}")
+        event = await event_service.get_primary_event(user_id)
+        logger.info(f"get_primary_event returned: {event}")
 
         if not event:
+            logger.info("No primary event found, returning 404")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No primary event set"
             )
 
+        logger.info(f"Getting countdown for event: {event['id']}")
         countdown = await event_service.get_event_countdown(event['id'])
+        logger.info(f"Countdown retrieved successfully")
 
         return countdown
 
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error in get_primary_event_countdown: {type(e).__name__}: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching primary event countdown: {str(e)}"

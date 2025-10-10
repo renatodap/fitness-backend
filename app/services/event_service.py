@@ -21,7 +21,11 @@ from uuid import UUID
 from app.config import get_settings
 from app.services.supabase_service import get_service_client
 from app.services.dual_model_router import dual_router, TaskType, TaskConfig
-from postgrest.exceptions import APIError
+try:
+    from postgrest.exceptions import APIError
+except ImportError:
+    # Fallback for different postgrest versions
+    APIError = Exception
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
