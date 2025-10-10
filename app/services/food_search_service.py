@@ -280,7 +280,7 @@ class FoodSearchService:
                 "id, name, brand_name, food_type as food_group, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
                 "total_sugars_g, sodium_mg, data_quality_score, verified as is_verified, "
-                "popularity_score, global_use_count as search_count"
+                "popularity_score, global_use_count"
             )
 
             # No quality filter - show all foods (user can decide quality)
@@ -295,9 +295,9 @@ class FoodSearchService:
             if exclude_ids:
                 select_query = select_query.not_.in_("id", exclude_ids)
 
-            # Order by quality and popularity
-            select_query = select_query.order("search_count", desc=True) \
-                .order("data_quality_score", desc=True) \
+            # Order by name alphabetically (since all have 0 popularity)
+            # TODO: Re-enable popularity sorting once foods have usage data
+            select_query = select_query.order("name", desc=False) \
                 .limit(limit)
 
             response = select_query.execute()
