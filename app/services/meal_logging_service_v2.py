@@ -42,6 +42,40 @@ class MealLoggingServiceV2:
         self.supabase = get_service_client()
         self.food_search = get_food_search_service()
 
+    def _normalize_food_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Normalize food item to handle both old and new formats.
+
+        Old format: {food_id, quantity, unit}
+        New format: {food_id, serving_quantity, serving_unit, gram_quantity, last_edited_field}
+
+        Returns normalized format with quantity and input_field.
+        """
+        # If new format (has serving_quantity or gram_quantity)
+        if "serving_quantity" in item or "gram_quantity" in item:
+            last_edited = item.get("last_edited_field", "grams")
+
+            if last_edited == "servings" and "serving_quantity" in item:
+                return {
+                    **item,
+                    "quantity": item["serving_quantity"],
+                    "input_field": "servings",
+                    "unit": item.get("serving_unit", "serving")
+                }
+            else:  # grams or fallback
+                return {
+                    **item,
+                    "quantity": item.get("gram_quantity", item.get("serving_quantity", 1)),
+                    "input_field": "grams",
+                    "unit": "g"
+                }
+
+        # Old format - pass through
+        return {
+            **item,
+            "input_field": item.get("input_field", "grams")
+        }
+
     async def create_meal(
         self,
         user_id: str,
@@ -68,8 +102,11 @@ class MealLoggingServiceV2:
         try:
             logger.info(f"Creating meal (V2): user_id={user_id}, category={category}, foods={len(food_items)}")
 
+            # Step 0: Normalize food items (handle both old and new formats)
+            normalized_items = [self._normalize_food_item(item) for item in food_items]
+
             # Step 1: Fetch food data for all items
-            food_ids = [item["food_id"] for item in food_items]
+            food_ids = [item["food_id"] for item in normalized_items]
             foods_data = await self._fetch_foods(food_ids)
 
             # Step 2: Create meal_log (without totals - triggers will calculate)
@@ -101,7 +138,7 @@ class MealLoggingServiceV2:
             # Step 3: Insert into meal_foods table
             meal_foods_to_insert = []
 
-            for idx, item in enumerate(food_items):
+            for idx, item in enumerate(normalized_items):
                 food_id = item["food_id"]
                 input_quantity = item["quantity"]
                 input_field = item.get("input_field", "grams")  # Default to grams for backward compatibility
@@ -219,18 +256,21 @@ class MealLoggingServiceV2:
             if "foods" in updates:
                 food_items = updates.pop("foods")  # Remove from updates
 
+                # Normalize food items
+                normalized_items = [self._normalize_food_item(item) for item in food_items]
+
                 # Delete existing meal_foods
                 self.supabase.table("meal_foods").delete().eq("meal_log_id", meal_id).execute()
                 logger.info(f"Deleted existing meal_foods for meal {meal_id}")
 
                 # Fetch food data
-                food_ids = [item["food_id"] for item in food_items]
+                food_ids = [item["food_id"] for item in normalized_items]
                 foods_data = await self._fetch_foods(food_ids)
 
                 # Insert new meal_foods
                 meal_foods_to_insert = []
 
-                for idx, item in enumerate(food_items):
+                for idx, item in enumerate(normalized_items):
                     food_id = item["food_id"]
                     input_quantity = item["quantity"]
                     input_field = item.get("input_field", "grams")

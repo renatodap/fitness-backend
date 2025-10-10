@@ -23,13 +23,21 @@ class FoodItemRequest(BaseModel):
     item_type: str = Field(default="food", description="Type: 'food' or 'template'")
     food_id: Optional[str] = Field(None, description="Food UUID from foods_enhanced table (required if item_type='food')")
     template_id: Optional[str] = Field(None, description="Template UUID from meal_templates (required if item_type='template')")
-    quantity: float = Field(..., gt=0, description="Quantity of food/template")
-    unit: str = Field(..., description="Unit (g, oz, cup, serving, etc.)")
+
+    # Accept both old format (quantity/unit) and new format (serving_quantity/serving_unit)
+    quantity: Optional[float] = Field(None, gt=0, description="Quantity of food/template (legacy)")
+    unit: Optional[str] = Field(None, description="Unit (g, oz, cup, serving, etc.) (legacy)")
+
+    # New format from frontend
+    serving_quantity: Optional[float] = Field(None, gt=0, description="Serving quantity")
+    serving_unit: Optional[str] = Field(None, description="Serving unit")
+    gram_quantity: Optional[float] = Field(None, description="Gram quantity (optional)")
+    last_edited_field: Optional[str] = Field(None, description="Last edited field (servings/grams)")
 
     class Config:
         json_schema_extra = {
             "examples": [
-                {"item_type": "food", "food_id": "uuid-1", "quantity": 6, "unit": "oz"},
+                {"item_type": "food", "food_id": "uuid-1", "serving_quantity": 6, "serving_unit": "oz", "gram_quantity": 170},
                 {"item_type": "template", "template_id": "uuid-2", "quantity": 1, "unit": "serving"}
             ]
         }
