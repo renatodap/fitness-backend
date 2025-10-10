@@ -340,8 +340,8 @@ async def get_food_by_id(
         search_service = get_food_search_service()
 
         # Query food by ID
-        response = search_service.supabase.table("foods_enhanced") \
-            .select("id, name, brand_name, food_group, serving_size, serving_unit, calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score") \
+        response = search_service.supabase.table("foods") \
+            .select("id, name, brand_name, food_type as food_group, serving_size, serving_unit, calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, total_sugars_g, sodium_mg, data_quality_score") \
             .eq("id", food_id) \
             .limit(1) \
             .execute()

@@ -139,11 +139,11 @@ class FoodSearchService:
             logger.info(f"Getting recent foods for user {user_id}, limit={limit}")
 
             # Query meal_foods table (relational schema)
-            # Join with meal_logs to filter by user_id
+            # Join with meals to filter by user_id
             response = self.supabase.table("meal_foods") \
-                .select("food_id, quantity, unit, created_at, meal_logs!inner(user_id, logged_at)") \
-                .eq("meal_logs.user_id", user_id) \
-                .order("created_at", desc=True) \
+                .select("food_id, serving_quantity, serving_unit, added_at, meals!inner(user_id, logged_at)") \
+                .eq("meals.user_id", user_id) \
+                .order("added_at", desc=True) \
                 .limit(200) \
                 .execute()
 
@@ -158,15 +158,15 @@ class FoodSearchService:
                 if not food_id:
                     continue
 
-                # Get logged_at from joined meal_logs
-                meal_log_data = meal_food.get("meal_logs", {})
-                logged_at = meal_log_data.get("logged_at") if isinstance(meal_log_data, dict) else None
+                # Get logged_at from joined meals
+                meal_data = meal_food.get("meals", {})
+                logged_at = meal_data.get("logged_at") if isinstance(meal_data, dict) else None
 
                 if food_id not in food_tracking:
                     food_tracking[food_id] = {
-                        "last_logged_at": logged_at or meal_food.get("created_at"),
-                        "last_quantity": meal_food.get("quantity"),
-                        "last_unit": meal_food.get("unit"),
+                        "last_logged_at": logged_at or meal_food.get("added_at"),
+                        "last_quantity": meal_food.get("serving_quantity"),
+                        "last_unit": meal_food.get("serving_unit"),
                         "log_count": 1
                     }
                 else:
@@ -186,9 +186,9 @@ class FoodSearchService:
             if not sorted_food_ids:
                 return {"foods": []}
 
-            # Fetch full food data from foods_enhanced
-            foods_response = self.supabase.table("foods_enhanced") \
-                .select("id, name, brand_name, food_group, serving_size, serving_unit, calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, total_sugars_g, sodium_mg") \
+            # Fetch full food data from foods
+            foods_response = self.supabase.table("foods") \
+                .select("id, name, brand_name, food_type as food_group, serving_size, serving_unit, calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, total_sugars_g, sodium_mg") \
                 .in_("id", sorted_food_ids) \
                 .execute()
 
@@ -276,11 +276,11 @@ class FoodSearchService:
                 exclude_ids = []
 
             # Build query
-            select_query = self.supabase.table("foods_enhanced").select(
-                "id, name, brand_name, food_group, serving_size, serving_unit, "
+            select_query = self.supabase.table("foods").select(
+                "id, name, brand_name, food_type as food_group, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
-                "total_sugars_g, sodium_mg, data_quality_score, is_verified, "
-                "popularity_score, search_count, is_generic, is_branded"
+                "total_sugars_g, sodium_mg, data_quality_score, verified as is_verified, "
+                "popularity_score, global_use_count as search_count"
             )
 
             # No quality filter - show all foods (user can decide quality)
