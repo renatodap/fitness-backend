@@ -72,13 +72,13 @@ DROP FUNCTION IF EXISTS search_foods CASCADE;
 DROP FUNCTION IF EXISTS search_foods_enhanced CASCADE;
 
 -- ============================================================================
--- Step 7: Drop any views
+-- Step 7: Drop any views and related tables
 -- ============================================================================
 
 DROP VIEW IF EXISTS meal_logs_with_details CASCADE;
 DROP VIEW IF EXISTS meal_foods_with_nutrition CASCADE;
-DROP VIEW IF EXISTS user_favorite_foods CASCADE;
 DROP VIEW IF EXISTS recent_foods CASCADE;
+DROP TABLE IF EXISTS user_favorite_foods CASCADE;
 
 -- ============================================================================
 -- Step 8: Remove any food/meal related multimodal embeddings
