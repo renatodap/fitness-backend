@@ -283,8 +283,7 @@ class FoodSearchService:
                 "popularity_score, search_count, is_generic, is_branded"
             )
 
-            # Filter by data quality (exclude low-quality foods with incomplete nutrition)
-            select_query = select_query.gte("data_quality_score", 0.5)
+            # No quality filter - show all foods (user can decide quality)
 
             # Filter by query (partial match on name or brand)
             # Use ILIKE for case-insensitive partial matching
