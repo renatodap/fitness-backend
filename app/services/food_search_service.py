@@ -333,11 +333,12 @@ class FoodSearchService:
         """
         try:
             # Query user's templates matching the query
+            # Note: meal_templates schema has basic columns only
             response = self.supabase.table("meal_templates").select(
                 "id, name, description, category, "
                 "total_calories, total_protein_g, total_carbs_g, total_fat_g, total_fiber_g, "
                 "is_favorite, use_count, last_used_at, tags"
-            ).eq("user_id", user_id).eq("is_public", False).ilike("name", f"%{query}%").order(
+            ).eq("user_id", user_id).ilike("name", f"%{query}%").order(
                 "use_count", desc=True  # Most used first
             ).order(
                 "is_favorite", desc=True  # Favorites first
@@ -373,20 +374,11 @@ class FoodSearchService:
         """
         try:
             # Query public templates matching the query
-            # Order: restaurant templates first (most useful), then community
-            # NOTE: Only search name/restaurant_name, NOT description
-            # This prevents "banana" from matching "Protein Shake with 1 banana" description
-            response = self.supabase.table("meal_templates").select(
-                "id, name, description, category, restaurant_name, "
-                "total_calories, total_protein_g, total_carbs_g, total_fat_g, total_fiber_g, "
-                "is_restaurant, popularity_score, meal_suitability, dietary_flags, tags"
-            ).eq("is_public", True).or_(
-                f"name.ilike.%{query}%,restaurant_name.ilike.%{query}%"
-            ).order(
-                "is_restaurant", desc=True  # Restaurant templates first
-            ).order(
-                "popularity_score", desc=True  # Most popular first
-            ).limit(limit).execute()
+            # NOTE: meal_templates table doesn't have is_public, restaurant_name, etc.
+            # For now, skip public templates as the schema doesn't support them
+            # TODO: Add proper meal template columns or create separate restaurant_meals table
+            logger.debug("Public templates not available - meal_templates schema doesn't support public/restaurant fields")
+            return []
 
             templates = response.data if response.data else []
 
@@ -497,7 +489,7 @@ class FoodSearchService:
         """
         try:
             # Find foods matching this query
-            response = self.supabase.table("foods_enhanced") \
+            response = self.supabase.table("foods") \
                 .select("id") \
                 .or_(f"name.ilike.%{query}%,brand_name.ilike.%{query}%") \
                 .limit(10) \
@@ -677,10 +669,10 @@ class FoodSearchService:
             logger.debug(f"Recent foods RPC failed, using fallback: {e}")
             try:
                 # Fallback: query recent foods manually
-                response = self.supabase.from_("foods_enhanced").select(
-                    "id, name, brand_name, food_group, serving_size, serving_unit, "
+                response = self.supabase.from_("foods").select(
+                    "id, name, brand_name, food_type as food_group, serving_size, serving_unit, "
                     "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
-                    "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
+                    "total_sugars_g, sodium_mg, data_quality_score"
                 ).gte("data_quality_score", 0.5).ilike("name", f"%{name}%").limit(1).execute()
 
                 if response.data and len(response.data) > 0:
@@ -699,13 +691,11 @@ class FoodSearchService:
             # STEP 1: Try EXACT case-insensitive match first (highest priority)
             # This ensures "whey isolate" matches "Whey Isolate" exactly, not "Whey Protein"
             logger.info(f"[FoodSearch] Trying EXACT match for: '{name}'")
-            response = self.supabase.from_("foods_enhanced").select(
-                "id, name, brand_name, food_group, serving_size, serving_unit, "
+            response = self.supabase.from_("foods").select(
+                "id, name, brand_name, food_type as food_group, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
-                "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
+                "total_sugars_g, sodium_mg, data_quality_score"
             ).gte("data_quality_score", 0.5).ilike("name", name).order(
-                "is_generic", desc=True  # Generic foods first
-            ).order(
                 "data_quality_score", desc=True  # Then by quality
             ).limit(5).execute()  # Get top 5 to filter
 
@@ -725,16 +715,14 @@ class FoodSearchService:
                 logger.info(f"[FoodSearch] ⚠️ Partial match (ilike): '{response.data[0]['name']}' for query '{name}'")
                 return response.data[0]
 
-            # STEP 2: Try partial match with word boundaries (PREFER GENERIC over branded)
+            # STEP 2: Try partial match with word boundaries
             # This searches for foods containing the search term
             logger.info(f"[FoodSearch] Trying PARTIAL match for: '{name}'")
-            response = self.supabase.from_("foods_enhanced").select(
-                "id, name, brand_name, food_group, serving_size, serving_unit, "
+            response = self.supabase.from_("foods").select(
+                "id, name, brand_name, food_type as food_group, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
-                "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
+                "total_sugars_g, sodium_mg, data_quality_score"
             ).gte("data_quality_score", 0.5).ilike("name", f"%{name}%").order(
-                "is_generic", desc=True  # Generic foods first
-            ).order(
                 "data_quality_score", desc=True  # Then by quality
             ).limit(1).execute()
 
@@ -775,29 +763,25 @@ class FoodSearchService:
                     base_name = base_name.replace(method, "").strip()
                     break
 
-            # Search with cooking method filter if detected (PREFER GENERIC)
+            # Search with cooking method filter if detected
             if detected_method:
-                response = self.supabase.from_("foods_enhanced").select(
-                    "id, name, brand_name, food_group, serving_size, serving_unit, "
+                response = self.supabase.from_("foods").select(
+                    "id, name, brand_name, food_type as food_group, serving_size, serving_unit, "
                     "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
-                    "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
+                    "total_sugars_g, sodium_mg, data_quality_score"
                 ).gte("data_quality_score", 0.5).ilike("name", f"%{base_name}%{detected_method}%").order(
-                    "is_generic", desc=True  # Generic foods first
-                ).order(
                     "data_quality_score", desc=True  # Then by quality
                 ).limit(1).execute()
 
                 if response.data and len(response.data) > 0:
                     return response.data[0]
 
-            # Fallback: search just base name (PREFER GENERIC)
-            response = self.supabase.from_("foods_enhanced").select(
-                "id, name, brand_name, food_group, serving_size, serving_unit, "
+            # Fallback: search just base name
+            response = self.supabase.from_("foods").select(
+                "id, name, brand_name, food_type as food_group, serving_size, serving_unit, "
                 "calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, "
-                "total_sugars_g, sodium_mg, is_generic, is_branded, data_quality_score"
+                "total_sugars_g, sodium_mg, data_quality_score"
             ).gte("data_quality_score", 0.5).ilike("name", f"%{base_name}%").order(
-                "is_generic", desc=True  # Generic foods first
-            ).order(
                 "data_quality_score", desc=True  # Then by quality
             ).limit(1).execute()
 
