@@ -441,6 +441,12 @@ class MealLoggingServiceV2:
             for meal in meals:
                 meal["foods"] = await self._get_meal_foods(meal["id"])
 
+                # Map database fields to API response fields
+                # Database has 'created_from_template_id' (UUID), API expects 'template_id' and 'created_from_template'
+                if "created_from_template_id" in meal:
+                    meal["template_id"] = meal.get("created_from_template_id")
+                    meal["created_from_template"] = bool(meal.get("created_from_template_id"))
+
             logger.info(f"Found {len(meals)} meals (total: {total})")
 
             return {
@@ -487,6 +493,12 @@ class MealLoggingServiceV2:
 
             # Get meal_foods
             meal["foods"] = await self._get_meal_foods(meal_id)
+
+            # Map database fields to API response fields
+            # Database has 'created_from_template_id' (UUID), API expects 'template_id' and 'created_from_template'
+            if "created_from_template_id" in meal:
+                meal["template_id"] = meal.get("created_from_template_id")
+                meal["created_from_template"] = bool(meal.get("created_from_template_id"))
 
             logger.info(f"Found meal: {meal_id} with {len(meal['foods'])} foods")
 

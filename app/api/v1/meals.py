@@ -105,8 +105,8 @@ class MealResponse(BaseModel):
     category: str
     logged_at: str
     notes: Optional[str]
-    template_id: Optional[str]  # NEW: Template used to create this meal
-    created_from_template: Optional[bool]  # NEW: Whether meal was created from template
+    template_id: Optional[str] = None  # Template used to create this meal (optional)
+    created_from_template: bool = False  # Whether meal was created from template
     total_calories: float
     total_protein_g: float
     total_carbs_g: float
