@@ -1,236 +1,225 @@
-# Wagner Coach Database Migrations
+# Database Migrations
 
-**Last Updated:** 2025-10-09
-**Status:** Consolidated & Cleaned
+This directory contains all SQL migrations for the Wagner Coach backend database.
 
-## 📁 Migration Strategy
+## Migration Execution Order
 
-All database migrations are now consolidated in this single directory:
-```
-wagner-coach-backend/migrations/
-```
+**IMPORTANT**: Migrations must be executed in the exact order listed below.
 
-**Other migration directories have been superseded and should be ignored:**
-- ❌ `wagner-coach-backend/supabase/migrations/` - Old location
-- ❌ `wagner-coach-clean/supabase/migrations/` - Frontend migrations (deprecated)
+### 1. Schema Migrations (Structural Changes)
 
----
+#### `000_SCHEMA.sql`
+- **Status**: Reference only (do not run)
+- **Purpose**: Complete current database schema for documentation
+- **Note**: This file represents the current state of the database and should not be executed
 
-## 🗄️ Current Live Schema
+#### `001_meal_logging_improvements.sql`
+- **Status**: Already applied
+- **Purpose**: Initial meal logging improvements
+- **Changes**:
+  - Timezone handling fixes
+  - Food portion defaults (household_serving_size, household_serving_unit)
+  - Improved meal_logs structure
 
-The **authoritative source of truth** for the database schema is the live Supabase database. The user provided the complete live schema with 46 tables.
-
-**IMPORTANT:** When making schema changes:
-1. Always check the live database first
-2. Create incremental migrations that build on the current state
-3. Never assume the database matches old migration files
-4. Use the live schema as your baseline
-
----
-
-## 📝 Migration Files (Chronological)
-
-### Active Migrations (Applied & Verified)
-These migrations represent the historical changes that led to the current schema:
-
-1. **007_fix_meal_nutrition_calculations.sql** (Oct 7) - Fixed meal nutrition calculation logic
-2. **008_fix_food_serving_sizes.sql** (Oct 7) - Fixed food serving size conversions
-3. **010_add_ai_food_tracking.sql** (Oct 7) - Added AI food tracking capabilities
-4. **011_fix_missing_nutrition_data.sql** (Oct 7) - Fixed missing nutrition data in foods_enhanced
-5. **012_add_auto_log_preference.sql** (Oct 8) - Added auto_log_enabled to user_preferences
-6. **013_adaptive_consultation_system.sql** (Oct 8) - Added adaptive AI consultation with specialists
-7. **014_add_user_events_calendar.sql** (Oct 9) - Added events and calendar system
-8. **015_garmin_health_integration.sql** (Oct 9) - Added Garmin health integration (8 tables)
-9. **016_remove_strava_integration.sql** (Oct 9) - Removed Strava (replaced by Garmin)
-10. **017_activity_deduplication.sql** (Oct 9) - Added activity merge request system
-11. **020_nutrition_base_schema.sql** (Oct 9) - Consolidated nutrition schema
-12. **021_recursive_meal_templates.sql** (Oct 9) - Added recursive meal templates
-13. **022_fix_meal_triggers_for_templates.sql** (Oct 9) - Fixed triggers for templates
-14. **add_user_timezone.sql** (Oct 8) - Added user timezone support
-
-### Cleanup Script (To Be Run)
-- **DROP_UNUSED_TABLES.sql** (Oct 9) - Drops 13 unused tables after comprehensive codebase analysis
+#### `002_food_architecture_cleanup.sql`
+- **Status**: Ready to apply
+- **Purpose**: Separate atomic foods from composite meals
+- **Breaking Changes**: YES - removes restaurant fields from foods_enhanced
+- **Changes**:
+  - Removes `is_restaurant`, `restaurant_name`, `menu_item_id` from foods_enhanced
+  - Adds categorization fields: `is_atomic`, `cuisine_type`, `meal_suitability`, `preparation_state`
+  - Enhances meal_templates with: `is_public`, `is_restaurant`, `source`, `popularity_score`
+  - Creates new tables: `user_favorite_foods`, `food_categories`, `food_pairings`
+  - Seeds default food categories (Protein, Carbs, Fats, Vegetables, Fruits, Dairy, Beverages, Supplements)
+  - Drops old problematic trigger functions
 
 ---
 
-## 🧹 Cleanup Actions Taken
+### 2. Data Cleanup (Optional - Fresh Start)
 
-### Deleted Migration Directories
-1. Deleted scattered migrations from `wagner-coach-backend/supabase/migrations/`
-2. Deleted frontend migrations from `wagner-coach-clean/supabase/migrations/`
-3. Consolidated all migrations to this single directory
-
-### Migration Files Removed (Superseded)
-- `20241006000000_nutrition_goals_system.sql` - Superseded by consolidated nutrition schema
-- `20241006212000_clean_and_restore_fk.sql` - Superseded by current schema
-- `20251002_ai_program_rls.sql` - RLS policies in live schema
-- `20251002_enhanced_onboarding.sql` - Onboarding in live schema
-- `20251002_onboarding_system.sql` - Onboarding in live schema
-- `20251008_auto_create_profiles.sql` - Profile creation in live schema
-- `20251009_add_get_or_create_user_preferences_function.sql` - Function in live schema
-- `currentschema_20251002.sql` - Outdated snapshot (Oct 2), replaced by current live schema
+#### `002a_cleanup_seed_data.sql`
+- **Status**: Optional (use only for fresh data seeding)
+- **Purpose**: Clean up existing seed data before re-seeding
+- **WARNING**: Deletes all existing foods and public meal templates
+- **Use Case**: Run this ONLY if you want to start fresh with new seed data
+- **What it does**:
+  - Deletes all public meal templates and their foods
+  - Deletes all foods from foods_enhanced
+  - Preserves food categories for re-seeding
 
 ---
 
-## 🎯 Moving Forward: How to Create New Migrations
+### 3. Seed Data - Atomic Foods (~225 foods)
 
-### Step 1: Understand Current State
-```sql
--- Query the live database to see current schema
-SELECT table_name, column_name, data_type
-FROM information_schema.columns
-WHERE table_schema = 'public'
-ORDER BY table_name, ordinal_position;
-```
+#### `003a_seed_atomic_foods_proteins_carbs.sql`
+- **Purpose**: Seed proteins and carbohydrates (110 foods)
+- **Contents**:
+  - **Proteins (60)**: Poultry (8), Beef (10), Pork (8), Fish (12), Seafood (6), Eggs & Dairy (8), Plant Protein (8)
+  - **Carbohydrates (50)**: Rice (8), Pasta (8), Bread (10), Grains (10), Potatoes (6), Other Carbs (8)
 
-### Step 2: Create Incremental Migration
-Create a new migration file in this directory with naming convention:
-```
-<number>_<descriptive_name>.sql
-```
+#### `003b_seed_fruits_vegetables_fats.sql`
+- **Purpose**: Seed fruits, vegetables, and fats (80 foods)
+- **Contents**:
+  - **Fruits (25)**: Banana, Apple, Berries, Melons, Tropical fruits, etc.
+  - **Vegetables (30)**: Leafy greens, Cruciferous, Colorful veggies, Root vegetables
+  - **Fats & Oils (15)**: Olive oil, Coconut oil, Nuts, Seeds
+  - **Nut Butters & Spreads (10)**: Peanut butter, Almond butter, Hummus, etc.
 
-Example: `023_add_social_features.sql`
+#### `003c_seed_beverages_supplements.sql`
+- **Purpose**: Seed beverages, supplements, and condiments (35 foods)
+- **Contents**:
+  - **Beverages (15)**: Water, Coffee, Milk alternatives, Juices
+  - **Supplements (8)**: Protein powders, Creatine, BCAAs
+  - **Condiments (12)**: Soy sauce, Hot sauce, Vinegars, Honey, etc.
 
-### Step 3: Migration Template
-```sql
--- ============================================================
--- Migration: 023_add_social_features.sql
--- Description: Add social features (friends, sharing)
--- Created: 2025-10-XX
--- Dependencies: Current live schema (46 tables)
--- ============================================================
+---
 
--- UP Migration
-CREATE TABLE IF NOT EXISTS user_friends (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    friend_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    status TEXT NOT NULL CHECK (status IN ('pending', 'accepted', 'blocked')),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(user_id, friend_id)
-);
+### 4. Seed Data - Meal Templates (~30 templates)
 
--- RLS Policies
-ALTER TABLE user_friends ENABLE ROW LEVEL SECURITY;
+#### `004a_seed_meal_templates_community.sql`
+- **Purpose**: Seed community meal templates and initial restaurant templates (15 templates)
+- **Contents**:
+  - **Community Templates (10)**: Protein Shake, Chicken & Rice Bowl, Oatmeal Power Bowl, etc.
+  - **Restaurant Templates (5)**: Chipotle (3), Subway (2)
 
-CREATE POLICY "Users can view own friend relationships"
-ON user_friends FOR SELECT
-USING (auth.uid() = user_id OR auth.uid() = friend_id);
+#### `004b_seed_meal_templates_restaurants.sql`
+- **Purpose**: Seed additional restaurant meal templates (15 templates)
+- **Contents**:
+  - **Starbucks (5)**: Egg White Bites, Protein Box, Oatmeal, Turkey Sandwich, Chicken Wrap
+  - **Panera (5)**: Mediterranean Bowl, Greek Salad, Turkey BLT, Chicken Soup, Breakfast Bowl
+  - **Sweetgreen (5)**: Harvest Bowl, Kale Caesar, Fish Taco Bowl, Shroomami, Guacamole Greens
 
-CREATE POLICY "Users can create friend requests"
-ON user_friends FOR INSERT
-WITH CHECK (auth.uid() = user_id);
+---
 
--- Indexes
-CREATE INDEX idx_user_friends_user_id ON user_friends(user_id);
-CREATE INDEX idx_user_friends_friend_id ON user_friends(friend_id);
-CREATE INDEX idx_user_friends_status ON user_friends(status);
+## Execution Instructions
 
--- ============================================================
--- DOWN Migration (for rollback)
--- ============================================================
--- DROP TABLE IF EXISTS user_friends CASCADE;
-```
+### Fresh Database Setup (First Time)
 
-### Step 4: Test Locally
 ```bash
-# Apply migration to local Supabase
-supabase db push --file migrations/023_add_social_features.sql
+# Run migrations in order
+psql -U postgres -d wagner_coach -f 000_SCHEMA.sql  # Skip if already done
+psql -U postgres -d wagner_coach -f 001_meal_logging_improvements.sql
+psql -U postgres -d wagner_coach -f 002_food_architecture_cleanup.sql
 
-# Verify it worked
-supabase db diff
+# Seed atomic foods
+psql -U postgres -d wagner_coach -f 003a_seed_atomic_foods_proteins_carbs.sql
+psql -U postgres -d wagner_coach -f 003b_seed_fruits_vegetables_fats.sql
+psql -U postgres -d wagner_coach -f 003c_seed_beverages_supplements.sql
+
+# Seed meal templates
+psql -U postgres -d wagner_coach -f 004a_seed_meal_templates_community.sql
+psql -U postgres -d wagner_coach -f 004b_seed_meal_templates_restaurants.sql
 ```
 
-### Step 5: Apply to Production
+### Re-seed Data Only (Existing Database)
+
 ```bash
-# Deploy to production Supabase
-# (Manual application via Supabase dashboard SQL editor)
+# Clean up existing seed data
+psql -U postgres -d wagner_coach -f 002a_cleanup_seed_data.sql
+
+# Re-seed atomic foods
+psql -U postgres -d wagner_coach -f 003a_seed_atomic_foods_proteins_carbs.sql
+psql -U postgres -d wagner_coach -f 003b_seed_fruits_vegetables_fats.sql
+psql -U postgres -d wagner_coach -f 003c_seed_beverages_supplements.sql
+
+# Re-seed meal templates
+psql -U postgres -d wagner_coach -f 004a_seed_meal_templates_community.sql
+psql -U postgres -d wagner_coach -f 004b_seed_meal_templates_restaurants.sql
 ```
 
 ---
 
-## ⚠️ Critical Rules
+## Migration Naming Convention
 
-1. **Never modify old migration files** - They are historical records
-2. **Always create new migrations** - Even for fixes
-3. **Always test migrations locally first** - Use local Supabase instance
-4. **Always include rollback (DOWN) migrations** - In comments if not automated
-5. **Always add RLS policies** - Security first
-6. **Always add indexes** - For foreign keys and frequently queried columns
-7. **Always use CASCADE** - For foreign key deletions (when appropriate)
-8. **Always check live schema first** - Don't assume database state
+- `000_*.sql` - Schema reference (do not run)
+- `001_*.sql` - Initial migrations (already applied)
+- `002_*.sql` - Architectural changes (schema modifications)
+- `002a_*.sql` - Optional data cleanup scripts
+- `003[a-z]_*.sql` - Seed data for atomic foods
+- `004[a-z]_*.sql` - Seed data for meal templates
 
 ---
 
-## 🗑️ Unused Tables (Identified for Deletion)
+## Data Summary
 
-Run `DROP_UNUSED_TABLES.sql` to remove these 13 unused tables:
-1. strava_activities
-2. strava_auth
-3. workout_logs
-4. workout_log_exercises
-5. workout_sets
-6. workout_exercises
-7. workouts
-8. workout_days
-9. custom_foods
-10. nutrition_goals
-11. weekly_workout_goals
-12. coach_tool_calls
-13. custom_exercises
+After running all seed scripts, you will have:
 
-**Before running:** Backup your database!
+- **~225 atomic foods** (single ingredients only)
+- **~30 public meal templates** (composite meals)
+- **8 top-level food categories** (Protein, Carbs, Fats, Vegetables, Fruits, Dairy, Beverages, Supplements)
+- **~20 subcategories** (Poultry, Beef, Rice, Pasta, etc.)
+- **5 restaurant chains** represented (Chipotle, Subway, Starbucks, Panera, Sweetgreen)
 
 ---
 
-## 📊 Current Live Schema Summary
+## Architecture Principles
 
-**46 Total Tables:**
-- 33 Active (in use by backend)
-- 13 Unused (to be deleted)
+### Atomic vs Composite
 
-**Active Tables by Feature:**
-- **Auth & Profiles** (2): profiles, user_preferences
-- **Nutrition** (8): meal_logs, meal_foods, meal_templates, meal_template_items, foods_enhanced, user_food_popularity, plus 2 deprecated
-- **Activities** (3): activities, activity_exercises, activity_sets
-- **Events** (2): events, event_checkins
-- **Coach** (2): coach_conversations, coach_messages
-- **Consultation** (4): consultation_sessions, consultation_messages, consultation_extractions, consultation_daily_recommendations
-- **Programs** (4): ai_generated_programs, ai_program_days, ai_program_workouts, ai_program_meals
-- **Garmin** (8): garmin_tokens, garmin_health_snapshot, garmin_daily_summaries, garmin_sleep_data, garmin_stress_data, garmin_hrv_data, garmin_body_battery_data, garmin_respiration_data
-- **Embeddings** (1): multimodal_embeddings
-- **Monitoring** (1): api_usage_logs
+- **Atomic Foods** (`foods_enhanced` with `is_atomic = true`):
+  - Single ingredients: Chicken breast, Rice, Broccoli, Banana
+  - Simple whole foods or minimally processed items
+  - No composite meals or restaurant items
 
----
+- **Composite Meals** (`meal_templates`):
+  - Combinations of atomic foods: "Chicken & Rice Bowl"
+  - Restaurant meals: "Chipotle Chicken Bowl"
+  - Community templates: "Classic Protein Shake"
+  - Can be public (`is_public = true`) or private (`is_public = false`)
 
-## 🎓 Best Practices
+### Public vs Private Templates
 
-### DO ✅
-- Keep migrations small and focused
-- Use descriptive migration names
-- Include comments explaining "why" not just "what"
-- Test rollback before deploying
-- Document breaking changes
-- Use transactions for multi-step migrations
+- **Public Templates** (`is_public = true`, `user_id = NULL`):
+  - Available to all users
+  - Restaurant meals, community favorites
+  - Cannot be edited by users
 
-### DON'T ❌
-- Modify existing migrations
-- Assume database state
-- Skip RLS policies
-- Forget indexes on foreign keys
-- Delete data without backup
-- Deploy untested migrations
+- **Private Templates** (`is_public = false`, `user_id = <user's uuid>`):
+  - User-created meal templates
+  - Can be edited/deleted by owner
+  - Require valid user_id
 
 ---
 
-## 📚 Resources
+## Troubleshooting
 
-- **Supabase Migrations Docs**: https://supabase.com/docs/guides/database/migrations
-- **PostgreSQL Docs**: https://www.postgresql.org/docs/
-- **pgvector Extension**: https://github.com/pgvector/pgvector
+### Error: Duplicate key violation on meal_templates
+
+**Cause**: Trying to insert templates that already exist
+
+**Solution**: Run `002a_cleanup_seed_data.sql` first to clean existing data
+
+### Error: Column "sort_order" does not exist
+
+**Cause**: Using old seed scripts with wrong column name
+
+**Solution**: Use updated scripts that use `order_index` instead of `sort_order`
+
+### Error: Food category not found
+
+**Cause**: Running seed scripts without food categories
+
+**Solution**: Ensure `002_food_architecture_cleanup.sql` was run first (it seeds categories)
 
 ---
 
-**END OF README**
+## Contributing
 
-This consolidation represents the clean, production-ready state of Wagner Coach database migrations as of 2025-10-09.
+When creating new migrations:
+
+1. Use sequential numbering (`005_`, `006_`, etc.)
+2. Use descriptive names (`005_add_user_preferences.sql`)
+3. Include comments explaining purpose and changes
+4. Add verification queries at the end
+5. Test on development database first
+6. Update this README with migration details
+
+---
+
+## Notes
+
+- All migrations use PostgreSQL syntax
+- RLS (Row Level Security) policies are included where needed
+- Foreign key constraints ensure data integrity
+- Indexes are created for performance
+- Verification queries help confirm successful execution
