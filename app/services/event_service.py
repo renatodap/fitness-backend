@@ -21,6 +21,7 @@ from uuid import UUID
 from app.config import get_settings
 from app.services.supabase_service import get_service_client
 from app.services.dual_model_router import dual_router, TaskType, TaskConfig
+from postgrest.exceptions import APIError
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -217,8 +218,8 @@ class EventService:
                 .execute()
 
             return response.data if response.data else None
-        except Exception as e:
-            # .single() raises an exception when no records found
+        except (APIError, Exception) as e:
+            # .single() raises APIError when no records found
             # Return None to indicate no primary event exists
             logger.debug(f"No primary event found for user {user_id}: {e}")
             return None
@@ -245,8 +246,8 @@ class EventService:
             
             if not event:
                 raise ValueError(f"Event {event_id} not found")
-        except Exception as e:
-            # .single() raises an exception when no records found
+        except (APIError, Exception) as e:
+            # .single() raises APIError when no records found
             logger.debug(f"Event {event_id} not found: {e}")
             raise ValueError(f"Event {event_id} not found")
 

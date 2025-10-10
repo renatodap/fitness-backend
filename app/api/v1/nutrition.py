@@ -72,19 +72,27 @@ async def get_nutrition_summary_today(
     """Get nutrition summary for today with targets and current consumption."""
     from app.services.supabase_service import get_service_client
     from datetime import datetime, date
+    import logging
     
+    logger = logging.getLogger(__name__)
     supabase = get_service_client()
-    user_id = current_user.get("user_id") or current_user.get("id")
+    user_id = current_user.get("user_id")
+    
+    logger.info(f"Fetching nutrition summary for user: {user_id}")
     
     try:
         # Get user's nutrition targets from users table
-        user_response = supabase.table("users")\
-            .select("daily_calorie_target, daily_protein_target_g, daily_carbs_target_g, daily_fat_target_g")\
-            .eq("id", user_id)\
-            .single()\
-            .execute()
-        
-        user_data = user_response.data if user_response.data else {}
+        try:
+            user_response = supabase.table("users")\
+                .select("daily_calorie_target, daily_protein_target_g, daily_carbs_target_g, daily_fat_target_g")\
+                .eq("id", user_id)\
+                .single()\
+                .execute()
+            
+            user_data = user_response.data if user_response.data else {}
+        except Exception as e:
+            logger.warning(f"Could not fetch user nutrition targets: {e}")
+            user_data = {}
         
         # Default targets if not set
         targets = {

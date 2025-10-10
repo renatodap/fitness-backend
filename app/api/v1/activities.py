@@ -65,8 +65,10 @@ async def get_activity_summary_today(
     from app.services.supabase_service import get_service_client
     from datetime import datetime, date
     
+    logger.info(f"Fetching activity summary for user: {current_user.get('user_id')}")
+    
     supabase = get_service_client()
-    user_id = current_user.get("id")
+    user_id = current_user.get("user_id")
     
     try:
         # Get today's activities
