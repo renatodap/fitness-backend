@@ -889,6 +889,10 @@ RESPONSE RULES:
                         description_match = re.search(r'Description: ([^\n]+)', message)
                         description = description_match.group(1).strip() if description_match else "Food detected from image"
 
+                        # Calculate nutrition totals from matched foods
+                        nutrition_totals = self._calculate_nutrition_from_foods(match_result["matched_foods"])
+                        logger.info(f"[UnifiedCoach] Image-based meal nutrition calculated: {nutrition_totals}")
+
                         # Build response with food_detected
                         return {
                             "success": True,
@@ -899,7 +903,7 @@ RESPONSE RULES:
                             "log_preview": None,
                             "food_detected": {
                                 "is_food": True,
-                                "nutrition": {},  # Nutrition will be calculated from matched foods
+                                "nutrition": nutrition_totals,  # Calculated from matched foods!
                                 "food_items": match_result["matched_foods"],  # Use matched foods with DB IDs
                                 "meal_type": meal_type,
                                 "confidence": 0.95,
@@ -1034,6 +1038,10 @@ RESPONSE RULES:
                         logger.error(f"[UnifiedCoach] User ID: {user_id}")
                         raise
 
+                    # Calculate nutrition totals from matched foods
+                    nutrition_totals = self._calculate_nutrition_from_foods(match_result["matched_foods"])
+                    logger.info(f"[UnifiedCoach] Text-based meal nutrition calculated: {nutrition_totals}")
+
                     # Return food_detected (not log_preview) for consistency with image flow
                     return {
                         "success": True,
@@ -1044,7 +1052,7 @@ RESPONSE RULES:
                         "log_preview": None,
                         "food_detected": {
                             "is_food": True,
-                            "nutrition": {},  # Nutrition will be calculated from matched foods
+                            "nutrition": nutrition_totals,  # Calculated from matched foods!
                             "food_items": match_result["matched_foods"],  # Real DB foods with IDs!
                             "meal_type": preview_result["data"].get("meal_type", "lunch"),
                             "confidence": preview_result.get("confidence", 0.9),
@@ -1708,6 +1716,94 @@ RESPONSE RULES:
 
         except Exception as e:
             logger.error(f"[UnifiedCoach] Vectorization failed for {message_id}: {e}")
+
+    def _calculate_nutrition_from_foods(self, matched_foods: List[Dict[str, Any]]) -> Dict[str, float]:
+        """
+        Calculate total nutrition from matched foods.
+
+        Each matched food has:
+        - calories, protein_g, carbs_g, fat_g (per serving_size)
+        - detected_quantity (amount user ate)
+        - detected_unit (g, oz, serving, etc.)
+        - serving_size (the reference amount for nutrition values)
+        - serving_unit (g, oz, serving, etc.)
+
+        Returns:
+            Dict with calories, protein_g, carbs_g, fats_g totals
+        """
+        totals = {
+            "calories": 0.0,
+            "protein_g": 0.0,
+            "carbs_g": 0.0,
+            "fats_g": 0.0  # Note: frontend expects fats_g, backend uses fat_g
+        }
+
+        logger.info(f"[_calculate_nutrition] Calculating nutrition for {len(matched_foods)} foods")
+
+        for food in matched_foods:
+            # Get nutrition values (per serving_size)
+            serving_size = float(food.get("serving_size", 100))
+            calories_per_serving = float(food.get("calories", 0) or 0)
+            protein_per_serving = float(food.get("protein_g", 0) or 0)
+            carbs_per_serving = float(food.get("carbs_g", 0) or 0)
+            fat_per_serving = float(food.get("fat_g", 0) or 0)
+
+            # Get detected quantity (how much user ate)
+            detected_qty = float(food.get("detected_quantity", 1))
+            detected_unit = food.get("detected_unit", "serving")
+            serving_unit = food.get("serving_unit", "g")
+
+            logger.info(
+                f"[_calculate_nutrition] Food: {food.get('name')} - "
+                f"{detected_qty} {detected_unit} (serving: {serving_size} {serving_unit})"
+            )
+
+            # Calculate scaling factor based on unit conversion
+            if detected_unit == serving_unit:
+                # Units match - scale directly by ratio
+                scale_factor = detected_qty / serving_size
+                logger.info(f"[_calculate_nutrition]   Units match: scale_factor = {detected_qty}/{serving_size} = {scale_factor}")
+            elif detected_unit == "serving" or detected_unit == "servings":
+                # User specified N servings - multiply by N
+                scale_factor = detected_qty
+                logger.info(f"[_calculate_nutrition]   Detected unit is 'serving': scale_factor = {detected_qty}")
+            else:
+                # Units don't match - assume detected_qty is in grams relative to 100g serving
+                # This is a fallback - ideally we'd have proper unit conversion
+                if serving_unit == "g":
+                    scale_factor = detected_qty / serving_size
+                else:
+                    # Different units, no conversion available - assume 1:1
+                    scale_factor = detected_qty / serving_size
+                logger.info(
+                    f"[_calculate_nutrition]   Unit mismatch ({detected_unit} vs {serving_unit}): "
+                    f"scale_factor = {detected_qty}/{serving_size} = {scale_factor}"
+                )
+
+            # Add scaled nutrition to totals
+            scaled_calories = calories_per_serving * scale_factor
+            scaled_protein = protein_per_serving * scale_factor
+            scaled_carbs = carbs_per_serving * scale_factor
+            scaled_fats = fat_per_serving * scale_factor
+
+            logger.info(
+                f"[_calculate_nutrition]   Scaled nutrition: "
+                f"{scaled_calories:.1f} cal, {scaled_protein:.1f}g P, "
+                f"{scaled_carbs:.1f}g C, {scaled_fats:.1f}g F"
+            )
+
+            totals["calories"] += scaled_calories
+            totals["protein_g"] += scaled_protein
+            totals["carbs_g"] += scaled_carbs
+            totals["fats_g"] += scaled_fats
+
+        logger.info(
+            f"[_calculate_nutrition] TOTAL nutrition: "
+            f"{totals['calories']:.1f} cal, {totals['protein_g']:.1f}g protein, "
+            f"{totals['carbs_g']:.1f}g carbs, {totals['fats_g']:.1f}g fats"
+        )
+
+        return totals
 
     def _build_success_message(self, log_type: str, log_data: Dict[str, Any]) -> str:
         """Build success message for confirmed log."""
