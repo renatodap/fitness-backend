@@ -328,7 +328,6 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
                         food_data = {
                             "name": perp_food["name"],
                             "brand_name": perp_food.get("brand_name"),
-                            "food_group": "other",
                             "serving_size": float(perp_food["serving_size"]),
                             "serving_unit": perp_food["serving_unit"],
                             "calories": float(perp_food["calories"]),
@@ -377,7 +376,6 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
                                 "id": created_food["id"],
                                 "name": created_food["name"],
                                 "brand_name": created_food.get("brand_name"),
-                                "food_group": created_food.get("food_group"),
                                 "serving_size": created_food["serving_size"],
                                 "serving_unit": created_food["serving_unit"],
                                 "calories": created_food.get("calories"),
@@ -440,7 +438,6 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
                             food_data = {
                                 "name": perp_food["name"],
                                 "brand_name": perp_food.get("brand_name"),
-                                "food_group": "other",
                                 "serving_size": float(perp_food["serving_size"]),
                                 "serving_unit": perp_food["serving_unit"],
                                 "calories": float(perp_food["calories"]),
@@ -470,7 +467,6 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
                                         "id": created_food["id"],
                                         "name": created_food["name"],
                                         "brand_name": created_food.get("brand_name"),
-                                        "food_group": created_food.get("food_group"),
                                         "serving_size": created_food["serving_size"],
                                         "serving_unit": created_food["serving_unit"],
                                         "calories": created_food.get("calories"),
@@ -502,7 +498,6 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
             food_data = {
                 "name": result["name"],
                 "brand_name": result.get("brand_name"),
-                "food_group": "other",
                 "serving_size": float(result["serving_size"]),
                 "serving_unit": result["serving_unit"],
                 "calories": float(result["calories"]),
@@ -549,7 +544,6 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
                     "id": created_food["id"],
                     "name": created_food["name"],
                     "brand_name": created_food.get("brand_name"),
-                    "food_group": created_food.get("food_group"),
                     "serving_size": created_food["serving_size"],
                     "serving_unit": created_food["serving_unit"],
                     "calories": created_food.get("calories"),
