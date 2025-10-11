@@ -21,7 +21,7 @@ python-jose[cryptography]==3.5.0
 python-multipart==0.0.6
 
 # External Integrations
-garminconnect==0.2.30
+garminconnect==0.2.30  # Garmin Connect integration for health data sync
 
 # Monitoring
 prometheus-client==0.19.0

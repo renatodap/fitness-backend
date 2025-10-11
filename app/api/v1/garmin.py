@@ -61,7 +61,10 @@ async def test_garmin_connection(
 
     try:
         garmin_service = GarminSyncService()
-        result = await garmin_service.test_connection(request.email, request.password)
+        result = await garmin_service.test_connection(
+            email=request.email,
+            password=request.password
+        )
 
         return GarminConnectionTestResponse(**result)
 
@@ -110,9 +113,8 @@ async def sync_garmin_data(
     logger.info(f"[Garmin API] Starting sync for user {user_id}, days_back={request.days_back}")
 
     try:
+        # Sync all health data using GarminSyncService
         garmin_service = GarminSyncService()
-
-        # Sync all health data
         result = await garmin_service.sync_all_health_data(
             user_id=user_id,
             email=request.email,
@@ -125,7 +127,7 @@ async def sync_garmin_data(
             f"{result['total_synced']} records synced, {result['total_errors']} errors"
         )
 
-        # Convert nested dicts to Pydantic models
+        # Return response directly - it already matches the format
         return GarminSyncResponse(**result)
 
     except Exception as e:

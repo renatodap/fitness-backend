@@ -12,6 +12,13 @@ from app.services.supabase_service import get_service_client
 from app.services.embedding_service import EmbeddingService
 from app.services.multimodal_embedding_service import get_multimodal_service
 
+# Import Garmy MCP for AI-powered health data queries
+try:
+    from app.workers.garmy_mcp_server import get_mcp_server
+    GARMY_MCP_AVAILABLE = True
+except ImportError:
+    GARMY_MCP_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -826,11 +833,12 @@ class ContextBuilder:
 
             # === SLEEP DATA ===
             sleep_response = (
-                self.supabase.table("garmin_sleep_data")
+                self.supabase.table("sleep_logs")
                 .select("*")
                 .eq("user_id", user_id)
-                .gte("calendar_date", cutoff_date.date().isoformat())
-                .order("calendar_date", desc=True)
+                .eq("source", "garmin")  # Filter for Garmin data only
+                .gte("sleep_date", cutoff_date.date().isoformat())
+                .order("sleep_date", desc=True)
                 .limit(7)  # Last 7 nights
                 .execute()
             )
@@ -841,15 +849,15 @@ class ContextBuilder:
 
                 # Latest sleep
                 latest_sleep = sleep_data[0]
-                total_duration = latest_sleep.get("total_sleep_seconds", 0) / 3600  # Convert to hours
-                sleep_score = latest_sleep.get("overall_score")
-                deep_sleep = latest_sleep.get("deep_sleep_seconds", 0) / 3600
-                rem_sleep = latest_sleep.get("rem_sleep_seconds", 0) / 3600
-                light_sleep = latest_sleep.get("light_sleep_seconds", 0) / 3600
-                awake_time = latest_sleep.get("awake_sleep_seconds", 0) / 60  # Convert to minutes
-                avg_hrv = latest_sleep.get("average_hrv_ms")
+                total_duration = latest_sleep.get("total_sleep_minutes", 0) / 60  # Convert to hours
+                sleep_score = latest_sleep.get("sleep_score")
+                deep_sleep = latest_sleep.get("deep_sleep_minutes", 0) / 60  # Convert to hours
+                rem_sleep = latest_sleep.get("rem_sleep_minutes", 0) / 60  # Convert to hours
+                light_sleep = latest_sleep.get("light_sleep_minutes", 0) / 60  # Convert to hours
+                awake_time = latest_sleep.get("awake_minutes", 0)  # Already in minutes
+                avg_hrv = latest_sleep.get("avg_hrv_ms")
 
-                parts.append(f"Last Night ({latest_sleep.get('calendar_date')}):")
+                parts.append(f"Last Night ({latest_sleep.get('sleep_date')}):")
                 parts.append(f"  - Total Sleep: {total_duration:.1f} hours")
                 if sleep_score:
                     parts.append(f"  - Sleep Score: {sleep_score}/100")
@@ -861,8 +869,8 @@ class ContextBuilder:
 
                 # 7-day average
                 if len(sleep_data) >= 3:
-                    avg_duration = sum(s.get("total_sleep_seconds", 0) for s in sleep_data) / len(sleep_data) / 3600
-                    avg_score = sum(s.get("overall_score", 0) for s in sleep_data if s.get("overall_score")) / len([s for s in sleep_data if s.get("overall_score")])
+                    avg_duration = sum(s.get("total_sleep_minutes", 0) for s in sleep_data) / len(sleep_data) / 60
+                    avg_score = sum(s.get("sleep_score", 0) for s in sleep_data if s.get("sleep_score")) / len([s for s in sleep_data if s.get("sleep_score")])
                     parts.append(f"\n7-Day Average:")
                     parts.append(f"  - Sleep Duration: {avg_duration:.1f} hours")
                     if avg_score > 0:
@@ -872,11 +880,12 @@ class ContextBuilder:
 
             # === HRV STATUS ===
             hrv_response = (
-                self.supabase.table("garmin_hrv_data")
+                self.supabase.table("hrv_logs")
                 .select("*")
                 .eq("user_id", user_id)
-                .gte("calendar_date", cutoff_date.date().isoformat())
-                .order("calendar_date", desc=True)
+                .eq("source", "garmin")  # Filter for Garmin data only
+                .gte("recorded_at", cutoff_date.isoformat())
+                .order("recorded_at", desc=True)
                 .limit(7)
                 .execute()
             )
@@ -887,22 +896,22 @@ class ContextBuilder:
 
                 # Latest HRV
                 latest_hrv = hrv_data[0]
-                last_night_avg = latest_hrv.get("last_night_avg_ms")
-                weekly_avg = latest_hrv.get("weekly_avg_ms")
-                status = latest_hrv.get("status", "").replace("_", " ").title()
+                hrv_rmssd = latest_hrv.get("hrv_rmssd_ms")
+                hrv_sdnn = latest_hrv.get("hrv_sdnn_ms")
+                measurement_type = latest_hrv.get("measurement_type", "").title()
 
-                parts.append(f"Latest ({latest_hrv.get('calendar_date')}):")
-                if last_night_avg:
-                    parts.append(f"  - Last Night: {last_night_avg} ms")
-                if weekly_avg:
-                    parts.append(f"  - Weekly Average: {weekly_avg} ms")
-                if status:
-                    parts.append(f"  - Status: {status}")
+                parts.append(f"Latest ({latest_hrv.get('recorded_at', '')[:10]}):")
+                if hrv_rmssd:
+                    parts.append(f"  - HRV RMSSD: {hrv_rmssd} ms")
+                if hrv_sdnn:
+                    parts.append(f"  - HRV SDNN: {hrv_sdnn} ms")
+                if measurement_type:
+                    parts.append(f"  - Measurement Type: {measurement_type}")
 
                 # Trend
                 if len(hrv_data) >= 3:
-                    recent_avg = sum(h.get("last_night_avg_ms", 0) for h in hrv_data[:3] if h.get("last_night_avg_ms")) / len([h for h in hrv_data[:3] if h.get("last_night_avg_ms")])
-                    older_avg = sum(h.get("last_night_avg_ms", 0) for h in hrv_data[3:] if h.get("last_night_avg_ms")) / len([h for h in hrv_data[3:] if h.get("last_night_avg_ms")]) if len(hrv_data) > 3 else recent_avg
+                    recent_avg = sum(h.get("hrv_rmssd_ms", 0) for h in hrv_data[:3] if h.get("hrv_rmssd_ms")) / len([h for h in hrv_data[:3] if h.get("hrv_rmssd_ms")])
+                    older_avg = sum(h.get("hrv_rmssd_ms", 0) for h in hrv_data[3:] if h.get("hrv_rmssd_ms")) / len([h for h in hrv_data[3:] if h.get("hrv_rmssd_ms")]) if len(hrv_data) > 3 else recent_avg
 
                     if recent_avg > 0 and older_avg > 0:
                         trend = "improving" if recent_avg > older_avg else "declining" if recent_avg < older_avg else "stable"
@@ -912,11 +921,12 @@ class ContextBuilder:
 
             # === STRESS LEVELS ===
             stress_response = (
-                self.supabase.table("garmin_stress_data")
+                self.supabase.table("stress_logs")
                 .select("*")
                 .eq("user_id", user_id)
-                .gte("calendar_date", cutoff_date.date().isoformat())
-                .order("calendar_date", desc=True)
+                .eq("source", "garmin")  # Filter for Garmin data only
+                .gte("recorded_at", cutoff_date.isoformat())
+                .order("recorded_at", desc=True)
                 .limit(7)
                 .execute()
             )
@@ -929,18 +939,15 @@ class ContextBuilder:
                 latest_stress = stress_data[0]
                 avg_stress = latest_stress.get("avg_stress_level")
                 max_stress = latest_stress.get("max_stress_level")
-                rest_time = latest_stress.get("rest_stress_duration_seconds", 0) / 3600  # Convert to hours
-                low_time = latest_stress.get("low_stress_duration_seconds", 0) / 3600
-                medium_time = latest_stress.get("medium_stress_duration_seconds", 0) / 3600
-                high_time = latest_stress.get("high_stress_duration_seconds", 0) / 3600
+                rest_time = latest_stress.get("rest_minutes", 0) / 60  # Convert to hours
 
-                parts.append(f"Latest ({latest_stress.get('calendar_date')}):")
+                parts.append(f"Latest ({latest_stress.get('recorded_at', '')[:10]}):")
                 if avg_stress:
                     parts.append(f"  - Average Stress: {avg_stress}/100")
                 if max_stress:
                     parts.append(f"  - Peak Stress: {max_stress}/100")
-                parts.append(f"  - Time Distribution:")
-                parts.append(f"    • Rest: {rest_time:.1f}h | Low: {low_time:.1f}h | Medium: {medium_time:.1f}h | High: {high_time:.1f}h")
+                if rest_time > 0:
+                    parts.append(f"  - Rest Time: {rest_time:.1f}h")
 
                 # Weekly average
                 if len(stress_data) >= 3:
@@ -951,11 +958,12 @@ class ContextBuilder:
 
             # === BODY BATTERY ===
             battery_response = (
-                self.supabase.table("garmin_body_battery")
+                self.supabase.table("body_battery_logs")
                 .select("*")
                 .eq("user_id", user_id)
-                .gte("calendar_date", cutoff_date.date().isoformat())
-                .order("calendar_date", desc=True)
+                .eq("source", "garmin")  # Filter for Garmin data only
+                .gte("date", cutoff_date.date().isoformat())
+                .order("date", desc=True)
                 .limit(7)
                 .execute()
             )
@@ -966,14 +974,13 @@ class ContextBuilder:
 
                 # Latest body battery
                 latest_battery = battery_data[0]
-                highest = latest_battery.get("highest_body_battery")
-                lowest = latest_battery.get("lowest_body_battery")
-                charged = latest_battery.get("body_battery_charged")
-                drained = latest_battery.get("body_battery_drained")
+                battery_level = latest_battery.get("battery_level")
+                charged = latest_battery.get("charged_value")
+                drained = latest_battery.get("drained_value")
 
-                parts.append(f"Latest ({latest_battery.get('calendar_date')}):")
-                if highest is not None and lowest is not None:
-                    parts.append(f"  - Range: {lowest} to {highest}/100")
+                parts.append(f"Latest ({latest_battery.get('date')}):")
+                if battery_level is not None:
+                    parts.append(f"  - Current Level: {battery_level}/100")
                 if charged:
                     parts.append(f"  - Charged: +{charged}")
                 if drained:
@@ -985,21 +992,19 @@ class ContextBuilder:
 
                 # 7-day pattern
                 if len(battery_data) >= 3:
-                    avg_highest = sum(b.get("highest_body_battery", 0) for b in battery_data) / len(battery_data)
-                    avg_lowest = sum(b.get("lowest_body_battery", 0) for b in battery_data) / len(battery_data)
-                    parts.append(f"\n7-Day Pattern:")
-                    parts.append(f"  - Average Peak: {avg_highest:.1f}/100")
-                    parts.append(f"  - Average Low: {avg_lowest:.1f}/100")
+                    avg_level = sum(b.get("battery_level", 0) for b in battery_data) / len(battery_data)
+                    parts.append(f"\n7-Day Average:")
+                    parts.append(f"  - Average Level: {avg_level:.1f}/100")
 
                 parts.append("")
 
             # === READINESS SCORE ===
             readiness_response = (
-                self.supabase.table("garmin_readiness")
+                self.supabase.table("daily_readiness")
                 .select("*")
                 .eq("user_id", user_id)
-                .gte("calendar_date", cutoff_date.date().isoformat())
-                .order("calendar_date", desc=True)
+                .gte("date", cutoff_date.date().isoformat())
+                .order("date", desc=True)
                 .limit(7)
                 .execute()
             )
@@ -1010,10 +1015,10 @@ class ContextBuilder:
 
                 # Latest readiness
                 latest_readiness = readiness_data[0]
-                score = latest_readiness.get("overall_score")
-                message = latest_readiness.get("readiness_message")
+                score = latest_readiness.get("readiness_score")
+                status = latest_readiness.get("readiness_status", "").title()
 
-                parts.append(f"Latest ({latest_readiness.get('calendar_date')}):")
+                parts.append(f"Latest ({latest_readiness.get('date')}):")
                 if score is not None:
                     parts.append(f"  - Readiness Score: {score}/100")
                     if score >= 75:
@@ -1023,12 +1028,12 @@ class ContextBuilder:
                     else:
                         recommendation = "LOW - Focus on recovery, light activity only"
                     parts.append(f"  - Status: {recommendation}")
-                if message:
-                    parts.append(f"  - Message: {message}")
+                if status:
+                    parts.append(f"  - Readiness Status: {status}")
 
                 # 7-day trend
                 if len(readiness_data) >= 3:
-                    avg_readiness = sum(r.get("overall_score", 0) for r in readiness_data if r.get("overall_score")) / len([r for r in readiness_data if r.get("overall_score")])
+                    avg_readiness = sum(r.get("readiness_score", 0) for r in readiness_data if r.get("readiness_score")) / len([r for r in readiness_data if r.get("readiness_score")])
                     parts.append(f"\n7-Day Average: {avg_readiness:.1f}/100")
 
                 parts.append("")
@@ -1042,7 +1047,7 @@ class ContextBuilder:
 
                 if sleep_response.data:
                     latest_sleep = sleep_response.data[0]
-                    sleep_hours = latest_sleep.get("total_sleep_seconds", 0) / 3600
+                    sleep_hours = latest_sleep.get("total_sleep_minutes", 0) / 60
                     if sleep_hours >= 7:
                         recovery_signals.append("Good sleep duration")
                     elif sleep_hours < 6:
@@ -1050,10 +1055,10 @@ class ContextBuilder:
 
                 if hrv_response.data:
                     latest_hrv = hrv_response.data[0]
-                    status = latest_hrv.get("status", "")
-                    if "balanced" in status.lower() or "high" in status.lower():
+                    hrv_value = latest_hrv.get("hrv_rmssd_ms", 0)
+                    if hrv_value >= 50:
                         recovery_signals.append("HRV is balanced/high")
-                    elif "low" in status.lower():
+                    elif hrv_value > 0 and hrv_value < 40:
                         recovery_signals.append("⚠️ Low HRV detected")
 
                 if stress_response.data:
@@ -1066,7 +1071,7 @@ class ContextBuilder:
 
                 if readiness_response.data:
                     latest_readiness = readiness_response.data[0]
-                    score = latest_readiness.get("overall_score", 0)
+                    score = latest_readiness.get("readiness_score", 0)
                     if score >= 75:
                         recovery_signals.append("High training readiness")
                     elif score < 50:
@@ -1122,38 +1127,41 @@ class ContextBuilder:
 
             # Fetch recovery data
             sleep_data = (
-                self.supabase.table("garmin_sleep_data")
-                .select("calendar_date, total_sleep_seconds, overall_score, average_hrv_ms")
+                self.supabase.table("sleep_logs")
+                .select("sleep_date, total_sleep_minutes, sleep_score, avg_hrv_ms")
                 .eq("user_id", user_id)
-                .gte("calendar_date", cutoff_date.date().isoformat())
-                .order("calendar_date", desc=False)
+                .eq("source", "garmin")
+                .gte("sleep_date", cutoff_date.date().isoformat())
+                .order("sleep_date", desc=False)
                 .execute()
             ).data or []
 
             hrv_data = (
-                self.supabase.table("garmin_hrv_data")
-                .select("calendar_date, last_night_avg_ms, weekly_avg_ms, status")
+                self.supabase.table("hrv_logs")
+                .select("recorded_at, hrv_rmssd_ms, hrv_sdnn_ms")
                 .eq("user_id", user_id)
-                .gte("calendar_date", cutoff_date.date().isoformat())
-                .order("calendar_date", desc=False)
+                .eq("source", "garmin")
+                .gte("recorded_at", cutoff_date.isoformat())
+                .order("recorded_at", desc=False)
                 .execute()
             ).data or []
 
             stress_data = (
-                self.supabase.table("garmin_stress_data")
-                .select("calendar_date, avg_stress_level, max_stress_level")
+                self.supabase.table("stress_logs")
+                .select("recorded_at, avg_stress_level, max_stress_level")
                 .eq("user_id", user_id)
-                .gte("calendar_date", cutoff_date.date().isoformat())
-                .order("calendar_date", desc=False)
+                .eq("source", "garmin")
+                .gte("recorded_at", cutoff_date.isoformat())
+                .order("recorded_at", desc=False)
                 .execute()
             ).data or []
 
             readiness_data = (
-                self.supabase.table("garmin_readiness")
-                .select("calendar_date, overall_score")
+                self.supabase.table("daily_readiness")
+                .select("date, readiness_score")
                 .eq("user_id", user_id)
-                .gte("calendar_date", cutoff_date.date().isoformat())
-                .order("calendar_date", desc=False)
+                .gte("date", cutoff_date.date().isoformat())
+                .order("date", desc=False)
                 .execute()
             ).data or []
 
@@ -1183,7 +1191,7 @@ class ContextBuilder:
             # === CORRELATION 1: Sleep Quality vs Workout Performance ===
             if sleep_data and workouts:
                 # Map sleep data to workout days
-                sleep_by_date = {s['calendar_date']: s for s in sleep_data}
+                sleep_by_date = {s['sleep_date']: s for s in sleep_data}
 
                 good_sleep_workouts = []
                 poor_sleep_workouts = []
@@ -1193,8 +1201,8 @@ class ContextBuilder:
                     prev_night = sleep_by_date.get(workout_date)
 
                     if prev_night:
-                        sleep_hours = prev_night.get('total_sleep_seconds', 0) / 3600
-                        sleep_score = prev_night.get('overall_score', 0)
+                        sleep_hours = prev_night.get('total_sleep_minutes', 0) / 60
+                        sleep_score = prev_night.get('sleep_score', 0)
                         rpe = workout.get('rpe', 0)
 
                         # Categorize sleep quality
@@ -1233,8 +1241,8 @@ class ContextBuilder:
                 # Map HRV to weeks
                 hrv_by_week = {}
                 for hrv in hrv_data:
-                    week = hrv['calendar_date']
-                    hrv_by_week[week] = hrv.get('last_night_avg_ms', 0)
+                    week = hrv['recorded_at'][:10]  # Get date part from timestamp
+                    hrv_by_week[week] = hrv.get('hrv_rmssd_ms', 0)
 
                 # Find correlations
                 high_load_low_hrv_count = 0
@@ -1260,7 +1268,7 @@ class ContextBuilder:
 
             # === CORRELATION 3: Readiness Score vs Workout Completion ===
             if readiness_data and workouts:
-                readiness_by_date = {r['calendar_date']: r for r in readiness_data}
+                readiness_by_date = {r['date']: r for r in readiness_data}
 
                 high_readiness_workouts = 0
                 low_readiness_workouts = 0
@@ -1272,7 +1280,7 @@ class ContextBuilder:
                     readiness = readiness_by_date.get(workout_date)
 
                     if readiness:
-                        score = readiness.get('overall_score', 0)
+                        score = readiness.get('readiness_score', 0)
 
                         if score >= 75:
                             high_readiness_workouts += 1
@@ -1282,8 +1290,8 @@ class ContextBuilder:
                             low_readiness_total += 1
 
                 # Count days with readiness scores
-                high_readiness_days = len([r for r in readiness_data if r.get('overall_score', 0) >= 75])
-                low_readiness_days = len([r for r in readiness_data if r.get('overall_score', 0) < 50])
+                high_readiness_days = len([r for r in readiness_data if r.get('readiness_score', 0) >= 75])
+                low_readiness_days = len([r for r in readiness_data if r.get('readiness_score', 0) < 50])
 
                 if high_readiness_days > 0 and low_readiness_days > 0:
                     parts.append("### Training Readiness → Workout Patterns")
@@ -1325,14 +1333,14 @@ class ContextBuilder:
 
                 # Sleep recommendation
                 if sleep_data:
-                    avg_sleep = sum(s.get('total_sleep_seconds', 0) for s in sleep_data) / len(sleep_data) / 3600
+                    avg_sleep = sum(s.get('total_sleep_minutes', 0) for s in sleep_data) / len(sleep_data) / 60
                     if avg_sleep < 7:
                         parts.append(f"🎯 **Priority #1**: Increase sleep to 7-9 hours (current average: {avg_sleep:.1f}h)")
 
                 # HRV recommendation
                 if hrv_data:
                     recent_hrv = hrv_data[-7:] if len(hrv_data) >= 7 else hrv_data
-                    avg_recent_hrv = sum(h.get('last_night_avg_ms', 0) for h in recent_hrv if h.get('last_night_avg_ms')) / len([h for h in recent_hrv if h.get('last_night_avg_ms')]) if any(h.get('last_night_avg_ms') for h in recent_hrv) else 0
+                    avg_recent_hrv = sum(h.get('hrv_rmssd_ms', 0) for h in recent_hrv if h.get('hrv_rmssd_ms')) / len([h for h in recent_hrv if h.get('hrv_rmssd_ms')]) if any(h.get('hrv_rmssd_ms') for h in recent_hrv) else 0
 
                     if avg_recent_hrv > 0 and avg_recent_hrv < 50:
                         parts.append(f"🎯 **Priority #2**: Improve HRV (current: {avg_recent_hrv:.0f}ms) through stress reduction and better sleep")
