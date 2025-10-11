@@ -374,8 +374,13 @@ RESPONSE RULES:
                         # Claude wants to use tools!
                         logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Claude requested {len([c for c in response.content if c.type == 'tool_use'])} tool(s)")
 
-                        # Execute all requested tools
-                        tool_results = []
+                        # PARALLEL EXECUTION: Execute all requested tools CONCURRENTLY!
+                        # This is MASSIVELY faster when Claude needs multiple data sources
+                        import asyncio
+
+                        # Collect all tool executions
+                        tool_execution_tasks = []
+                        tool_metadata = []  # Track metadata for each tool
 
                         for content_block in response.content:
                             if content_block.type == "tool_use":
@@ -383,23 +388,47 @@ RESPONSE RULES:
                                 tool_input = content_block.input
                                 tool_use_id = content_block.id
 
-                                logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Executing tool: {tool_name}({tool_input})")
+                                logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Queuing tool: {tool_name}({tool_input})")
 
-                                # Execute the tool
-                                tool_result = await self._execute_tool(tool_name, tool_input, user_id)
+                                # Create async task for this tool
+                                task = self._execute_tool(tool_name, tool_input, user_id)
+                                tool_execution_tasks.append(task)
 
-                                tool_results.append({
-                                    "type": "tool_result",
-                                    "tool_use_id": tool_use_id,
-                                    "content": str(tool_result)
-                                })
-
-                                tool_calls_made.append({
-                                    "tool": tool_name,
+                                # Store metadata
+                                tool_metadata.append({
+                                    "name": tool_name,
                                     "input": tool_input,
-                                    "result_preview": str(tool_result)[:200],
-                                    "full_result": tool_result  # Store full result for aggregation
+                                    "use_id": tool_use_id
                                 })
+
+                        # EXECUTE ALL TOOLS IN PARALLEL! 🚀
+                        logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Executing {len(tool_execution_tasks)} tools IN PARALLEL...")
+                        parallel_results = await asyncio.gather(*tool_execution_tasks, return_exceptions=True)
+                        logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Parallel execution complete!")
+
+                        # Build tool_results and tool_calls_made from parallel execution
+                        tool_results = []
+                        for idx, (result, metadata) in enumerate(zip(parallel_results, tool_metadata)):
+                            # Handle exceptions gracefully
+                            if isinstance(result, Exception):
+                                logger.error(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Tool {metadata['name']} failed: {result}")
+                                result = {
+                                    "success": False,
+                                    "error": f"Tool execution failed: {str(result)}"
+                                }
+
+                            tool_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": metadata["use_id"],
+                                "content": str(result)
+                            })
+
+                            tool_calls_made.append({
+                                "tool": metadata["name"],
+                                "input": metadata["input"],
+                                "result_preview": str(result)[:200],
+                                "full_result": result  # Store full result for aggregation
+                            })
 
                         # Add Claude's response + tool results to conversation
                         conversation_messages.append({
@@ -1078,6 +1107,13 @@ RESPONSE RULES:
 
             elif tool_name == "create_body_measurement_log":
                 return await self.tool_service.create_body_measurement_log(**tool_input)
+
+            # PERPLEXITY TOOLS (REAL-TIME INTELLIGENCE!)
+            elif tool_name == "search_latest_nutrition_info":
+                return await self.tool_service.search_latest_nutrition_info(**tool_input)
+
+            elif tool_name == "analyze_food_healthiness":
+                return await self.tool_service.analyze_food_healthiness(**tool_input)
 
             else:
                 logger.error(f"[_execute_tool] Unknown tool: {tool_name}")

@@ -1039,6 +1039,147 @@ class CoachToolService:
                 "error": str(e)
             }
 
+    # ====== PERPLEXITY TOOLS (REAL-TIME INTELLIGENCE) ======
+
+    async def search_latest_nutrition_info(
+        self,
+        query: str,
+        food_name: str,
+        user_id: str  # Required for tool injection but not used by Perplexity
+    ) -> Dict[str, Any]:
+        """
+        Search for LATEST real-time nutrition info using Perplexity AI.
+
+        Perfect for:
+        - New restaurant items ("2025 Chipotle Chicken Bowl")
+        - Seasonal foods ("Current Starbucks PSL nutrition")
+        - Regional variations ("UK vs US McDonald's Big Mac")
+        - Latest menu changes
+
+        Args:
+            query: Search query for nutrition info
+            food_name: Specific food name to research
+            user_id: User UUID (injected by system)
+
+        Returns:
+            Latest nutrition data from Perplexity
+        """
+        try:
+            logger.info(f"[Tool:search_latest_nutrition_info] Query: '{query}'")
+
+            from app.services.perplexity_service import get_perplexity_service
+            perplexity = get_perplexity_service()
+
+            result = await perplexity.search_nutrition_info(
+                food_name=food_name,
+                quantity="100",  # Default to 100g for comparison
+                unit="g",
+                user_context=query
+            )
+
+            if result["success"]:
+                food_data = result["food_data"]
+                logger.info(f"[Tool:search_latest_nutrition_info] Found: {food_data['name']}")
+
+                return {
+                    "success": True,
+                    "food": {
+                        "name": food_data["name"],
+                        "brand": food_data.get("brand_name"),
+                        "serving_size": f"{food_data['serving_size']}{food_data['serving_unit']}",
+                        "calories": food_data["calories"],
+                        "protein_g": food_data["protein_g"],
+                        "carbs_g": food_data["total_carbs_g"],
+                        "fat_g": food_data["total_fat_g"],
+                        "fiber_g": food_data.get("dietary_fiber_g", 0),
+                        "source": food_data.get("source", "Perplexity"),
+                        "confidence": food_data.get("confidence", 0.9),
+                        "last_updated": food_data.get("last_updated")
+                    },
+                    "sources": result.get("sources", []),
+                    "reasoning": result.get("reasoning", "")
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": result.get("error", "Not found")
+                }
+
+        except Exception as e:
+            logger.error(f"[Tool:search_latest_nutrition_info] Failed: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
+    async def analyze_food_healthiness(
+        self,
+        food_name: str,
+        user_goal: Optional[str] = None,
+        user_id: str = None  # Required for tool injection
+    ) -> Dict[str, Any]:
+        """
+        Analyze if a food is healthy using latest research (Perplexity).
+
+        Perfect for "Is X healthy?" questions.
+        Uses real-time web search for current nutrition science.
+
+        Args:
+            food_name: Food to analyze
+            user_goal: User's fitness goal (weight loss, muscle gain, etc.)
+            user_id: User UUID (injected by system)
+
+        Returns:
+            Health analysis with pros/cons and recommendations
+        """
+        try:
+            logger.info(f"[Tool:analyze_food_healthiness] Analyzing: {food_name}")
+
+            from app.services.perplexity_service import get_perplexity_service
+            perplexity = get_perplexity_service()
+
+            # Get dietary restrictions from user profile if available
+            dietary_restrictions = None
+            if user_id:
+                try:
+                    profile = await self.supabase.table("profiles")\
+                        .select("dietary_preferences")\
+                        .eq("id", user_id)\
+                        .single()\
+                        .execute()
+
+                    if profile.data:
+                        dietary_restrictions = profile.data.get("dietary_preferences", [])
+                except:
+                    pass
+
+            result = await perplexity.analyze_food_healthiness(
+                food_name=food_name,
+                user_goal=user_goal,
+                dietary_restrictions=dietary_restrictions
+            )
+
+            if result["success"]:
+                analysis = result["analysis"]
+                logger.info(f"[Tool:analyze_food_healthiness] Rating: {analysis['overall_rating']}")
+
+                return {
+                    "success": True,
+                    "analysis": analysis
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": result.get("error", "Analysis failed")
+                }
+
+        except Exception as e:
+            logger.error(f"[Tool:analyze_food_healthiness] Failed: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
     # ====== SEMANTIC SEARCH TOOL (RAG) ======
 
     async def semantic_search_user_data(
@@ -1386,6 +1527,42 @@ COACH_TOOLS = [
                 }
             },
             "required": []
+        }
+    },
+    {
+        "name": "search_latest_nutrition_info",
+        "description": "Search for LATEST real-time nutrition information using Perplexity AI with web access. Use when user asks about NEW foods, restaurant items (e.g., '2025 Chipotle bowl'), seasonal items (e.g., 'current Starbucks PSL'), or when food not in database. Gets most accurate, up-to-date data from official sources.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Search query for nutrition info (e.g., 'Chipotle Chicken Bowl 2025 nutrition facts', 'Starbucks Pumpkin Spice Latte current nutrition')"
+                },
+                "food_name": {
+                    "type": "string",
+                    "description": "The specific food name to research (e.g., 'Chicken Bowl', 'Pumpkin Spice Latte')"
+                }
+            },
+            "required": ["query", "food_name"]
+        }
+    },
+    {
+        "name": "analyze_food_healthiness",
+        "description": "Use Perplexity AI with real-time web access to analyze if a food is healthy based on LATEST nutrition research. Perfect for 'is X healthy?' questions. Gets current science from peer-reviewed sources, considers user's specific goal (weight loss, muscle gain, etc.), and provides pros/cons with specific recommendations.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "food_name": {
+                    "type": "string",
+                    "description": "Food to analyze for healthiness (e.g., 'quinoa', 'Diet Coke', 'bacon')"
+                },
+                "user_goal": {
+                    "type": "string",
+                    "description": "User's fitness goal to contextualize health advice (e.g., 'weight loss', 'muscle gain', 'endurance')"
+                }
+            },
+            "required": ["food_name"]
         }
     }
 ]

@@ -1,19 +1,22 @@
 """
-Agentic Food Matcher Service - Groq Edition
+Agentic Food Matcher Service - Groq + Perplexity Edition
 
-COST-OPTIMIZED: Uses Groq Llama 3.3 70B with batch processing
-- Processes ALL foods in ONE API call (4x cheaper)
-- $0.05-0.10/M tokens (20x cheaper than Claude)
-- Target cost: ~$0.002 per meal vs $0.12 with Claude
+SMART FALLBACK CHAIN:
+1. Local Database (instant, free)
+2. Groq AI Creation ($0.05/M tokens, fast)
+3. Perplexity Real-time Search ($0.001/query, accurate, LATEST data)
+4. Manual Entry (user confirmation)
 
 Agent Workflow:
 1. BATCH all foods into single prompt
 2. Search database exhaustively for each
-3. Validate if real using AI common sense
-4. Create missing foods with AI nutrition estimates
-5. Reject hallucinations/fake foods
+3. If not found → Groq AI validation & creation
+4. If Groq low confidence → Perplexity real-time nutrition lookup
+5. Cache Perplexity results to database
+6. Reject hallucinations/fake foods
 
-Expected cost: ~$0.09/user/month (well under $0.50 budget)
+Expected cost: ~$0.10/user/month (well under $0.50 budget)
+Perplexity adds ~$0.01/month (heavily cached)
 """
 
 import logging
@@ -26,6 +29,18 @@ from app.services.supabase_service import get_service_client
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+# Import Perplexity service (lazy load to avoid circular imports)
+_perplexity_service = None
+
+
+def get_perplexity():
+    """Lazy load Perplexity service."""
+    global _perplexity_service
+    if _perplexity_service is None:
+        from app.services.perplexity_service import get_perplexity_service
+        _perplexity_service = get_perplexity_service()
+    return _perplexity_service
 
 
 def validate_nutrition_data(food_data: Dict[str, Any]) -> tuple[bool, str]:
@@ -290,7 +305,106 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
             result = json.loads(response.choices[0].message.content)
 
             if not result.get("is_real"):
-                logger.warning(f"[AgenticMatcher] ❌ Rejected fake: {food_name} - {result.get('reason')}")
+                logger.warning(f"[AgenticMatcher] ❌ Groq rejected: {food_name} - {result.get('reason')}")
+
+                # STEP 2b: Try Perplexity as fallback for real-time nutrition data
+                logger.info(f"[AgenticMatcher] Trying Perplexity fallback for '{food_name}'...")
+
+                try:
+                    perplexity = get_perplexity()
+                    perp_result = await perplexity.search_nutrition_info(
+                        food_name=food_name,
+                        quantity=quantity,
+                        unit=unit,
+                        user_context=None
+                    )
+
+                    if perp_result["success"] and perp_result["food_data"]:
+                        logger.info(f"[AgenticMatcher] ✅ Perplexity found: {food_name}")
+
+                        # Convert Perplexity data to database format and create
+                        perp_food = perp_result["food_data"]
+
+                        food_data = {
+                            "name": perp_food["name"],
+                            "brand_name": perp_food.get("brand_name"),
+                            "food_group": "other",
+                            "serving_size": float(perp_food["serving_size"]),
+                            "serving_unit": perp_food["serving_unit"],
+                            "calories": float(perp_food["calories"]),
+                            "protein_g": float(perp_food["protein_g"]),
+                            "total_carbs_g": float(perp_food["total_carbs_g"]),
+                            "total_fat_g": float(perp_food["total_fat_g"]),
+                            "dietary_fiber_g": float(perp_food.get("dietary_fiber_g", 0)),
+                            "saturated_fat_g": float(perp_food.get("saturated_fat_g", 0)),
+                            "sugars_g": float(perp_food.get("sugars_g", 0)),
+                            "sodium_mg": float(perp_food.get("sodium_mg", 0)),
+                            "is_generic": perp_food.get("brand_name") is None,
+                            "is_branded": perp_food.get("brand_name") is not None,
+                            "data_quality_score": float(perp_food.get("confidence", 0.9)),
+                            "source": "perplexity_ai",
+                            "source_url": perp_food.get("source_url"),
+                            "notes": f"Retrieved via Perplexity from {perp_food.get('source', 'web')}"
+                        }
+
+                        # Validate
+                        is_valid, error_msg = validate_nutrition_data(food_data)
+                        if not is_valid:
+                            logger.error(f"[AgenticMatcher] ❌ Perplexity data invalid: {error_msg}")
+                            return {
+                                "matched": False,
+                                "food": None,
+                                "created": False,
+                                "reason": f"Perplexity data validation failed: {error_msg}"
+                            }
+
+                        # Insert to database
+                        db_response = self.supabase.table("foods").insert(food_data).execute()
+
+                        if db_response.data:
+                            created_food = db_response.data[0]
+
+                            # Log creation
+                            await self._log_food_creation(
+                                user_id=user_id,
+                                detected_name=food_name,
+                                created_food_id=created_food["id"],
+                                food_data=food_data
+                            )
+
+                            # Build matched food response
+                            matched_food = {
+                                "id": created_food["id"],
+                                "name": created_food["name"],
+                                "brand_name": created_food.get("brand_name"),
+                                "food_group": created_food.get("food_group"),
+                                "serving_size": created_food["serving_size"],
+                                "serving_unit": created_food["serving_unit"],
+                                "calories": created_food.get("calories"),
+                                "protein_g": created_food.get("protein_g"),
+                                "carbs_g": created_food.get("total_carbs_g"),
+                                "fat_g": created_food.get("total_fat_g"),
+                                "fiber_g": created_food.get("dietary_fiber_g"),
+                                "detected_quantity": float(quantity),
+                                "detected_unit": unit,
+                                "match_confidence": float(perp_food.get("confidence", 0.9)),
+                                "match_method": "perplexity_created",
+                                "is_recent": False,
+                                "data_quality_score": float(perp_food.get("confidence", 0.9))
+                            }
+
+                            logger.info(f"[AgenticMatcher] ✅ Perplexity created: {food_data['name']} (ID: {created_food['id']})")
+
+                            return {
+                                "matched": True,
+                                "food": matched_food,
+                                "created": True
+                            }
+
+                except Exception as perp_err:
+                    logger.error(f"[AgenticMatcher] Perplexity fallback error: {perp_err}", exc_info=True)
+
+                # Both Groq and Perplexity failed
                 return {
                     "matched": False,
                     "food": None,
@@ -298,7 +412,93 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
                     "reason": result.get("reason", "Not a real food")
                 }
 
-            # STEP 3: Create in database
+            # STEP 2c: Check Groq confidence - use Perplexity if low
+            groq_confidence = result.get("confidence", 0.8)
+
+            if groq_confidence < 0.7:
+                logger.info(f"[AgenticMatcher] Groq low confidence ({groq_confidence}), trying Perplexity...")
+
+                try:
+                    perplexity = get_perplexity()
+                    perp_result = await perplexity.search_nutrition_info(
+                        food_name=food_name,
+                        quantity=quantity,
+                        unit=unit,
+                        user_context=None
+                    )
+
+                    if perp_result["success"] and perp_result["food_data"]:
+                        perp_confidence = perp_result["food_data"].get("confidence", 0)
+
+                        # Use Perplexity if more confident
+                        if perp_confidence > groq_confidence:
+                            logger.info(f"[AgenticMatcher] Using Perplexity (confidence: {perp_confidence} vs Groq: {groq_confidence})")
+
+                            # (Same creation logic as above)
+                            perp_food = perp_result["food_data"]
+
+                            food_data = {
+                                "name": perp_food["name"],
+                                "brand_name": perp_food.get("brand_name"),
+                                "food_group": "other",
+                                "serving_size": float(perp_food["serving_size"]),
+                                "serving_unit": perp_food["serving_unit"],
+                                "calories": float(perp_food["calories"]),
+                                "protein_g": float(perp_food["protein_g"]),
+                                "total_carbs_g": float(perp_food["total_carbs_g"]),
+                                "total_fat_g": float(perp_food["total_fat_g"]),
+                                "dietary_fiber_g": float(perp_food.get("dietary_fiber_g", 0)),
+                                "saturated_fat_g": float(perp_food.get("saturated_fat_g", 0)),
+                                "sugars_g": float(perp_food.get("sugars_g", 0)),
+                                "sodium_mg": float(perp_food.get("sodium_mg", 0)),
+                                "is_generic": perp_food.get("brand_name") is None,
+                                "is_branded": perp_food.get("brand_name") is not None,
+                                "data_quality_score": float(perp_food.get("confidence", 0.9)),
+                                "source": "perplexity_ai",
+                                "source_url": perp_food.get("source_url")
+                            }
+
+                            is_valid, error_msg = validate_nutrition_data(food_data)
+                            if is_valid:
+                                db_response = self.supabase.table("foods").insert(food_data).execute()
+
+                                if db_response.data:
+                                    created_food = db_response.data[0]
+                                    await self._log_food_creation(user_id, food_name, created_food["id"], food_data)
+
+                                    matched_food = {
+                                        "id": created_food["id"],
+                                        "name": created_food["name"],
+                                        "brand_name": created_food.get("brand_name"),
+                                        "food_group": created_food.get("food_group"),
+                                        "serving_size": created_food["serving_size"],
+                                        "serving_unit": created_food["serving_unit"],
+                                        "calories": created_food.get("calories"),
+                                        "protein_g": created_food.get("protein_g"),
+                                        "carbs_g": created_food.get("total_carbs_g"),
+                                        "fat_g": created_food.get("total_fat_g"),
+                                        "fiber_g": created_food.get("dietary_fiber_g"),
+                                        "detected_quantity": float(quantity),
+                                        "detected_unit": unit,
+                                        "match_confidence": float(perp_food.get("confidence", 0.9)),
+                                        "match_method": "perplexity_created",
+                                        "is_recent": False,
+                                        "data_quality_score": float(perp_food.get("confidence", 0.9))
+                                    }
+
+                                    return {
+                                        "matched": True,
+                                        "food": matched_food,
+                                        "created": True
+                                    }
+                        else:
+                            logger.info(f"[AgenticMatcher] Groq more confident, proceeding with Groq result")
+
+                except Exception as perp_err:
+                    logger.error(f"[AgenticMatcher] Perplexity confidence check error: {perp_err}")
+                    # Continue with Groq result
+
+            # STEP 3: Create in database (from Groq)
             food_data = {
                 "name": result["name"],
                 "brand_name": result.get("brand_name"),
