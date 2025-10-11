@@ -105,7 +105,7 @@ class PhotoMealConstructorService:
                 "calories": 0.0,
                 "protein_g": 0.0,
                 "carbs_g": 0.0,
-                "fat_g": 0.0,
+                "fats_g": 0.0,  # Changed from fat_g to match frontend expectations
                 "fiber_g": 0.0,
                 "sugar_g": 0.0,
                 "sodium_mg": 0.0
@@ -120,7 +120,7 @@ class PhotoMealConstructorService:
                 totals["calories"] += food_item["calories"]
                 totals["protein_g"] += food_item["protein_g"]
                 totals["carbs_g"] += food_item["carbs_g"]
-                totals["fat_g"] += food_item["fat_g"]
+                totals["fats_g"] += food_item["fat_g"]  # Frontend expects fats_g (with 's')
                 totals["fiber_g"] += food_item["fiber_g"]
                 totals["sugar_g"] += food_item["sugar_g"]
                 totals["sodium_mg"] += food_item["sodium_mg"]
