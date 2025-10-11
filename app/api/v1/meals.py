@@ -23,11 +23,14 @@ See quantity_converter.py for implementation details.
 
 import logging
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
 from pydantic import BaseModel, Field
 
 from app.api.middleware.auth import get_current_user
 from app.services.meal_logging_service_v2 import get_meal_logging_service_v2 as get_meal_logging_service
+from app.services.photo_meal_analysis_service import get_photo_meal_analysis_service
+from app.services.photo_meal_matcher_service import get_photo_meal_matcher_service
+from app.services.photo_meal_constructor_service import get_photo_meal_constructor_service
 
 logger = logging.getLogger(__name__)
 
@@ -481,4 +484,216 @@ async def delete_meal(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete meal. Please try again."
+        )
+
+
+# ============================================================================
+# PHOTO MEAL LOGGING ENDPOINTS
+# ============================================================================
+
+
+class PhotoMealPreviewResponse(BaseModel):
+    """Response from photo analysis with meal preview."""
+    preview_id: str
+    meal_type: str
+    description: str
+    logged_at: str
+    foods: List[dict]
+    totals: dict
+    meta: dict
+
+
+class ConfirmPhotoMealRequest(BaseModel):
+    """Request to confirm and save a photo-detected meal."""
+    preview_id: str
+    meal_type: str
+    description: Optional[str] = None
+    logged_at: str
+    foods: List[dict]  # Food items from preview
+    notes: Optional[str] = None
+
+
+@router.post(
+    "/photo/analyze",
+    response_model=PhotoMealPreviewResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Analyze meal photo",
+    description="""
+    Analyze a meal photo to detect foods and generate a meal preview.
+
+    **Flow:**
+    1. Upload meal photo
+    2. OpenAI Vision detects foods and portions (NO calorie estimates)
+    3. Match detected foods with database
+    4. Construct meal preview with full nutrition
+    5. Return preview for user confirmation
+
+    **IMPORTANT:** This endpoint does NOT save the meal to the database.
+    Use `/photo/confirm` to save after user confirmation.
+
+    **Supported formats:** JPG, PNG, GIF, WebP (max 10MB)
+    """,
+    responses={
+        200: {"description": "Photo analyzed successfully, meal preview returned"},
+        400: {"description": "Invalid image or analysis failed"},
+        401: {"description": "Unauthorized"},
+        500: {"description": "Server error"}
+    }
+)
+async def analyze_meal_photo(
+    image: UploadFile = File(..., description="Meal photo image file"),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Analyze a meal photo and return a meal preview for confirmation.
+
+    Args:
+        image: Uploaded image file
+        current_user: Authenticated user from JWT
+
+    Returns:
+        PhotoMealPreviewResponse with detected foods and nutrition
+    """
+    try:
+        user_id = current_user["user_id"]
+        logger.info(f"Photo meal analysis request: user_id={user_id}, filename={image.filename}")
+
+        # Validate file type
+        if not image.content_type or not image.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid file type: {image.content_type}. Must be an image."
+            )
+
+        # Step 1: Analyze photo with OpenAI Vision
+        analysis_service = get_photo_meal_analysis_service()
+        analysis_result = await analysis_service.analyze_meal_photo(
+            image_file=image.file,
+            filename=image.filename,
+            user_id=user_id
+        )
+
+        logger.info(f"Photo analysis complete: {len(analysis_result['food_items'])} foods detected")
+
+        # Step 2: Match detected foods with database
+        matcher_service = get_photo_meal_matcher_service()
+        match_result = await matcher_service.match_photo_foods(
+            detected_foods=analysis_result["food_items"],
+            user_id=user_id
+        )
+
+        logger.info(
+            f"Food matching complete: {match_result['total_matched']}/{match_result['total_detected']} matched"
+        )
+
+        # Step 3: Construct meal preview
+        constructor_service = get_photo_meal_constructor_service()
+        meal_preview = await constructor_service.construct_meal_preview(
+            matched_foods=match_result["matched_foods"],
+            meal_metadata={
+                "meal_type": analysis_result["meal_type"],
+                "description": analysis_result["description"]
+            },
+            user_id=user_id
+        )
+
+        logger.info(f"✅ Photo meal preview constructed: preview_id={meal_preview['preview_id']}")
+
+        return PhotoMealPreviewResponse(**meal_preview)
+
+    except ValueError as e:
+        logger.warning(f"Photo analysis validation error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Photo meal analysis failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to analyze meal photo. Please try again."
+        )
+
+
+@router.post(
+    "/photo/confirm",
+    response_model=MealResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Confirm and save photo-detected meal",
+    description="""
+    Confirm and save a photo-detected meal to the database.
+
+    **Flow:**
+    1. User reviews meal preview from `/photo/analyze`
+    2. User confirms or edits the meal
+    3. Frontend sends confirmation request
+    4. Backend saves meal to database
+
+    **This endpoint:**
+    - Saves meal to `meals` table
+    - Saves food items to `meal_foods` table
+    - Calculates and stores nutrition totals
+    - Returns saved meal with ID
+    """,
+    responses={
+        201: {"description": "Meal saved successfully"},
+        400: {"description": "Invalid request data"},
+        401: {"description": "Unauthorized"},
+        500: {"description": "Server error"}
+    }
+)
+async def confirm_photo_meal(
+    request: ConfirmPhotoMealRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Confirm and save a photo-detected meal.
+
+    Args:
+        request: Confirmed meal data from preview
+        current_user: Authenticated user from JWT
+
+    Returns:
+        Saved meal with ID
+    """
+    try:
+        user_id = current_user["user_id"]
+        logger.info(f"Confirm photo meal: user_id={user_id}, preview_id={request.preview_id}")
+
+        # Build meal data for creation
+        # Convert preview food items to create_meal format
+        food_items = []
+        for food in request.foods:
+            food_items.append({
+                "food_id": food["food_id"],
+                "quantity": food["grams"],  # Use grams as base quantity
+                "unit": "g"
+            })
+
+        # Use existing meal logging service to save
+        meal_service = get_meal_logging_service()
+        meal = await meal_service.create_meal(
+            user_id=user_id,
+            name=request.description,
+            category=request.meal_type,
+            logged_at=request.logged_at,
+            notes=f"Photo-detected meal. {request.notes or ''}".strip(),
+            food_items=food_items
+        )
+
+        logger.info(f"✅ Photo meal saved: meal_id={meal['id']}")
+
+        return MealResponse(**meal)
+
+    except ValueError as e:
+        logger.warning(f"Validation error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Confirm photo meal failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save meal. Please try again."
         )
