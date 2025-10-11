@@ -20,6 +20,7 @@ from app.services.multimodal_embedding_service import get_multimodal_service
 from app.services.agentic_rag_service import get_agentic_rag_service
 from app.services.food_vision_service import get_food_vision_service
 from app.services.tool_service import get_tool_service, COACH_TOOLS
+from app.services.conversation_memory_service import get_conversation_memory_service
 from anthropic import AsyncAnthropic
 from app.config import get_settings
 
@@ -47,6 +48,7 @@ class UnifiedCoachService:
         self.agentic_rag = get_agentic_rag_service()  # Agentic RAG service (now used as ONE tool)
         self.food_vision = get_food_vision_service()  # NEW: Isolated food vision service
         self.tool_service = get_tool_service()  # NEW: Agentic tool service
+        self.conversation_memory = get_conversation_memory_service()  # CRITICAL: Conversation memory service
         self.anthropic = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
     async def process_message(
@@ -327,8 +329,48 @@ RESPONSE RULES:
             logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Calling Claude with TOOLS...")
             logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Available tools: {len(COACH_TOOLS)}")
 
+            # CRITICAL FIX: Load conversation history for SHORT-TERM MEMORY
+            logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Loading conversation history for {conversation_id}...")
+            try:
+                # Get conversation context (recent messages + semantic search)
+                memory_context = await self.conversation_memory.get_conversation_context(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    current_message=message,
+                    token_budget=2000  # Reserve ~2000 tokens for history
+                )
+
+                logger.info(
+                    f"[UnifiedCoach._handle_chat_mode_AGENTIC] Memory loaded: "
+                    f"{len(memory_context.get('recent_messages', []))} recent, "
+                    f"{len(memory_context.get('relevant_messages', []))} relevant, "
+                    f"~{memory_context.get('token_count', 0)} tokens"
+                )
+
+                # Format conversation history for Claude API
+                conversation_messages = []
+
+                # Add recent messages in chronological order (for short-term memory)
+                for msg in memory_context.get("recent_messages", []):
+                    # Skip the current user message (we'll add it at the end)
+                    if msg.get("id") != user_message_id:
+                        conversation_messages.append({
+                            "role": msg.get("role"),
+                            "content": msg.get("content")
+                        })
+
+                # Add current user message at the end
+                conversation_messages.append({"role": "user", "content": message})
+
+                logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Conversation has {len(conversation_messages)} messages (including current)")
+
+            except Exception as memory_err:
+                logger.error(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Memory loading failed (non-critical): {memory_err}", exc_info=True)
+                # Fallback: Start with only current message
+                conversation_messages = [{"role": "user", "content": message}]
+                logger.warning("[UnifiedCoach._handle_chat_mode_AGENTIC] Falling back to no memory due to error")
+
             # AGENTIC LOOP: Call Claude with tools, execute tools, repeat until final answer
-            conversation_messages = [{"role": "user", "content": message}]
             total_input_tokens = 0
             total_output_tokens = 0
             total_cache_read = 0
