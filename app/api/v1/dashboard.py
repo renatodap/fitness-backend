@@ -61,6 +61,7 @@ class UserContext(BaseModel):
     showsWeightCard: bool
     showsRecoveryCard: bool
     showsWorkoutCard: bool
+    hasMinimumDataForInsights: bool  # True if >= 5 meals OR >= 2 workouts logged
 
 
 class ProgramContext(BaseModel):
@@ -237,41 +238,52 @@ async def get_events_context(user_id: str) -> Optional[EventsContext]:
 
     Returns:
         EventsContext or None if no upcoming events
+
+    NOTE: user_events table does not exist yet. Returning None until migration is created.
     """
-    try:
-        supabase = get_service_client()
+    # TODO: Create user_events table migration
+    # Expected schema:
+    # - id (uuid, primary key)
+    # - user_id (uuid, references auth.users)
+    # - event_name (text)
+    # - event_date (date)
+    # - created_at (timestamptz)
+    return None
 
-        # Get next upcoming event (within 60 days)
-        current_date = datetime.utcnow().date()
-        sixty_days_ahead = (current_date + timedelta(days=60)).isoformat()
+    # try:
+    #     supabase = get_service_client()
 
-        response = supabase.table("events") \
-            .select("event_name, event_date") \
-            .eq("user_id", user_id) \
-            .gte("event_date", current_date.isoformat()) \
-            .lte("event_date", sixty_days_ahead) \
-            .order("event_date", desc=False) \
-            .limit(1) \
-            .execute()
+    #     # Get next upcoming event (within 60 days)
+    #     current_date = datetime.utcnow().date()
+    #     sixty_days_ahead = (current_date + timedelta(days=60)).isoformat()
 
-        if not response.data:
-            return None
+    #     response = supabase.table("user_events") \
+    #         .select("event_name, event_date") \
+    #         .eq("user_id", user_id) \
+    #         .gte("event_date", current_date.isoformat()) \
+    #         .lte("event_date", sixty_days_ahead) \
+    #         .order("event_date", desc=False) \
+    #         .limit(1) \
+    #         .execute()
 
-        event = response.data[0]
-        event_date = datetime.fromisoformat(event["event_date"]).date()
-        days_until = (event_date - current_date).days
+    #     if not response.data:
+    #         return None
 
-        primary_event = EventContext(
-            name=event["event_name"],
-            date=event["event_date"],
-            daysUntil=days_until
-        )
+    #     event = response.data[0]
+    #     event_date = datetime.fromisoformat(event["event_date"]).date()
+    #     days_until = (event_date - current_date).days
 
-        return EventsContext(primaryEvent=primary_event)
+    #     primary_event = EventContext(
+    #         name=event["event_name"],
+    #         date=event["event_date"],
+    #         daysUntil=days_until
+    #     )
 
-    except Exception as e:
-        logger.error("Failed to get events context", user_id=user_id, error=str(e))
-        return None
+    #     return EventsContext(primaryEvent=primary_event)
+
+    # except Exception as e:
+    #     logger.error("Failed to get events context", user_id=user_id, error=str(e))
+    #     return None
 
 
 # ==================== Endpoints ====================
@@ -331,6 +343,25 @@ async def get_dashboard_context(
 
         tracks_weight = (weight_response.count or 0) >= 2
 
+        # Check if user has minimum data for Coach Insights (5+ meals OR 2+ workouts)
+        thirty_days_ago = (datetime.utcnow() - timedelta(days=30)).isoformat()
+
+        meals_count_response = supabase.table("meals") \
+            .select("id", count="exact") \
+            .eq("user_id", user_id) \
+            .gte("logged_at", thirty_days_ago) \
+            .execute()
+
+        activities_count_response = supabase.table("activities") \
+            .select("id", count="exact") \
+            .eq("user_id", user_id) \
+            .gte("start_date", thirty_days_ago) \
+            .execute()
+
+        meals_count = meals_count_response.count or 0
+        activities_count = activities_count_response.count or 0
+        has_minimum_data = meals_count >= 5 or activities_count >= 2
+
         # Build user context
         user_context = UserContext(
             hasCompletedConsultation=profile.get("consultation_onboarding_completed") or False,
@@ -339,7 +370,8 @@ async def get_dashboard_context(
             tracksWeight=tracks_weight,
             showsWeightCard=profile.get("shows_weight_card") or tracks_weight,
             showsRecoveryCard=profile.get("shows_recovery_card") or False,
-            showsWorkoutCard=profile.get("shows_workout_card", True) if profile.get("shows_workout_card") is not None else True
+            showsWorkoutCard=profile.get("shows_workout_card", True) if profile.get("shows_workout_card") is not None else True,
+            hasMinimumDataForInsights=has_minimum_data
         )
 
         # Get program context (if active)
@@ -389,7 +421,7 @@ async def log_behavior_signal(
         supabase = get_service_client()
 
         # Insert behavior signal
-        supabase.table("behavior_signals") \
+        supabase.table("user_behavior_signals") \
             .insert({
                 "user_id": user_id,
                 "signal_type": request.signal_type,
