@@ -120,7 +120,7 @@ async def calculate_streak(user_id: str) -> int:
         # Get meal logs for last 60 days (ordered by date)
         sixty_days_ago = (datetime.utcnow() - timedelta(days=60)).isoformat()
 
-        response = await supabase.table("meal_logs") \
+        response = supabase.table("meal_logs") \
             .select("logged_at") \
             .eq("user_id", user_id) \
             .gte("logged_at", sixty_days_ago) \
@@ -165,7 +165,7 @@ async def get_program_context(user_id: str) -> Optional[ProgramContext]:
         supabase = get_service_client()
 
         # Get active program
-        response = await supabase.table("programs") \
+        response = supabase.table("programs") \
             .select("id, program_name, start_date, total_weeks") \
             .eq("user_id", user_id) \
             .eq("status", "active") \
@@ -191,7 +191,7 @@ async def get_program_context(user_id: str) -> Optional[ProgramContext]:
         expected = 3 * 3  # 3 days × 3 meals = 9 expected
 
         # Count actual logs
-        meals_response = await supabase.table("meal_logs") \
+        meals_response = supabase.table("meal_logs") \
             .select("id", count="exact") \
             .eq("user_id", user_id) \
             .gte("logged_at", three_days_ago) \
@@ -229,7 +229,7 @@ async def get_events_context(user_id: str) -> Optional[EventsContext]:
         current_date = datetime.utcnow().date()
         sixty_days_ahead = (current_date + timedelta(days=60)).isoformat()
 
-        response = await supabase.table("events") \
+        response = supabase.table("events") \
             .select("event_name, event_date") \
             .eq("user_id", user_id) \
             .gte("event_date", current_date.isoformat()) \
@@ -284,7 +284,7 @@ async def get_dashboard_context(
         supabase = get_service_client()
 
         # Get user profile
-        profile_response = await supabase.table("profiles") \
+        profile_response = supabase.table("profiles") \
             .select("consultation_onboarding_completed, shows_weight_card, shows_recovery_card, shows_workout_card") \
             .eq("id", user_id) \
             .single() \
@@ -293,7 +293,7 @@ async def get_dashboard_context(
         profile = profile_response.data if profile_response.data else {}
 
         # Get active program status
-        program_response = await supabase.table("programs") \
+        program_response = supabase.table("programs") \
             .select("id") \
             .eq("user_id", user_id) \
             .eq("status", "active") \
@@ -307,7 +307,7 @@ async def get_dashboard_context(
 
         # Check if user tracks weight (2+ weight logs in last 14 days)
         fourteen_days_ago = (datetime.utcnow() - timedelta(days=14)).isoformat()
-        weight_response = await supabase.table("weight_logs") \
+        weight_response = supabase.table("weight_logs") \
             .select("id", count="exact") \
             .eq("user_id", user_id) \
             .gte("logged_at", fourteen_days_ago) \
@@ -373,7 +373,7 @@ async def log_behavior_signal(
         supabase = get_service_client()
 
         # Insert behavior signal
-        await supabase.table("behavior_signals") \
+        supabase.table("behavior_signals") \
             .insert({
                 "user_id": user_id,
                 "signal_type": request.signal_type,
@@ -427,7 +427,7 @@ async def log_app_open(
         supabase = get_service_client()
 
         # Insert app open event
-        await supabase.table("app_opens") \
+        supabase.table("app_opens") \
             .insert({
                 "user_id": user_id,
                 "source": request.source,
@@ -479,7 +479,7 @@ async def update_dashboard_preference(
         supabase = get_service_client()
 
         # Update profile
-        await supabase.table("profiles") \
+        supabase.table("profiles") \
             .update({"dashboard_preference": request.preference}) \
             .eq("id", user_id) \
             .execute()
