@@ -1838,6 +1838,18 @@ Adapt your response accordingly while keeping the intensity where appropriate.""
 
         logger.info(f"[_calculate_nutrition] Calculating nutrition for {len(matched_foods)} foods")
 
+        # Map common unit synonyms to "serving" for proper equivalence
+        UNIT_SYNONYMS = {
+            "piece": "serving",
+            "slice": "serving",
+            "item": "serving",
+            "each": "serving",
+            "whole": "serving",
+            "unit": "serving",
+            "pc": "serving",
+            "pcs": "serving",
+        }
+
         for food in matched_foods:
             # Get nutrition values (per serving_size)
             serving_size = float(food.get("serving_size", 100))
@@ -1848,33 +1860,45 @@ Adapt your response accordingly while keeping the intensity where appropriate.""
 
             # Get detected quantity (how much user ate)
             detected_qty = float(food.get("detected_quantity", 1))
-            detected_unit = food.get("detected_unit", "serving")
-            serving_unit = food.get("serving_unit", "g")
+            detected_unit = food.get("detected_unit", "serving").lower()  # Normalize to lowercase
+            serving_unit = food.get("serving_unit", "g").lower()
+
+            # DEBUG: Log RAW inputs before any processing
+            logger.info(
+                f"[_calculate_nutrition] 🔍 RAW INPUT - Food: {food.get('name')}, "
+                f"detected_qty={detected_qty}, detected_unit='{detected_unit}', "
+                f"serving_size={serving_size}, serving_unit='{serving_unit}', "
+                f"calories_per_serving={calories_per_serving}"
+            )
+
+            # Normalize detected unit using synonym mapping
+            detected_unit_normalized = UNIT_SYNONYMS.get(detected_unit, detected_unit)
 
             logger.info(
                 f"[_calculate_nutrition] Food: {food.get('name')} - "
-                f"{detected_qty} {detected_unit} (serving: {serving_size} {serving_unit})"
+                f"{detected_qty} {detected_unit} (normalized: {detected_unit_normalized}) | "
+                f"DB serving: {serving_size} {serving_unit}"
             )
 
             # Calculate scaling factor based on unit conversion
-            if detected_unit == serving_unit:
-                # Units match - scale directly by ratio
-                scale_factor = detected_qty / serving_size
-                logger.info(f"[_calculate_nutrition]   Units match: scale_factor = {detected_qty}/{serving_size} = {scale_factor}")
-            elif detected_unit == "serving" or detected_unit == "servings":
-                # User specified N servings - multiply by N
+            if detected_unit_normalized == "serving" or detected_unit_normalized == "servings":
+                # User specified N servings/pieces/slices - multiply by N
                 scale_factor = detected_qty
-                logger.info(f"[_calculate_nutrition]   Detected unit is 'serving': scale_factor = {detected_qty}")
+                logger.info(f"[_calculate_nutrition]   ✅ Unit is 'serving' equivalent: scale_factor = {detected_qty}")
+            elif detected_unit_normalized == serving_unit:
+                # Units match exactly (e.g., both "g") - scale by ratio
+                scale_factor = detected_qty / serving_size
+                logger.info(f"[_calculate_nutrition]   ✅ Units match ({detected_unit_normalized}): scale_factor = {detected_qty}/{serving_size} = {scale_factor}")
             else:
-                # Units don't match - assume detected_qty is in grams relative to 100g serving
-                # This is a fallback - ideally we'd have proper unit conversion
+                # Units don't match - assume detected_qty is in grams relative to serving_size
+                # This is a fallback for cases like "100g" when database has "oz" serving
                 if serving_unit == "g":
                     scale_factor = detected_qty / serving_size
                 else:
-                    # Different units, no conversion available - assume 1:1
+                    # Different units, no conversion available - assume 1:1 as last resort
                     scale_factor = detected_qty / serving_size
                 logger.info(
-                    f"[_calculate_nutrition]   Unit mismatch ({detected_unit} vs {serving_unit}): "
+                    f"[_calculate_nutrition]   ⚠️  Unit mismatch ({detected_unit_normalized} vs {serving_unit}): "
                     f"scale_factor = {detected_qty}/{serving_size} = {scale_factor}"
                 )
 
