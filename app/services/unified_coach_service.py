@@ -364,6 +364,13 @@ RESPONSE RULES:
 
                 logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Conversation has {len(conversation_messages)} messages (including current)")
 
+                # DEBUG: Log actual message array structure for debugging memory
+                logger.debug(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Message array being sent to Claude:")
+                for idx, msg in enumerate(conversation_messages):
+                    content_preview = str(msg.get("content", ""))[:100]  # First 100 chars
+                    logger.debug(f"  [{idx}] role={msg.get('role')}, content_preview={content_preview}...")
+                logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] ✅ Memory debugging complete - see DEBUG logs above")
+
             except Exception as memory_err:
                 logger.error(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Memory loading failed (non-critical): {memory_err}", exc_info=True)
                 # Fallback: Start with only current message

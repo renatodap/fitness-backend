@@ -354,8 +354,8 @@ class CoachToolService:
             response = self.supabase.table("activities")\
                 .select("*")\
                 .eq("user_id", user_id)\
-                .gte("started_at", cutoff)\
-                .order("started_at", desc=True)\
+                .gte("start_date", cutoff)\
+                .order("start_date", desc=True)\
                 .limit(50)\
                 .execute()
 
@@ -444,7 +444,7 @@ class CoachToolService:
             response = self.supabase.table("activities")\
                 .select("*")\
                 .eq("user_id", user_id)\
-                .gte("started_at", cutoff)\
+                .gte("start_date", cutoff)\
                 .execute()
 
             activities = response.data if response.data else []
@@ -840,7 +840,7 @@ class CoachToolService:
                 "description": description,
                 "duration_minutes": duration_minutes,
                 "calories_burned": calories_burned,
-                "started_at": datetime.utcnow().isoformat()
+                "start_date": datetime.utcnow().isoformat()
             }
 
             if distance_km:
@@ -861,7 +861,7 @@ class CoachToolService:
                         "description": description,
                         "duration_minutes": duration_minutes,
                         "calories_burned": calories_burned,
-                        "started_at": datetime.utcnow().isoformat(),
+                        "start_date": datetime.utcnow().isoformat(),
                         "created_at": datetime.utcnow().isoformat()
                     }
 
@@ -1215,7 +1215,7 @@ class CoachToolService:
             embedding_list = query_embedding.tolist() if hasattr(query_embedding, 'tolist') else query_embedding
 
             # Search quick_entry_embeddings
-            response = await self.supabase.rpc(
+            response = self.supabase.rpc(
                 "search_quick_entry_embeddings",
                 {
                     "query_embedding": embedding_list,

@@ -182,7 +182,7 @@ class ConversationMemoryService:
             embedding_list = query_embedding.tolist() if hasattr(query_embedding, 'tolist') else query_embedding
 
             # Get IDs of recent messages to exclude
-            recent_msgs = await self.supabase.table("coach_messages")\
+            recent_msgs = self.supabase.table("coach_messages")\
                 .select("id")\
                 .eq("conversation_id", conversation_id)\
                 .order("created_at", desc=True)\
@@ -194,7 +194,7 @@ class ConversationMemoryService:
             # Semantic search in coach_message_embeddings
             # This requires a pgvector function search_coach_messages
             try:
-                response = await self.supabase.rpc(
+                response = self.supabase.rpc(
                     "search_coach_messages",
                     {
                         "query_embedding": embedding_list,
