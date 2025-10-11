@@ -13,6 +13,7 @@ import json
 
 from app.services.supabase_service import get_service_client
 from app.services.dual_model_router import dual_router, TaskType, TaskConfig
+from app.services.food_search_service import get_food_search_service
 
 logger = logging.getLogger(__name__)
 
@@ -54,9 +55,10 @@ class MealParserService:
     """
 
     def __init__(self):
-        """Initialize with dual model router and Supabase clients."""
+        """Initialize with dual model router, Supabase clients, and food search service."""
         self.router = dual_router
         self.supabase = get_service_client()
+        self.food_search = get_food_search_service()
 
     async def parse(
         self,
@@ -82,17 +84,51 @@ class MealParserService:
         # Step 1: Extract structured food items using LLM
         extracted = await self._extract_food_items(description)
 
-        # Step 2: Match each food against database
+        # Step 2: Match ALL foods against database in one batch (OPTIMIZED!)
+        # Uses FoodSearchService's sophisticated 4-tier matching strategy
         parsed_foods = []
         warnings = []
 
-        for item in extracted["foods"]:
-            try:
-                parsed = await self._parse_food_item(item, warnings, user_id)
-                parsed_foods.append(parsed)
-            except Exception as e:
-                logger.error(f"Error parsing food item: {e}")
-                warnings.append(f"Could not parse: {item.get('name', 'unknown')}")
+        if user_id and extracted["foods"]:
+            # Batch match all detected foods using sophisticated matching
+            match_result = await self.food_search.match_detected_foods(
+                detected_foods=extracted["foods"],
+                user_id=user_id
+            )
+
+            # Convert matched foods to ParsedFoodItem format
+            for matched in match_result["matched_foods"]:
+                try:
+                    parsed = self._convert_matched_to_parsed(matched)
+                    parsed_foods.append(parsed)
+                except Exception as e:
+                    logger.error(f"Error converting matched food: {e}")
+                    warnings.append(f"Could not parse: {matched.get('name', 'unknown')}")
+
+            # Handle unmatched foods with AI estimation
+            for unmatched in match_result["unmatched_foods"]:
+                try:
+                    # Find original detected food item
+                    original_item = next(
+                        (item for item in extracted["foods"] if item["name"] == unmatched["name"]),
+                        None
+                    )
+                    if original_item:
+                        parsed = await self._parse_food_item_fallback(original_item, warnings)
+                        parsed_foods.append(parsed)
+                        warnings.append(f"Using AI estimate for: {unmatched['name']} (not in database)")
+                except Exception as e:
+                    logger.error(f"Error estimating food item: {e}")
+                    warnings.append(f"Could not estimate: {unmatched['name']}")
+        else:
+            # Fallback to old method if no user_id (shouldn't happen)
+            for item in extracted["foods"]:
+                try:
+                    parsed = await self._parse_food_item_fallback(item, warnings)
+                    parsed_foods.append(parsed)
+                except Exception as e:
+                    logger.error(f"Error parsing food item: {e}")
+                    warnings.append(f"Could not parse: {item.get('name', 'unknown')}")
 
         # Step 3: Calculate totals
         totals = self._calculate_totals(parsed_foods)
@@ -172,78 +208,83 @@ Example output:
                 "foods": [{"name": description, "quantity": 1, "unit": "serving"}]
             }
 
-    async def _parse_food_item(
+    def _convert_matched_to_parsed(
         self,
-        item: Dict[str, Any],
-        warnings: List[str],
-        user_id: Optional[str]
+        matched: Dict[str, Any]
     ) -> ParsedFoodItem:
         """
-        Parse individual food item.
+        Convert FoodSearchService matched food to ParsedFoodItem format.
+
+        Args:
+            matched: Matched food from FoodSearchService (with detected_quantity, etc.)
+
+        Returns:
+            ParsedFoodItem with database nutrition
+        """
+        # Scale nutrition based on detected quantity
+        serving_size = matched.get("serving_size", 1)
+        detected_quantity = matched.get("detected_quantity", 1)
+        detected_unit = matched.get("detected_unit", "serving")
+
+        # Calculate multiplier (simplified - assumes units match)
+        # In production, would need unit conversion
+        multiplier = detected_quantity / serving_size if serving_size > 0 else detected_quantity
+
+        nutrition = {
+            "calories": (matched.get("calories", 0) or 0) * multiplier,
+            "protein_g": (matched.get("protein_g", 0) or 0) * multiplier,
+            "carbs_g": (matched.get("total_carbs_g", 0) or 0) * multiplier,
+            "fat_g": (matched.get("total_fat_g", 0) or 0) * multiplier,
+        }
+
+        # Determine confidence based on match method and confidence score
+        match_confidence = matched.get("match_confidence", 0.5)
+        if match_confidence >= 0.9:
+            confidence = "high"
+        elif match_confidence >= 0.6:
+            confidence = "medium"
+        else:
+            confidence = "low"
+
+        return ParsedFoodItem(
+            name=matched.get("name", "Unknown"),
+            brand=matched.get("brand_name"),
+            quantity=detected_quantity,
+            unit=detected_unit,
+            food_id=matched.get("id"),
+            nutrition=nutrition,
+            confidence=confidence,
+            source="database",
+            needs_confirmation=confidence != "high"  # Only high confidence doesn't need confirmation
+        )
+
+    async def _parse_food_item_fallback(
+        self,
+        item: Dict[str, Any],
+        warnings: List[str]
+    ) -> ParsedFoodItem:
+        """
+        Fallback food item parsing using AI estimation (when database match fails).
 
         Args:
             item: Extracted food item dict
             warnings: List to append warnings to
-            user_id: Optional user ID
 
         Returns:
-            ParsedFoodItem with nutrition info
+            ParsedFoodItem with AI-estimated nutrition
         """
-        # Try database match first
-        db_match = await self._search_food_database(item["name"])
+        # Estimate nutrition with AI
+        nutrition = await self._estimate_nutrition(item)
 
-        if db_match:
-            # Use database nutrition
-            nutrition = self._scale_nutrition(
-                db_match["nutrition"],
-                item["quantity"],
-                item["unit"]
-            )
-
-            return ParsedFoodItem(
-                name=db_match["name"],
-                brand=db_match.get("brand"),
-                quantity=item["quantity"],
-                unit=item["unit"],
-                food_id=db_match["id"],
-                nutrition=nutrition,
-                confidence="high",
-                source="database",
-                needs_confirmation=False
-            )
-
-        else:
-            # Estimate nutrition with AI
-            nutrition = await self._estimate_nutrition(item)
-
-            return ParsedFoodItem(
-                name=item["name"],
-                quantity=item["quantity"],
-                unit=item["unit"],
-                nutrition=nutrition,
-                confidence="medium",
-                source="openai",
-                needs_confirmation=True
-            )
-
-    async def _search_food_database(self, query: str) -> Optional[Dict]:
-        """Search food database for match."""
-        try:
-            response = (
-                self.supabase.table("foods")
-                .select("*")
-                .ilike("name", f"%{query}%")
-                .limit(1)
-                .execute()
-            )
-
-            if response.data:
-                return response.data[0]
-
-        except Exception as e:
-            logger.error(f"Error searching food database: {e}")
-
-        return None
+        return ParsedFoodItem(
+            name=item["name"],
+            quantity=item["quantity"],
+            unit=item["unit"],
+            nutrition=nutrition,
+            confidence="medium",
+            source="openai",
+            needs_confirmation=True
+        )
 
     async def _estimate_nutrition(self, item: Dict[str, Any]) -> Dict[str, float]:
         """
