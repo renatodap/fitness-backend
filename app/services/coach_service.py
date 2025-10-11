@@ -15,6 +15,7 @@ from app.config import get_settings
 from app.services.supabase_service import get_service_client
 from app.services.context_builder import get_context_builder
 from app.services.dual_model_router import dual_router, TaskType, TaskConfig
+from app.core.prompt_security import get_security_service
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ class CoachService:
         self.supabase = get_service_client()
         self.context_builder = get_context_builder()
         self.router = dual_router
+        self.security_service = get_security_service()
 
     async def get_persona(self, coach_type: str) -> Optional[Dict[str, Any]]:
         """
@@ -226,7 +228,7 @@ class CoachService:
         model: str = "gpt-4o-mini"
     ) -> Dict[str, Any]:
         """
-        Get AI coach response to user message.
+        Get AI coach response to user message with prompt injection protection.
 
         Args:
             user_id: User ID
@@ -243,26 +245,49 @@ class CoachService:
         if coach_type not in ["trainer", "nutritionist", "coach"]:
             raise ValueError(f"Invalid coach_type: {coach_type}")
 
+        # SECURITY LAYER 1: Validate user message
+        validation_result = self.security_service.validate_message(user_message)
+
+        if not validation_result["is_valid"]:
+            # Return fallback response for security violations
+            logger.warning(
+                f"Security violation detected: type={validation_result['violation_type']}, "
+                f"user_id={user_id}, message_preview={user_message[:50]}..."
+            )
+            return {
+                "coach_type": coach_type,
+                "coach_name": "Coach",
+                "message": validation_result["fallback_response"],
+                "timestamp": datetime.utcnow().isoformat(),
+                "model_used": "fallback",
+                "tokens_used": 0,
+                "security_blocked": True,
+                "violation_type": validation_result["violation_type"]
+            }
+
+        # Use sanitized message
+        sanitized_message = validation_result["sanitized_message"]
+
         # 1. Get coach persona
         persona = await self._get_coach_persona(coach_type)
         if not persona:
             raise ValueError(f"Coach persona not found: {coach_type}")
 
-        # 2. Build context using RAG + structured data
+        # 2. Build context using RAG + structured data (use sanitized message)
         if coach_type == "trainer":
             context = await self.context_builder.build_trainer_context(
                 user_id=user_id,
-                query=user_message
+                query=sanitized_message
             )
         elif coach_type == "nutritionist":
             context = await self.context_builder.build_nutritionist_context(
                 user_id=user_id,
-                query=user_message
+                query=sanitized_message
             )
         else:  # coach_type == "coach"
             context = await self.context_builder.build_unified_coach_context(
                 user_id=user_id,
-                query=user_message
+                query=sanitized_message
             )
 
         # 3. Get conversation history
@@ -271,12 +296,17 @@ class CoachService:
             coach_persona_id=persona["id"]
         )
 
-        # 4. Build messages for OpenAI
-        messages = self._build_messages(
-            persona=persona,
+        # SECURITY LAYER 2: Build secure system prompt with boundaries
+        secured_system_prompt = self.security_service.build_secure_system_prompt(
+            base_prompt=persona['system_prompt']
+        )
+
+        # 4. Build messages with prompt partitioning (security layer 3)
+        messages = self._build_secure_messages(
+            secured_system_prompt=secured_system_prompt,
             context=context,
             conversation_history=conversation.get("messages", []),
-            user_message=user_message
+            user_message=sanitized_message
         )
 
         # 5. Call AI with FREE optimized model using dual router
@@ -294,10 +324,10 @@ class CoachService:
 
             assistant_message = response.choices[0].message.content
 
-            # 6. Save conversation
+            # 6. Save conversation (use sanitized message)
             await self._save_conversation_message(
                 conversation_id=conversation["id"],
-                user_message=user_message,
+                user_message=sanitized_message,
                 assistant_message=assistant_message
             )
 
@@ -550,18 +580,29 @@ Context:
             logger.error(f"Error getting/creating conversation: {e}")
             raise
 
-    def _build_messages(
+    def _build_secure_messages(
         self,
-        persona: Dict[str, Any],
+        secured_system_prompt: str,
         context: str,
         conversation_history: List[Dict[str, Any]],
         user_message: str
     ) -> List[Dict[str, str]]:
-        """Build messages array for OpenAI."""
+        """
+        Build messages array with security boundaries and prompt partitioning.
+
+        Args:
+            secured_system_prompt: System prompt with security boundaries
+            context: User context from RAG
+            conversation_history: Recent conversation messages
+            user_message: Sanitized user message
+
+        Returns:
+            List of messages for AI API
+        """
         messages = []
 
-        # System message with persona and context
-        system_content = f"""{persona['system_prompt']}
+        # System message with secured prompt and context
+        system_content = f"""{secured_system_prompt}
 
 You have access to the following context about the user:
 
@@ -579,8 +620,11 @@ Use this information to provide personalized, specific advice. Reference their a
                 "content": msg["content"]
             })
 
-        # Add current user message
-        messages.append({"role": "user", "content": user_message})
+        # Add current user message with clear partitioning
+        messages.append({
+            "role": "user",
+            "content": f"User question: {user_message}"
+        })
 
         return messages
 

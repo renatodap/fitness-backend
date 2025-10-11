@@ -165,9 +165,10 @@ def rate_limit(
                 # No user context, skip rate limiting (for public endpoints)
                 return await func(*args, **kwargs)
 
-            user_id = user.get('user_id') or user.get('sub')
+            # Try multiple possible user ID fields
+            user_id = user.get('id') or user.get('user_id') or user.get('sub')
             if not user_id:
-                logger.warning("Rate limit: No user_id found in user context")
+                logger.warning("Rate limit: No user_id found in user context", user_keys=list(user.keys()))
                 return await func(*args, **kwargs)
 
             # Create rate limit key: prefix:user_id
