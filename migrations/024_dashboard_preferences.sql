@@ -1,21 +1,24 @@
--- Migration: Dashboard Preferences and Behavior Tracking
+-- ===========================================================================
+-- FIXED Migration: Dashboard Preferences (Handles Existing Objects)
 -- Description: Adds dashboard personalization system with auto-detection
 -- Date: 2025-10-11
+-- ===========================================================================
 
 -- ============================================================================
 -- PHASE 1: Profile Dashboard Preferences
 -- ============================================================================
 
--- Add dashboard preference columns to profiles
-ALTER TABLE profiles
-ADD COLUMN IF NOT EXISTS dashboard_preference TEXT DEFAULT 'balanced'
-  CHECK (dashboard_preference IN ('simple', 'balanced', 'detailed')),
-ADD COLUMN IF NOT EXISTS shows_weight_card BOOLEAN DEFAULT NULL,
-ADD COLUMN IF NOT EXISTS shows_recovery_card BOOLEAN DEFAULT NULL,
-ADD COLUMN IF NOT EXISTS shows_workout_card BOOLEAN DEFAULT TRUE,
-ADD COLUMN IF NOT EXISTS weight_tracking_detected_at TIMESTAMPTZ,
-ADD COLUMN IF NOT EXISTS recovery_tracking_detected_at TIMESTAMPTZ,
-ADD COLUMN IF NOT EXISTS dashboard_preference_set_at TIMESTAMPTZ;
+-- Add dashboard preference columns to profiles (skip if exist)
+DO $$
+BEGIN
+  ALTER TABLE profiles ADD COLUMN IF NOT EXISTS dashboard_preference TEXT DEFAULT 'balanced' CHECK (dashboard_preference IN ('simple', 'balanced', 'detailed'));
+  ALTER TABLE profiles ADD COLUMN IF NOT EXISTS shows_weight_card BOOLEAN DEFAULT NULL;
+  ALTER TABLE profiles ADD COLUMN IF NOT EXISTS shows_recovery_card BOOLEAN DEFAULT NULL;
+  ALTER TABLE profiles ADD COLUMN IF NOT EXISTS shows_workout_card BOOLEAN DEFAULT TRUE;
+  ALTER TABLE profiles ADD COLUMN IF NOT EXISTS weight_tracking_detected_at TIMESTAMPTZ;
+  ALTER TABLE profiles ADD COLUMN IF NOT EXISTS recovery_tracking_detected_at TIMESTAMPTZ;
+  ALTER TABLE profiles ADD COLUMN IF NOT EXISTS dashboard_preference_set_at TIMESTAMPTZ;
+END $$;
 
 -- Create index for dashboard preference queries
 CREATE INDEX IF NOT EXISTS idx_profiles_dashboard_preference
@@ -222,10 +225,10 @@ END;
 $$;
 
 -- ============================================================================
--- PHASE 5: Auto-Detection Triggers
+-- PHASE 5: Auto-Detection Triggers (Skip if exists)
 -- ============================================================================
 
--- Trigger to auto-enable weight card
+-- Function to auto-enable weight card
 CREATE OR REPLACE FUNCTION auto_enable_weight_card()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -279,11 +282,19 @@ BEGIN
 END;
 $$;
 
--- Apply trigger to body_measurements table
-CREATE TRIGGER trigger_auto_enable_weight_card
-AFTER INSERT ON body_measurements
-FOR EACH ROW
-EXECUTE FUNCTION auto_enable_weight_card();
+-- Create trigger only if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'trigger_auto_enable_weight_card'
+  ) THEN
+    CREATE TRIGGER trigger_auto_enable_weight_card
+    AFTER INSERT ON body_measurements
+    FOR EACH ROW
+    EXECUTE FUNCTION auto_enable_weight_card();
+  END IF;
+END $$;
 
 -- ============================================================================
 -- PHASE 6: Data Backfill for Existing Users
