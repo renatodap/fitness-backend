@@ -827,6 +827,12 @@ Return JSON classification and data extraction."""
                 "user_id": user_id,
                 "input_type": input_type,
                 "input_modalities": input_modalities,
+                "input_data": {
+                    "text": original_text,
+                    "has_image": bool(image_base64),
+                    "has_audio": metadata and metadata.get("audio_base64") is not None if metadata else False,
+                    "timestamp": datetime.utcnow().isoformat()
+                },
                 "raw_text": original_text[:5000] if original_text else None,  # Limit to 5k chars
                 "image_urls": [image_url] if image_url else [],
                 "ai_provider": "groq",  # We use Groq for classification

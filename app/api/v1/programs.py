@@ -282,6 +282,112 @@ async def get_active_program(
         return None
 
 
+@router.get("/today", response_model=Optional[DayInfo])
+async def get_todays_plan(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get today's meals and workouts from active program.
+    Returns None if no active program or no plan for today.
+    """
+    try:
+        supabase = get_service_client()
+
+        # Get active program
+        active_program = await supabase.table("ai_generated_programs")\
+            .select("id, start_date")\
+            .eq("user_id", current_user["id"])\
+            .eq("status", "active")\
+            .single()\
+            .execute()
+
+        if not active_program.data:
+            return None
+
+        program_id = active_program.data["id"]
+        start_date = datetime.fromisoformat(active_program.data["start_date"].replace("Z", "+00:00")).date()
+        today = datetime.utcnow().date()
+
+        # Calculate day number (1-indexed)
+        day_number = (today - start_date).days + 1
+
+        if day_number < 1:
+            return None  # Program hasn't started yet
+
+        # Get today's day
+        day_result = await supabase.table("ai_program_days")\
+            .select("*")\
+            .eq("program_id", program_id)\
+            .eq("day_number", day_number)\
+            .single()\
+            .execute()
+
+        if not day_result.data:
+            return None  # No plan for this day
+
+        day = day_result.data
+
+        # Get meals for today
+        meals_result = await supabase.table("ai_program_meals")\
+            .select("*")\
+            .eq("day_id", day["id"])\
+            .order("meal_type")\
+            .execute()
+
+        # Get workouts for today
+        workouts_result = await supabase.table("ai_program_workouts")\
+            .select("*")\
+            .eq("day_id", day["id"])\
+            .order("workout_type")\
+            .execute()
+
+        # Format meals
+        meals = [
+            MealInfo(
+                id=meal["id"],
+                meal_type=meal["meal_type"],
+                meal_name=meal["meal_name"],
+                foods=meal["foods"],
+                calories=meal.get("total_calories"),
+                protein=meal.get("total_protein"),
+                carbs=meal.get("total_carbs"),
+                fats=meal.get("total_fats"),
+                instructions=meal.get("instructions"),
+                prep_time_minutes=meal.get("prep_time_minutes"),
+                is_completed=meal.get("is_completed", False)
+            )
+            for meal in meals_result.data or []
+        ]
+
+        # Format workouts
+        workouts = [
+            WorkoutInfo(
+                id=workout["id"],
+                workout_type=workout["workout_type"],
+                workout_name=workout["workout_name"],
+                exercises=workout["exercises"],
+                duration_minutes=workout.get("duration_minutes"),
+                intensity=workout.get("intensity"),
+                notes=workout.get("notes"),
+                is_completed=workout.get("is_completed", False)
+            )
+            for workout in workouts_result.data or []
+        ]
+
+        return DayInfo(
+            day_number=day["day_number"],
+            day_date=day["day_date"],
+            day_name=day["day_name"],
+            notes=day.get("notes"),
+            is_completed=day.get("is_completed", False),
+            meals=meals,
+            workouts=workouts
+        )
+
+    except Exception:
+        return None
+
+
 @router.get("/{program_id}/day/{day_number}", response_model=DayInfo)
 async def get_program_day(
     program_id: str,

@@ -102,6 +102,22 @@ class PreferenceUpdateResponse(BaseModel):
     new_preference: str
 
 
+class DailyAdherence(BaseModel):
+    """Daily adherence data point."""
+    day: str
+    percent: int
+
+
+class WeeklyAnalyticsResponse(BaseModel):
+    """Weekly analytics data."""
+    adherencePercent: int
+    averageCalories: int
+    targetCalories: int
+    mealsLogged: int
+    workoutsCompleted: int
+    dailyAdherence: list[DailyAdherence]
+
+
 # ==================== Helper Functions ====================
 
 async def calculate_streak(user_id: str) -> int:
