@@ -233,9 +233,7 @@ Chicken Breast, Grilled (per 100g):
     "protein_g": 31.0,
     "total_carbs_g": 0.0,
     "total_fat_g": 3.6,
-    "dietary_fiber_g": 0.0,
-    "is_generic": true,
-    "is_branded": false
+    "dietary_fiber_g": 0.0
 }}
 
 Sweet Potato, Baked (per 100g):
@@ -249,9 +247,7 @@ Sweet Potato, Baked (per 100g):
     "protein_g": 2.0,
     "total_carbs_g": 20.7,
     "total_fat_g": 0.2,
-    "dietary_fiber_g": 3.3,
-    "is_generic": true,
-    "is_branded": false
+    "dietary_fiber_g": 3.3
 }}
 
 Brown Rice, Cooked (per 100g):
@@ -265,9 +261,7 @@ Brown Rice, Cooked (per 100g):
     "protein_g": 2.6,
     "total_carbs_g": 23.5,
     "total_fat_g": 0.9,
-    "dietary_fiber_g": 1.8,
-    "is_generic": true,
-    "is_branded": false
+    "dietary_fiber_g": 1.8
 }}
 
 Chipotle Burrito Bowl (per 100g):
@@ -281,9 +275,7 @@ Chipotle Burrito Bowl (per 100g):
     "protein_g": 12.0,
     "total_carbs_g": 15.0,
     "total_fat_g": 5.0,
-    "dietary_fiber_g": 3.0,
-    "is_generic": false,
-    "is_branded": true
+    "dietary_fiber_g": 3.0
 }}
 
 Fake Food Example:
@@ -328,6 +320,7 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
                         food_data = {
                             "name": perp_food["name"],
                             "brand_name": perp_food.get("brand_name"),
+                            "food_type": "branded" if perp_food.get("brand_name") else "ingredient",
                             "serving_size": float(perp_food["serving_size"]),
                             "serving_unit": perp_food["serving_unit"],
                             "calories": float(perp_food["calories"]),
@@ -336,14 +329,10 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
                             "total_fat_g": float(perp_food["total_fat_g"]),
                             "dietary_fiber_g": float(perp_food.get("dietary_fiber_g", 0)),
                             "saturated_fat_g": float(perp_food.get("saturated_fat_g", 0)),
-                            "sugars_g": float(perp_food.get("sugars_g", 0)),
+                            "total_sugars_g": float(perp_food.get("sugars_g", 0)),
                             "sodium_mg": float(perp_food.get("sodium_mg", 0)),
-                            "is_generic": perp_food.get("brand_name") is None,
-                            "is_branded": perp_food.get("brand_name") is not None,
                             "data_quality_score": float(perp_food.get("confidence", 0.9)),
-                            "source": "perplexity_ai",
-                            "source_url": perp_food.get("source_url"),
-                            "notes": f"Retrieved via Perplexity from {perp_food.get('source', 'web')}"
+                            "source": "perplexity_ai"
                         }
 
                         # Validate
@@ -438,6 +427,7 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
                             food_data = {
                                 "name": perp_food["name"],
                                 "brand_name": perp_food.get("brand_name"),
+                                "food_type": "branded" if perp_food.get("brand_name") else "ingredient",
                                 "serving_size": float(perp_food["serving_size"]),
                                 "serving_unit": perp_food["serving_unit"],
                                 "calories": float(perp_food["calories"]),
@@ -446,13 +436,10 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
                                 "total_fat_g": float(perp_food["total_fat_g"]),
                                 "dietary_fiber_g": float(perp_food.get("dietary_fiber_g", 0)),
                                 "saturated_fat_g": float(perp_food.get("saturated_fat_g", 0)),
-                                "sugars_g": float(perp_food.get("sugars_g", 0)),
+                                "total_sugars_g": float(perp_food.get("sugars_g", 0)),
                                 "sodium_mg": float(perp_food.get("sodium_mg", 0)),
-                                "is_generic": perp_food.get("brand_name") is None,
-                                "is_branded": perp_food.get("brand_name") is not None,
                                 "data_quality_score": float(perp_food.get("confidence", 0.9)),
-                                "source": "perplexity_ai",
-                                "source_url": perp_food.get("source_url")
+                                "source": "perplexity_ai"
                             }
 
                             is_valid, error_msg = validate_nutrition_data(food_data)
@@ -498,6 +485,7 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
             food_data = {
                 "name": result["name"],
                 "brand_name": result.get("brand_name"),
+                "food_type": "branded" if result.get("brand_name") else "ingredient",
                 "serving_size": float(result["serving_size"]),
                 "serving_unit": result["serving_unit"],
                 "calories": float(result["calories"]),
@@ -505,8 +493,6 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
                 "total_carbs_g": float(result["total_carbs_g"]),
                 "total_fat_g": float(result["total_fat_g"]),
                 "dietary_fiber_g": float(result.get("dietary_fiber_g", 0)),
-                "is_generic": result.get("is_generic", True),
-                "is_branded": result.get("is_branded", False),
                 "data_quality_score": 0.7,
                 "source": "ai_created"
             }

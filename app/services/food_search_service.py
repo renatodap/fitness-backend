@@ -471,8 +471,6 @@ class FoodSearchService:
             "is_recent": False,
 
             # Quality indicators
-            "is_generic": False,
-            "is_branded": template.get("is_restaurant", False),
             "data_quality_score": 1.0,  # Templates are always high quality
         }
 
@@ -871,11 +869,7 @@ class FoodSearchService:
             "match_confidence": confidence,
             "match_method": method,
             "is_recent": is_recent,
-            "data_quality_score": food_record.get("data_quality_score"),
-
-            # Food type flags
-            "is_generic": food_record.get("is_generic"),
-            "is_branded": food_record.get("is_branded"),
+            "data_quality_score": food_record.get("data_quality_score")
         }
 
 
