@@ -424,10 +424,6 @@ Confidence: {food_analysis.get('confidence', 0) * 100:.0f}%
                         logger.warning(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Groq failed, falling back to Claude: {groq_err}")
                         # Fall through to Claude (below)
 
-            except Exception as complexity_err:
-                logger.warning(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Complexity analysis failed, using Claude: {complexity_err}")
-                # Fall through to Claude (below)
-
             # ROUTE 3: COMPLEX - Claude 3.5 Sonnet (default for safety)
             logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Routing to CLAUDE (complex query or fallback)")
 
