@@ -264,6 +264,140 @@ Confidence: {food_analysis.get('confidence', 0) * 100:.0f}%
                     logger.error(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Food vision failed (non-critical): {vision_err}", exc_info=True)
                     food_context = "\n=== IMAGE ===\nUser uploaded an image but analysis failed.\n"
 
+            # STEP 0.5: SMART ROUTING - Analyze complexity and route to appropriate model
+            logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Analyzing query complexity...")
+            try:
+                complexity_analysis = await self.complexity_analyzer.analyze_complexity(
+                    message=message,
+                    has_image=image_base64 is not None
+                )
+                logger.info(
+                    f"[UnifiedCoach._handle_chat_mode_AGENTIC] Complexity: {complexity_analysis['complexity'].upper()}, "
+                    f"confidence: {complexity_analysis['confidence']}, "
+                    f"recommended_model: {complexity_analysis['recommended_model']}"
+                )
+
+                # ROUTE 1: TRIVIAL - Instant canned responses (FREE, 0ms)
+                if complexity_analysis["complexity"] == "trivial":
+                    logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Routing to CANNED RESPONSE (trivial query)")
+
+                    # Get instant canned response
+                    canned_text = self.canned_response.get_response(message)
+
+                    # Save AI response
+                    ai_message_id = await self._save_ai_message(
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                        content=canned_text,
+                        tokens_used=0,
+                        cost_usd=0.0,
+                        context_used={"model": "canned_response", "complexity": "trivial"}
+                    )
+
+                    # Vectorize in background (if available)
+                    if background_tasks:
+                        background_tasks.add_task(self._vectorize_message, user_id, user_message_id, message, "user")
+                        background_tasks.add_task(self._vectorize_message, user_id, ai_message_id, canned_text, "assistant")
+
+                    logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Canned response delivered (FREE, instant): {canned_text[:100]}")
+
+                    return {
+                        "success": True,
+                        "conversation_id": conversation_id,
+                        "message_id": ai_message_id,
+                        "is_log_preview": False,
+                        "message": canned_text,
+                        "log_preview": None,
+                        "rag_context": None,
+                        "tokens_used": 0,
+                        "cost_usd": 0.0,
+                        "tools_used": [],
+                        "model": "canned_response",
+                        "complexity": "trivial",
+                        "error": None
+                    }
+
+                # ROUTE 2: SIMPLE - Groq Llama 3.3 70B ($0.05/M tokens, 500ms)
+                elif complexity_analysis["complexity"] == "simple" and not image_base64:
+                    logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Routing to GROQ (simple query)")
+
+                    try:
+                        # Load conversation history for Groq
+                        memory_context = await self.conversation_memory.get_conversation_context(
+                            user_id=user_id,
+                            conversation_id=conversation_id,
+                            current_message=message,
+                            token_budget=1000  # Smaller budget for simple queries
+                        )
+
+                        # Format as list of dicts for Groq
+                        conversation_history = []
+                        for msg in memory_context.get("recent_messages", []):
+                            if msg.get("id") != user_message_id:
+                                conversation_history.append({
+                                    "role": msg.get("role"),
+                                    "content": str(msg.get("content", ""))
+                                })
+
+                        # Call Groq
+                        groq_result = await self.groq_coach.handle_simple_query(
+                            user_id=user_id,
+                            message=message,
+                            conversation_history=conversation_history,
+                            max_iterations=3
+                        )
+
+                        # Save AI response
+                        ai_message_id = await self._save_ai_message(
+                            user_id=user_id,
+                            conversation_id=conversation_id,
+                            content=groq_result["response"],
+                            tokens_used=groq_result["tokens_used"],
+                            cost_usd=groq_result["cost_usd"],
+                            context_used={
+                                "model": groq_result["model"],
+                                "complexity": "simple",
+                                "tools_called": groq_result["tools_called"]
+                            }
+                        )
+
+                        # Vectorize in background
+                        if background_tasks:
+                            background_tasks.add_task(self._vectorize_message, user_id, user_message_id, message, "user")
+                            background_tasks.add_task(self._vectorize_message, user_id, ai_message_id, groq_result["response"], "assistant")
+
+                        logger.info(
+                            f"[UnifiedCoach._handle_chat_mode_AGENTIC] Groq response delivered: "
+                            f"tokens={groq_result['tokens_used']}, cost=${groq_result['cost_usd']:.6f}"
+                        )
+
+                        return {
+                            "success": True,
+                            "conversation_id": conversation_id,
+                            "message_id": ai_message_id,
+                            "is_log_preview": False,
+                            "message": groq_result["response"],
+                            "log_preview": None,
+                            "rag_context": None,
+                            "tokens_used": groq_result["tokens_used"],
+                            "cost_usd": groq_result["cost_usd"],
+                            "tools_used": groq_result["tools_called"],
+                            "model": groq_result["model"],
+                            "complexity": "simple",
+                            "error": None
+                        }
+
+                    except Exception as groq_err:
+                        logger.warning(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Groq failed, falling back to Claude: {groq_err}")
+                        # Fall through to Claude (below)
+
+            except Exception as complexity_err:
+                logger.warning(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Complexity analysis failed, using Claude: {complexity_err}")
+                # Fall through to Claude (below)
+
+            # ROUTE 3: COMPLEX - Claude 3.5 Sonnet (default for safety)
+            logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Routing to CLAUDE (complex query or fallback)")
+
             # STEP 1: NEW AGENTIC APPROACH - Call Claude with TOOLS, not full context!
 
             # Build AGENTIC system prompt with tool instructions
