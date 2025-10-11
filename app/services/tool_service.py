@@ -617,54 +617,51 @@ class CoachToolService:
 
         Claude calls this when user mentions eating food.
 
-        Behavior depends on user's auto_log_enabled preference:
-        - FALSE (default): Returns preview for user review/confirmation
-        - TRUE: Immediately saves to database, user can edit later
+        NEW FLOW (same as photo meal logging):
+        1. Parse text with text_meal_parser_service (extract quantities)
+        2. Match foods with photo_meal_matcher_service
+        3. Construct preview with photo_meal_constructor_service
+        4. Return preview for user confirmation
 
         Args:
             user_id: User's UUID
             meal_type: "breakfast", "lunch", "dinner", "snack"
             description: Natural language description of the meal
             foods: List of food names mentioned
-            estimated_calories: Optional calorie estimate
+            estimated_calories: Optional calorie estimate (ignored, we use database)
 
         Returns:
-            Meal log preview OR saved confirmation
+            Meal log preview for user confirmation (same format as photo logging)
         """
         try:
             logger.info(f"[Tool:create_meal_log] Creating meal: {meal_type} - {description}")
             logger.info(f"[Tool:create_meal_log] Foods: {foods}")
 
-            # STEP 1: Check user's auto_log preference
-            try:
-                profile_response = self.supabase.table("profiles")\
-                    .select("auto_log_enabled")\
-                    .eq("id", user_id)\
-                    .single()\
-                    .execute()
+            # STEP 1: Parse natural language description with text_meal_parser_service
+            from app.services.text_meal_parser_service import get_text_meal_parser_service
 
-                auto_log_enabled = profile_response.data.get("auto_log_enabled", False) if profile_response.data else False
-                logger.info(f"[Tool:create_meal_log] auto_log_enabled: {auto_log_enabled}")
-            except Exception as pref_err:
-                logger.warning(f"[Tool:create_meal_log] Failed to fetch preference, defaulting to FALSE: {pref_err}")
-                auto_log_enabled = False
+            text_parser = get_text_meal_parser_service()
 
-            # STEP 2: Use agentic food matcher to match foods to database
-            from app.services.agentic_food_matcher_service import get_agentic_food_matcher
-            agentic_matcher = get_agentic_food_matcher()
+            # Parse the full description to extract quantities and food details
+            logger.info("[Tool:create_meal_log] Parsing meal text for quantities...")
+            parse_result = await text_parser.parse_meal_text(
+                user_message=description,
+                user_context={"meal_type": meal_type}
+            )
 
-            # Convert food list to detected_foods format
-            detected_foods = []
-            for food_name in foods:
-                detected_foods.append({
-                    "name": food_name,
-                    "quantity": "1",
-                    "unit": "serving"
-                })
+            logger.info(
+                f"[Tool:create_meal_log] Parsed {len(parse_result['food_items'])} foods "
+                f"(tokens={parse_result.get('tokens_used', 0)})"
+            )
 
-            # Match foods to database (with AI creation if needed)
-            match_result = await agentic_matcher.match_with_creation(
-                detected_foods=detected_foods,
+            # STEP 2: Match detected foods with database using photo_meal_matcher_service
+            from app.services.photo_meal_matcher_service import get_photo_meal_matcher_service
+
+            matcher_service = get_photo_meal_matcher_service()
+
+            logger.info("[Tool:create_meal_log] Matching foods to database...")
+            match_result = await matcher_service.match_photo_foods(
+                detected_foods=parse_result["food_items"],
                 user_id=user_id
             )
 
@@ -672,102 +669,47 @@ class CoachToolService:
                 f"[Tool:create_meal_log] Matched {match_result['total_matched']}/{match_result['total_detected']} foods"
             )
 
-            # STEP 3: Calculate total nutrition from matched foods
-            total_calories = 0
-            total_protein = 0
-            total_carbs = 0
-            total_fats = 0
+            # STEP 3: Construct meal preview with photo_meal_constructor_service
+            from app.services.photo_meal_constructor_service import get_photo_meal_constructor_service
 
-            for food in match_result["matched_foods"]:
-                total_calories += food.get("calories", 0)
-                total_protein += food.get("protein_g", 0)
-                total_carbs += food.get("carbs_g", food.get("total_carbs_g", 0))
-                total_fats += food.get("fat_g", food.get("total_fat_g", 0))
+            constructor_service = get_photo_meal_constructor_service()
 
-            # Override with estimated calories if provided
-            if estimated_calories:
-                total_calories = estimated_calories
+            logger.info("[Tool:create_meal_log] Constructing meal preview...")
+            meal_preview = await constructor_service.construct_meal_preview(
+                matched_foods=match_result["matched_foods"],
+                meal_metadata={
+                    "meal_type": parse_result.get("meal_type", meal_type),
+                    "description": parse_result.get("description", description)
+                },
+                user_id=user_id
+            )
 
-            # Build meal data structure
-            meal_data = {
-                "meal_type": meal_type,
-                "description": description,
-                "foods": match_result["matched_foods"],
-                "total_calories": round(total_calories, 1),
-                "total_protein_g": round(total_protein, 1),
-                "total_carbs_g": round(total_carbs, 1),
-                "total_fats_g": round(total_fats, 1),
-                "match_stats": {
-                    "matched": match_result["total_matched"],
-                    "total": match_result["total_detected"],
-                    "unmatched": match_result.get("unmatched_foods", [])
-                }
+            logger.info(
+                f"[Tool:create_meal_log] Preview ready: {meal_preview['totals']['calories']} cal, "
+                f"{meal_preview['totals']['protein_g']}g protein"
+            )
+
+            # STEP 4: Return preview in tool result format
+            # This will be handled by unified_coach_service which will show inline preview
+            return {
+                "success": True,
+                "log_type": "meal",
+                "requires_confirmation": True,  # Frontend should show inline meal preview
+                "meal_data": meal_preview,  # Full preview data (same as photo logging)
+                "message": (
+                    f"I detected a {meal_preview['meal_type']} with "
+                    f"{meal_preview['meta']['total_foods']} foods. "
+                    f"Total: {round(meal_preview['totals']['calories'])} cal, "
+                    f"{round(meal_preview['totals']['protein_g'])}g protein"
+                )
             }
-
-            # STEP 4: BRANCH based on auto_log preference
-            if auto_log_enabled:
-                # AUTO-LOG MODE: Save immediately
-                logger.info("[Tool:create_meal_log] AUTO-LOGGING (auto_log=true)")
-
-                # Save to meal_logs table
-                try:
-                    meal_log_entry = {
-                        "user_id": user_id,
-                        "meal_type": meal_type,
-                        "description": description,
-                        "total_calories": meal_data["total_calories"],
-                        "total_protein_g": meal_data["total_protein_g"],
-                        "total_carbs_g": meal_data["total_carbs_g"],
-                        "total_fat_g": meal_data["total_fats_g"],
-                        "logged_at": datetime.utcnow().isoformat(),
-                        "created_at": datetime.utcnow().isoformat()
-                    }
-
-                    saved_meal = self.supabase.table("meals")\
-                        .insert(meal_log_entry)\
-                        .execute()
-
-                    meal_id = saved_meal.data[0]["id"] if saved_meal.data else None
-
-                    logger.info(f"[Tool:create_meal_log] Auto-saved meal log: {meal_id}")
-
-                    return {
-                        "success": True,
-                        "log_type": "meal",
-                        "auto_logged": True,
-                        "meal_id": meal_id,
-                        "meal_data": meal_data,
-                        "message": f"✅ Auto-logged {meal_type}: {description} ({round(total_calories)} cal, {round(total_protein)}g protein)"
-                    }
-
-                except Exception as save_err:
-                    logger.error(f"[Tool:create_meal_log] Auto-save failed: {save_err}", exc_info=True)
-                    # Fall back to preview mode on error
-                    return {
-                        "success": True,
-                        "log_type": "meal",
-                        "requires_confirmation": True,
-                        "meal_data": meal_data,
-                        "message": f"Preview: {meal_type.title()} - {round(total_calories)} cal, {round(total_protein)}g protein (auto-save failed, needs manual confirm)"
-                    }
-
-            else:
-                # PREVIEW MODE: Return for user confirmation
-                logger.info("[Tool:create_meal_log] PREVIEW MODE (auto_log=false)")
-
-                return {
-                    "success": True,
-                    "log_type": "meal",
-                    "requires_confirmation": True,  # Frontend should show review card
-                    "meal_data": meal_data,
-                    "message": f"Preview: {meal_type.title()} - {round(total_calories)} cal, {round(total_protein)}g protein"
-                }
 
         except Exception as e:
             logger.error(f"[Tool:create_meal_log] Failed: {e}", exc_info=True)
             return {
                 "success": False,
-                "error": str(e)
+                "error": str(e),
+                "message": f"Failed to parse meal: {str(e)}"
             }
 
     async def create_activity_log_from_description(

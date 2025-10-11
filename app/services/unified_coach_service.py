@@ -864,12 +864,29 @@ Adapt your response accordingly while keeping the intensity where appropriate.""
                 response["pending_logs"] = pending_logs
                 logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Added {len(pending_logs)} pending logs to response")
 
+                # Convert meal pending_logs to food_detected format for inline display
+                for pending_log in pending_logs:
+                    if pending_log.get("log_type") == "meal" and pending_log.get("data"):
+                        meal_data = pending_log["data"]
+
+                        # Convert meal_data (from photo_meal_constructor) to food_detected format
+                        response["food_detected"] = {
+                            "is_food": True,
+                            "nutrition": meal_data.get("totals", {}),
+                            "food_items": meal_data.get("foods", []),
+                            "meal_type": meal_data.get("meal_type"),
+                            "confidence": 0.9,  # High confidence since parsed by AI
+                            "description": meal_data.get("description", "")
+                        }
+                        logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Converted pending meal log to food_detected for inline display")
+                        break  # Only convert first meal log
+
             # Add auto_logged if any (auto_log=TRUE)
             if auto_logged_items:
                 response["auto_logged"] = auto_logged_items
                 logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Added {len(auto_logged_items)} auto-logged items to response")
 
-            # If food was detected, add food analysis data for potential meal logging
+            # If food was detected from image analysis, add food analysis data for potential meal logging
             if food_analysis and food_analysis.get("is_food") and food_analysis.get("success"):
                 response["food_detected"] = {
                     "is_food": True,
@@ -879,7 +896,7 @@ Adapt your response accordingly while keeping the intensity where appropriate.""
                     "confidence": food_analysis.get("confidence"),
                     "description": food_analysis.get("description")
                 }
-                logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Food data included in response for potential logging")
+                logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Food data from image analysis included in response")
 
             return response
 
