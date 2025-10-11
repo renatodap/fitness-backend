@@ -38,6 +38,7 @@ except Exception as e:
     SMART_ROUTING_AVAILABLE = False
 
 from app.services.canned_response_service import get_canned_response  # NEW: Instant responses
+from app.services.context_detector_service import get_context_detector  # NEW: Safety intelligence
 from anthropic import AsyncAnthropic
 from app.config import get_settings
 
@@ -84,6 +85,7 @@ class UnifiedCoachService:
             logger.info("[UnifiedCoach] Smart routing disabled - using Claude for all queries")
 
         self.canned_response = get_canned_response()  # NEW: Instant trivial responses
+        self.context_detector = get_context_detector()  # NEW: Safety-conscious context detection
         self.anthropic = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
     async def process_message(
@@ -440,6 +442,32 @@ PERSONALITY:
 - Balance intensity with expertise - you're tough but you know your shit
 - **CRITICAL: ALWAYS respond in the SAME LANGUAGE the user is speaking to you. If they speak Portuguese, respond in Portuguese. If they speak Spanish, respond in Spanish. Match their language EXACTLY.**
 
+SAFETY-CONSCIOUS ADAPTATIONS (5% of interactions - keep Goggins style, add wisdom):
+**When user mentions injury/pain (hurt, injured, sore, pain):**
+- Acknowledge: "Smart warriors HEAL FIRST. You'll come back STRONGER!"
+- Emphasize recovery is part of the process
+- Still motivational, but prioritize healing
+
+**When detecting rest day or recovery period:**
+- "Rest is PART OF THE PROCESS. Your body's rebuilding!"
+- Respect the recovery cycle
+- Frame rest as building strength, not weakness
+
+**When detecting under-eating (calories significantly below target):**
+- "You can't build a BEAST without fuel! EAT MORE!"
+- Emphasize performance requires proper nutrition
+- Push for adequate calories/protein
+
+**When detecting over-training (7+ consecutive high-intensity days):**
+- "Smart rest builds STRONGER warriors!"
+- Acknowledge their intensity, guide toward balance
+- Frame recovery as strategic, not weakness
+
+**Otherwise: FULL GOGGINS MODE (95% of interactions)**
+- "CRUSH IT!", "NO EXCUSES!", "GET AFTER IT!"
+- Maximum intensity and motivation
+- Push hard, celebrate wins loudly
+
 AGENTIC WORKFLOW (IMPORTANT):
 You have access to TOOLS to get user data on-demand AND to PROACTIVELY LOG their activities.
 
@@ -500,6 +528,43 @@ RESPONSE RULES:
             # Add food context if present
             if food_context:
                 base_system_prompt += f"\n\n{food_context}"
+
+            # STEP 1.5: CONTEXT DETECTION - Add safety intelligence (5% of interactions)
+            # This detects injuries, rest days, over-training, under-eating for personality modulation
+            logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Detecting user context for safety adaptations...")
+            try:
+                # Detect context (this is lightweight - just pattern matching + data analysis)
+                context_result = await self.context_detector.detect_context(
+                    user_id=user_id,
+                    message=message,
+                    recent_activities=None,  # Will be fetched by tools if needed
+                    nutrition_summary=None,  # Will be fetched by tools if needed
+                    user_profile=None  # Will be fetched by tools if needed
+                )
+
+                logger.info(
+                    f"[UnifiedCoach._handle_chat_mode_AGENTIC] Context detected: {context_result['context']}, "
+                    f"confidence: {context_result['confidence']}, "
+                    f"safety_concern: {context_result['safety_concern']}"
+                )
+
+                # Inject context guidance into system prompt (if not normal)
+                if context_result["context"] != "normal":
+                    context_guidance = f"""
+
+=== USER CONTEXT DETECTED ===
+Context: {context_result['context']}
+Reasoning: {context_result['reasoning']}
+Safety Concern: {context_result['safety_concern']}
+Suggested Tone: {context_result['suggested_tone']}
+
+Adapt your response accordingly while keeping the Goggins intensity where appropriate."""
+                    base_system_prompt += context_guidance
+                    logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Added context guidance to system prompt")
+
+            except Exception as context_err:
+                logger.warning(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Context detection failed (non-critical): {context_err}")
+                # Continue without context detection - Claude will handle it from the system prompt rules
 
             logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Calling Claude with TOOLS...")
             logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Available tools: {len(COACH_TOOLS)}")
@@ -921,6 +986,7 @@ RESPONSE RULES:
                         # Calculate nutrition totals from matched foods
                         nutrition_totals = self._calculate_nutrition_from_foods(match_result["matched_foods"])
                         logger.info(f"[UnifiedCoach] Image-based meal nutrition calculated: {nutrition_totals}")
+                        logger.info(f"[UnifiedCoach] 🚀 RETURNING nutrition to frontend: {nutrition_totals}")
 
                         # Build response with food_detected
                         return {
@@ -1070,6 +1136,7 @@ RESPONSE RULES:
                     # Calculate nutrition totals from matched foods
                     nutrition_totals = self._calculate_nutrition_from_foods(match_result["matched_foods"])
                     logger.info(f"[UnifiedCoach] Text-based meal nutrition calculated: {nutrition_totals}")
+                    logger.info(f"[UnifiedCoach] 🚀 RETURNING nutrition to frontend: {nutrition_totals}")
 
                     # Return food_detected (not log_preview) for consistency with image flow
                     return {
