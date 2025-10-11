@@ -178,10 +178,10 @@ BEGIN
   -- Otherwise, auto-detect based on recent logs
   -- Count weight measurements in last 14 days
   SELECT COUNT(*) INTO weight_logs_count
-  FROM measurements
+  FROM body_measurements
   WHERE user_id = p_user_id
-    AND measurement_type = 'weight'
-    AND measurement_date >= NOW() - INTERVAL '14 days';
+    AND (weight_lbs IS NOT NULL OR weight_kg IS NOT NULL)
+    AND measured_at >= NOW() - INTERVAL '14 days';
 
   -- Show if 2+ logs in last 14 days
   RETURN weight_logs_count >= 2;
@@ -306,10 +306,10 @@ SET shows_weight_card = TRUE,
 WHERE shows_weight_card IS NULL
   AND (
     SELECT COUNT(*)
-    FROM measurements m
+    FROM body_measurements m
     WHERE m.user_id = p.id
-      AND m.measurement_type = 'weight'
-      AND m.measurement_date >= NOW() - INTERVAL '14 days'
+      AND (m.weight_lbs IS NOT NULL OR m.weight_kg IS NOT NULL)
+      AND m.measured_at >= NOW() - INTERVAL '14 days'
   ) >= 2;
 
 -- ============================================================================
