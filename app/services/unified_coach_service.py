@@ -22,6 +22,7 @@ from app.services.food_vision_service import get_food_vision_service
 from app.services.tool_service import get_tool_service, COACH_TOOLS
 from app.services.conversation_memory_service import get_conversation_memory_service
 from app.services.cache_service import get_cache_service  # NEW: Caching for massive speedup
+from app.services.unit_converter import convert_to_grams  # CRITICAL: Fix nutrition calculation bug
 
 # Graceful imports for optional Groq-based smart routing services
 try:
@@ -1862,45 +1863,41 @@ Adapt your response accordingly while keeping the intensity where appropriate.""
             detected_qty = float(food.get("detected_quantity", 1))
             detected_unit = food.get("detected_unit", "serving").lower()  # Normalize to lowercase
             serving_unit = food.get("serving_unit", "g").lower()
+            food_name = food.get("name", "")
+            household_serving_grams = food.get("household_serving_grams")
 
             # DEBUG: Log RAW inputs before any processing
             logger.info(
-                f"[_calculate_nutrition] 🔍 RAW INPUT - Food: {food.get('name')}, "
+                f"[_calculate_nutrition] 🔍 RAW INPUT - Food: {food_name}, "
                 f"detected_qty={detected_qty}, detected_unit='{detected_unit}', "
                 f"serving_size={serving_size}, serving_unit='{serving_unit}', "
+                f"household_serving_grams={household_serving_grams}, "
                 f"calories_per_serving={calories_per_serving}"
             )
 
-            # Normalize detected unit using synonym mapping
-            detected_unit_normalized = UNIT_SYNONYMS.get(detected_unit, detected_unit)
-
-            logger.info(
-                f"[_calculate_nutrition] Food: {food.get('name')} - "
-                f"{detected_qty} {detected_unit} (normalized: {detected_unit_normalized}) | "
-                f"DB serving: {serving_size} {serving_unit}"
+            # CRITICAL FIX: Convert detected quantity to grams FIRST using unit_converter
+            # This fixes the bug where "5 oz" was treated as "5 grams"
+            detected_qty_in_grams = convert_to_grams(
+                quantity=detected_qty,
+                unit=detected_unit,
+                food_name=food_name,
+                household_serving_grams=household_serving_grams
             )
 
-            # Calculate scaling factor based on unit conversion
-            if detected_unit_normalized == "serving" or detected_unit_normalized == "servings":
-                # User specified N servings/pieces/slices - multiply by N
-                scale_factor = detected_qty
-                logger.info(f"[_calculate_nutrition]   ✅ Unit is 'serving' equivalent: scale_factor = {detected_qty}")
-            elif detected_unit_normalized == serving_unit:
-                # Units match exactly (e.g., both "g") - scale by ratio
-                scale_factor = detected_qty / serving_size
-                logger.info(f"[_calculate_nutrition]   ✅ Units match ({detected_unit_normalized}): scale_factor = {detected_qty}/{serving_size} = {scale_factor}")
-            else:
-                # Units don't match - assume detected_qty is in grams relative to serving_size
-                # This is a fallback for cases like "100g" when database has "oz" serving
-                if serving_unit == "g":
-                    scale_factor = detected_qty / serving_size
-                else:
-                    # Different units, no conversion available - assume 1:1 as last resort
-                    scale_factor = detected_qty / serving_size
-                logger.info(
-                    f"[_calculate_nutrition]   ⚠️  Unit mismatch ({detected_unit_normalized} vs {serving_unit}): "
-                    f"scale_factor = {detected_qty}/{serving_size} = {scale_factor}"
-                )
+            logger.info(
+                f"[_calculate_nutrition] ✅ CONVERTED: {detected_qty} {detected_unit} → {detected_qty_in_grams}g"
+            )
+
+            # Calculate scaling factor using CONVERTED grams
+            # Formula: multiplier = (grams eaten) / (grams per serving)
+            scale_factor = detected_qty_in_grams / serving_size
+
+            logger.info(
+                f"[_calculate_nutrition] Food: {food_name} - "
+                f"{detected_qty} {detected_unit} ({detected_qty_in_grams}g) | "
+                f"DB serving: {serving_size}g | "
+                f"scale_factor = {detected_qty_in_grams}g / {serving_size}g = {scale_factor:.4f}"
+            )
 
             # Add scaled nutrition to totals
             scaled_calories = calories_per_serving * scale_factor

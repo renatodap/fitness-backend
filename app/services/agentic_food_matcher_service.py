@@ -201,6 +201,7 @@ class AgenticFoodMatcherService:
                     "brand_name": match.get("brand_name"),
                     "serving_size": match["serving_size"],
                     "serving_unit": match["serving_unit"],
+                    "household_serving_grams": match.get("household_serving_grams"),  # CRITICAL: For unit conversion
                     "calories": match.get("calories"),
                     "protein_g": match.get("protein_g"),
                     "carbs_g": match.get("total_carbs_g") or match.get("carbs_g", 0),  # Handle both field names
@@ -391,6 +392,7 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
                                 "brand_name": created_food.get("brand_name"),
                                 "serving_size": created_food["serving_size"],
                                 "serving_unit": created_food["serving_unit"],
+                                "household_serving_grams": created_food.get("household_serving_grams"),  # For unit conversion
                                 "calories": created_food.get("calories"),
                                 "protein_g": created_food.get("protein_g"),
                                 "carbs_g": created_food.get("total_carbs_g"),
@@ -480,6 +482,7 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
                                         "brand_name": created_food.get("brand_name"),
                                         "serving_size": created_food["serving_size"],
                                         "serving_unit": created_food["serving_unit"],
+                                        "household_serving_grams": created_food.get("household_serving_grams"),  # For unit conversion
                                         "calories": created_food.get("calories"),
                                         "protein_g": created_food.get("protein_g"),
                                         "carbs_g": created_food.get("total_carbs_g"),
@@ -556,6 +559,7 @@ Now estimate nutrition for "{food_name}". Return ONLY valid JSON."""
                     "brand_name": created_food.get("brand_name"),
                     "serving_size": created_food["serving_size"],
                     "serving_unit": created_food["serving_unit"],
+                    "household_serving_grams": created_food.get("household_serving_grams"),  # For unit conversion
                     "calories": created_food.get("calories"),
                     "protein_g": created_food.get("protein_g"),
                     "carbs_g": created_food.get("total_carbs_g"),
