@@ -16,7 +16,7 @@ from collections import defaultdict
 import structlog
 
 from app.api.v1.dependencies import get_current_user
-from app.services.supabase_service import get_supabase_client
+from app.services.supabase_service import get_service_client
 
 logger = structlog.get_logger()
 
@@ -129,7 +129,7 @@ async def analyze_app_open_patterns(user_id: str, days: int = 14) -> List[Notifi
         List of detected patterns with confidence scores
     """
     try:
-        supabase = await get_supabase_client()
+        supabase = get_service_client()
 
         # Get app opens for last N days
         start_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
@@ -199,7 +199,7 @@ async def analyze_meal_log_patterns(user_id: str, days: int = 14) -> List[Notifi
         List of detected meal logging patterns
     """
     try:
-        supabase = await get_supabase_client()
+        supabase = get_service_client()
 
         # Get meal logs for last N days
         start_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
@@ -287,7 +287,7 @@ async def analyze_notification_patterns(
         all_patterns = app_open_patterns + meal_log_patterns
 
         # Get current schedule
-        supabase = await get_supabase_client()
+        supabase = get_service_client()
         schedule_response = await supabase.table("notification_schedules") \
             .select("*") \
             .eq("user_id", user_id) \
@@ -350,7 +350,7 @@ async def create_notification_schedule(
     """Create notification schedule."""
     try:
         user_id = current_user["user_id"]
-        supabase = await get_supabase_client()
+        supabase = get_service_client()
 
         # Check if schedule already exists
         existing = await supabase.table("notification_schedules") \
@@ -427,7 +427,7 @@ async def get_notification_schedule(
     """Get notification schedule."""
     try:
         user_id = current_user["user_id"]
-        supabase = await get_supabase_client()
+        supabase = get_service_client()
 
         response = await supabase.table("notification_schedules") \
             .select("*") \
@@ -478,7 +478,7 @@ async def update_notification_schedule(
     """Update notification schedule."""
     try:
         user_id = current_user["user_id"]
-        supabase = await get_supabase_client()
+        supabase = get_service_client()
 
         # Build update dict (only non-None values)
         update_data = {}
@@ -554,7 +554,7 @@ async def delete_notification_schedule(
     """Delete notification schedule."""
     try:
         user_id = current_user["user_id"]
-        supabase = await get_supabase_client()
+        supabase = get_service_client()
 
         await supabase.table("notification_schedules") \
             .delete() \

@@ -15,7 +15,7 @@ from typing import Optional, Literal
 import structlog
 
 from app.api.v1.dependencies import get_current_user
-from app.services.supabase_service import get_supabase_client
+from app.services.supabase_service import get_service_client
 
 logger = structlog.get_logger()
 
@@ -115,7 +115,7 @@ async def calculate_streak(user_id: str) -> int:
         Number of consecutive days with meal logs
     """
     try:
-        supabase = await get_supabase_client()
+        supabase = get_service_client()
 
         # Get meal logs for last 60 days (ordered by date)
         sixty_days_ago = (datetime.utcnow() - timedelta(days=60)).isoformat()
@@ -162,7 +162,7 @@ async def get_program_context(user_id: str) -> Optional[ProgramContext]:
         ProgramContext or None if no active program
     """
     try:
-        supabase = await get_supabase_client()
+        supabase = get_service_client()
 
         # Get active program
         response = await supabase.table("programs") \
@@ -223,7 +223,7 @@ async def get_events_context(user_id: str) -> Optional[EventsContext]:
         EventsContext or None if no upcoming events
     """
     try:
-        supabase = await get_supabase_client()
+        supabase = get_service_client()
 
         # Get next upcoming event (within 60 days)
         current_date = datetime.utcnow().date()
@@ -281,7 +281,7 @@ async def get_dashboard_context(
     """Get complete dashboard context for user."""
     try:
         user_id = current_user["user_id"]
-        supabase = await get_supabase_client()
+        supabase = get_service_client()
 
         # Get user profile
         profile_response = await supabase.table("profiles") \
@@ -370,7 +370,7 @@ async def log_behavior_signal(
     """Log behavior signal for adaptive learning."""
     try:
         user_id = current_user["user_id"]
-        supabase = await get_supabase_client()
+        supabase = get_service_client()
 
         # Insert behavior signal
         await supabase.table("behavior_signals") \
@@ -424,7 +424,7 @@ async def log_app_open(
     """Log app open event."""
     try:
         user_id = current_user["user_id"]
-        supabase = await get_supabase_client()
+        supabase = get_service_client()
 
         # Insert app open event
         await supabase.table("app_opens") \
@@ -476,7 +476,7 @@ async def update_dashboard_preference(
     """Update user's dashboard preference."""
     try:
         user_id = current_user["user_id"]
-        supabase = await get_supabase_client()
+        supabase = get_service_client()
 
         # Update profile
         await supabase.table("profiles") \
