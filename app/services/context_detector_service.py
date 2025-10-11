@@ -4,14 +4,14 @@ Context Detector Service
 Detects user context to enable intelligent personality modulation.
 
 This service adds MINIMAL safety intelligence while keeping the hardcore
-David Goggins personality. It detects:
+intensity-driven personality. It detects:
 - Injuries/pain mentions
 - Rest day situations
 - Over-training patterns
 - Under-eating patterns
 - Goal-crushing momentum
 
-95% of interactions remain unchanged Goggins. 5% adapt for safety.
+95% of interactions remain full intensity. 5% adapt for science-backed safety.
 """
 
 import logging
