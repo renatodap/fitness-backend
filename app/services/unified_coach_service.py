@@ -300,7 +300,11 @@ Confidence: {food_analysis.get('confidence', 0) * 100:.0f}%
                         message=message,
                         has_image=image_base64 is not None
                     )
-                logger.info(
+                except Exception as complexity_err:
+                    logger.warning(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Complexity analysis failed, using Claude: {complexity_err}")
+                    # Fall through to Claude (below)
+                else:
+                    logger.info(
                     f"[UnifiedCoach._handle_chat_mode_AGENTIC] Complexity: {complexity_analysis['complexity'].upper()}, "
                     f"confidence: {complexity_analysis['confidence']}, "
                     f"recommended_model: {complexity_analysis['recommended_model']}"
