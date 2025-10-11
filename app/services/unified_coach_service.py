@@ -1047,7 +1047,7 @@ Adapt your response accordingly while keeping the Goggins intensity where approp
                 detected_foods = []
 
                 # Try to extract foods from AI classification
-                ai_foods = preview_result.get("data", {}).get("foods", [])
+                ai_foods = preview_result.get("data", {}).get("primary_fields", {}).get("foods", [])
 
                 if ai_foods:
                     logger.info(f"[UnifiedCoach] Found {len(ai_foods)} foods in AI extraction")

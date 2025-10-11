@@ -18,35 +18,35 @@ INSERT INTO foods (
 ) VALUES
 
 -- STOUFFER'S FROZEN MEALS
-('Stouffers Macaroni and Cheese', 'meal', 'Stouffers classic mac and cheese frozen meal',
+('Stouffers Macaroni and Cheese', 'branded', 'Stouffers classic mac and cheese frozen meal',
     100, 'g', 'tray (340g)', 340,
     118, 5, 13.8, 4.7,
     0.9, 1.5, 2.4, 15,
     324, 103, 88, 0.44,
     ARRAY['dairy', 'gluten', 'eggs'], ARRAY['vegetarian'], 'user', 0.94, false),
 
-('Stouffers Lasagna with Meat Sauce', 'meal', 'Stouffers classic lasagna with meat',
+('Stouffers Lasagna with Meat Sauce', 'branded', 'Stouffers classic lasagna with meat',
     100, 'g', 'tray (283g)', 283,
     127, 6.7, 13.1, 4.6,
     1.4, 3.9, 2.1, 18,
     367, 181, 81, 0.85,
     ARRAY['dairy', 'gluten', 'eggs'], NULL, 'user', 0.93, false),
 
-('Stouffers Baked Chicken Breast', 'meal', 'Stouffers baked chicken with gravy and sides',
+('Stouffers Baked Chicken Breast', 'branded', 'Stouffers baked chicken with gravy and sides',
     100, 'g', 'tray (251g)', 251,
     116, 7.2, 11.6, 4,
     2, 2.4, 1.6, 24,
     348, 164, 32, 0.8,
     ARRAY['dairy', 'gluten'], NULL, 'user', 0.92, false),
 
-('Stouffers Meatloaf', 'meal', 'Stouffers homestyle meatloaf with mashed potatoes',
+('Stouffers Meatloaf', 'branded', 'Stouffers homestyle meatloaf with mashed potatoes',
     100, 'g', 'tray (396g)', 396,
     101, 5.6, 9.1, 4.5,
     1.5, 2.5, 2, 20,
     333, 156, 28, 0.91,
     ARRAY['dairy', 'gluten', 'eggs'], NULL, 'user', 0.92, false),
 
-('Stouffers Chicken Fettuccini Alfredo', 'meal', 'Stouffers chicken fettuccini alfredo',
+('Stouffers Chicken Fettuccini Alfredo', 'branded', 'Stouffers chicken fettuccini alfredo',
     100, 'g', 'tray (283g)', 283,
     141, 7.1, 14.1, 5.3,
     1.4, 1.8, 2.8, 28,
@@ -54,35 +54,35 @@ INSERT INTO foods (
     ARRAY['dairy', 'gluten', 'eggs'], NULL, 'user', 0.92, false),
 
 -- LEAN CUISINE
-('Lean Cuisine Chicken with Basil Cream Sauce', 'meal', 'Lean Cuisine chicken pasta with basil',
+('Lean Cuisine Chicken with Basil Cream Sauce', 'branded', 'Lean Cuisine chicken pasta with basil',
     100, 'g', 'tray (255g)', 255,
     106, 6.7, 13.7, 2.4,
     2, 2.7, 0.8, 16,
     298, 157, 43, 0.67,
     ARRAY['dairy', 'gluten'], NULL, 'user', 0.93, false),
 
-('Lean Cuisine Vermont White Cheddar Mac and Cheese', 'meal', 'Lean Cuisine mac and cheese',
+('Lean Cuisine Vermont White Cheddar Mac and Cheese', 'branded', 'Lean Cuisine mac and cheese',
     100, 'g', 'tray (283g)', 283,
     102, 4.6, 15.9, 2.1,
     1.8, 2.1, 1.1, 11,
     282, 113, 88, 0.53,
     ARRAY['dairy', 'gluten'], ARRAY['vegetarian'], 'user', 0.93, false),
 
-('Lean Cuisine Glazed Chicken', 'meal', 'Lean Cuisine glazed chicken with rice and veggies',
+('Lean Cuisine Glazed Chicken', 'branded', 'Lean Cuisine glazed chicken with rice and veggies',
     100, 'g', 'tray (255g)', 255,
     102, 7.5, 16.5, 0.8,
     1.6, 6.3, 0.2, 18,
     290, 157, 24, 0.71,
     NULL, NULL, 'user', 0.92, false),
 
-('Lean Cuisine Beef and Broccoli', 'meal', 'Lean Cuisine beef and broccoli',
+('Lean Cuisine Beef and Broccoli', 'branded', 'Lean Cuisine beef and broccoli',
     100, 'g', 'tray (255g)', 255,
     94, 7.1, 12.9, 1.6,
     2, 4.7, 0.4, 16,
     306, 196, 31, 0.94,
     ARRAY['soy', 'gluten'], NULL, 'user', 0.92, false),
 
-('Lean Cuisine Chicken Teriyaki', 'meal', 'Lean Cuisine chicken teriyaki stir fry',
+('Lean Cuisine Chicken Teriyaki', 'branded', 'Lean Cuisine chicken teriyaki stir fry',
     100, 'g', 'tray (283g)', 283,
     95, 6.4, 15.5, 0.7,
     2.1, 6.4, 0.2, 14,
@@ -90,14 +90,14 @@ INSERT INTO foods (
     ARRAY['soy', 'gluten'], NULL, 'user', 0.92, false),
 
 -- HEALTHY CHOICE
-('Healthy Choice Chicken Fettuccini Alfredo', 'meal', 'Healthy Choice chicken alfredo',
+('Healthy Choice Chicken Fettuccini Alfredo', 'branded', 'Healthy Choice chicken alfredo',
     100, 'g', 'tray (248g)', 248,
     105, 6.5, 14.1, 2.4,
     2, 2.4, 0.8, 16,
     286, 145, 65, 0.65,
     ARRAY['dairy', 'gluten'], NULL, 'user', 0.92, false),
 
-('Healthy Choice Cafe Steamers Grilled Chicken Pesto', 'meal', 'Healthy Choice pesto chicken',
+('Healthy Choice Cafe Steamers Grilled Chicken Pesto', 'branded', 'Healthy Choice pesto chicken',
     100, 'g', 'tray (283g)', 283,
     106, 7.1, 12.4, 2.8,
     2.5, 2.5, 0.7, 18,
@@ -105,28 +105,28 @@ INSERT INTO foods (
     ARRAY['dairy', 'gluten', 'nuts'], NULL, 'user', 0.91, false),
 
 -- DIGIORNO PIZZA
-('DiGiorno Rising Crust Four Cheese Pizza', 'meal', 'DiGiorno frozen four cheese pizza',
+('DiGiorno Rising Crust Four Cheese Pizza', 'branded', 'DiGiorno frozen four cheese pizza',
     100, 'g', 'pizza (269g)', 269,
     248, 11.5, 31.2, 8.9,
     2.2, 5.6, 4.1, 19,
     633, 152, 215, 1.67,
     ARRAY['dairy', 'gluten', 'soy'], ARRAY['vegetarian'], 'user', 0.93, false),
 
-('DiGiorno Rising Crust Pepperoni Pizza', 'meal', 'DiGiorno frozen pepperoni pizza',
+('DiGiorno Rising Crust Pepperoni Pizza', 'branded', 'DiGiorno frozen pepperoni pizza',
     100, 'g', 'pizza (282g)', 282,
     266, 11.7, 31.2, 10.3,
     2.1, 5.3, 4.6, 21,
     723, 163, 199, 1.77,
     ARRAY['dairy', 'gluten', 'soy'], NULL, 'user', 0.93, false),
 
-('DiGiorno Rising Crust Supreme Pizza', 'meal', 'DiGiorno frozen supreme pizza',
+('DiGiorno Rising Crust Supreme Pizza', 'branded', 'DiGiorno frozen supreme pizza',
     100, 'g', 'pizza (318g)', 318,
     245, 10.7, 29.6, 9.1,
     2.2, 5.3, 3.8, 18,
     654, 189, 189, 1.73,
     ARRAY['dairy', 'gluten', 'soy'], NULL, 'user', 0.92, false),
 
-('DiGiorno Stuffed Crust Five Cheese Pizza', 'meal', 'DiGiorno stuffed crust cheese pizza',
+('DiGiorno Stuffed Crust Five Cheese Pizza', 'branded', 'DiGiorno stuffed crust cheese pizza',
     100, 'g', 'pizza (289g)', 289,
     256, 12.1, 30.6, 9.7,
     2.1, 5.5, 4.8, 23,
@@ -134,14 +134,14 @@ INSERT INTO foods (
     ARRAY['dairy', 'gluten', 'soy'], ARRAY['vegetarian'], 'user', 0.93, false),
 
 -- RED BARON PIZZA
-('Red Baron Classic Crust Pepperoni Pizza', 'meal', 'Red Baron frozen pepperoni pizza',
+('Red Baron Classic Crust Pepperoni Pizza', 'branded', 'Red Baron frozen pepperoni pizza',
     100, 'g', 'pizza (311g)', 311,
     289, 12.5, 31.7, 12.2,
     2.6, 5.8, 5.4, 25,
     725, 160, 193, 1.93,
     ARRAY['dairy', 'gluten', 'soy'], NULL, 'user', 0.93, false),
 
-('Red Baron Brick Oven Crust Four Cheese Pizza', 'meal', 'Red Baron four cheese pizza',
+('Red Baron Brick Oven Crust Four Cheese Pizza', 'branded', 'Red Baron four cheese pizza',
     100, 'g', 'pizza (296g)', 296,
     270, 12.8, 32.4, 9.5,
     2.4, 6.1, 4.7, 23,
@@ -149,21 +149,21 @@ INSERT INTO foods (
     ARRAY['dairy', 'gluten', 'soy'], ARRAY['vegetarian'], 'user', 0.93, false),
 
 -- HOT POCKETS
-('Hot Pockets Ham and Cheese', 'meal', 'Hot Pockets ham and cheese sandwich',
+('Hot Pockets Ham and Cheese', 'branded', 'Hot Pockets ham and cheese sandwich',
     100, 'g', 'pocket (127g)', 127,
     228, 7.9, 28.3, 8.7,
     1.6, 3.9, 3.9, 24,
     630, 126, 142, 1.57,
     ARRAY['dairy', 'gluten', 'soy'], NULL, 'user', 0.93, false),
 
-('Hot Pockets Pepperoni Pizza', 'meal', 'Hot Pockets pepperoni pizza sandwich',
+('Hot Pockets Pepperoni Pizza', 'branded', 'Hot Pockets pepperoni pizza sandwich',
     100, 'g', 'pocket (127g)', 127,
     236, 9.4, 30.7, 8.7,
     1.6, 5.5, 3.9, 20,
     630, 157, 150, 1.89,
     ARRAY['dairy', 'gluten', 'soy'], NULL, 'user', 0.93, false),
 
-('Hot Pockets Philly Steak and Cheese', 'meal', 'Hot Pockets Philly steak sandwich',
+('Hot Pockets Philly Steak and Cheese', 'branded', 'Hot Pockets Philly steak sandwich',
     100, 'g', 'pocket (127g)', 127,
     228, 7.9, 28.3, 8.7,
     1.6, 3.9, 3.9, 24,
@@ -171,7 +171,7 @@ INSERT INTO foods (
     ARRAY['dairy', 'gluten', 'soy'], NULL, 'user', 0.92, false),
 
 -- BAGEL BITES
-('Bagel Bites Cheese and Pepperoni', 'meal', 'Bagel Bites mini pizza bagels',
+('Bagel Bites Cheese and Pepperoni', 'branded', 'Bagel Bites mini pizza bagels',
     100, 'g', '4 pieces (88g)', 88,
     261, 10.2, 36.4, 8,
     2.3, 4.5, 3.4, 14,
@@ -179,14 +179,14 @@ INSERT INTO foods (
     ARRAY['dairy', 'gluten'], NULL, 'user', 0.93, false),
 
 -- TOTINOS PIZZA ROLLS
-('Totinos Pizza Rolls (Pepperoni)', 'meal', 'Totinos pepperoni pizza rolls',
+('Totinos Pizza Rolls (Pepperoni)', 'branded', 'Totinos pepperoni pizza rolls',
     100, 'g', '6 rolls (85g)', 85,
     282, 8.2, 38.8, 10.6,
     2.4, 3.5, 3.5, 12,
     541, 129, 94, 1.76,
     ARRAY['dairy', 'gluten', 'soy'], NULL, 'user', 0.93, false),
 
-('Totinos Pizza Rolls (Combination)', 'meal', 'Totinos combination pizza rolls',
+('Totinos Pizza Rolls (Combination)', 'branded', 'Totinos combination pizza rolls',
     100, 'g', '6 rolls (85g)', 85,
     282, 8.2, 38.8, 10.6,
     2.4, 3.5, 3.5, 12,
@@ -252,14 +252,14 @@ INSERT INTO foods (
     577, 115, 96, 2.88,
     ARRAY['dairy', 'eggs', 'gluten', 'soy'], ARRAY['vegetarian'], 'user', 0.93, false),
 
-('Jimmy Dean Sausage, Egg and Cheese Biscuit', 'meal', 'Jimmy Dean frozen breakfast sandwich',
+('Jimmy Dean Sausage, Egg and Cheese Biscuit', 'branded', 'Jimmy Dean frozen breakfast sandwich',
     100, 'g', 'sandwich (142g)', 142,
     296, 11.3, 21.8, 17.6,
     0.7, 2.1, 7, 113,
     775, 169, 141, 1.55,
     ARRAY['dairy', 'eggs', 'gluten', 'soy'], NULL, 'user', 0.92, false),
 
-('Jimmy Dean Delights Turkey Sausage, Egg White and Cheese Muffin', 'meal', 'Jimmy Dean Delights breakfast sandwich',
+('Jimmy Dean Delights Turkey Sausage, Egg White and Cheese Muffin', 'branded', 'Jimmy Dean Delights breakfast sandwich',
     100, 'g', 'sandwich (127g)', 127,
     197, 15, 19.7, 5.5,
     3.1, 1.6, 2.4, 55,

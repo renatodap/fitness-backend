@@ -46,14 +46,14 @@ INSERT INTO foods (
     320, 280, 24, 0.8,
     NULL, ARRAY['vegan', 'vegetarian', 'gluten-free'], 'user', 0.94, false),
 
-('Newman's Own Marinara Sauce', 'ingredient', 'Newmans Own marinara pasta sauce',
+('Newmans Own Marinara Sauce', 'ingredient', 'Newmans Own marinara pasta sauce',
     100, 'g', 'cup (124g)', 124,
     48, 1.6, 8.1, 1.6,
     2.4, 4.8, 0, 0,
     323, 274, 24, 0.81,
     NULL, ARRAY['vegan', 'vegetarian', 'gluten-free'], 'user', 0.94, false),
 
-('Rao's Homemade Marinara Sauce', 'ingredient', 'Raos homemade marinara sauce',
+('Raos Homemade Marinara Sauce', 'ingredient', 'Raos homemade marinara sauce',
     100, 'g', 'cup (125g)', 125,
     56, 1.6, 5.6, 3.2,
     1.6, 4, 0.4, 0,
@@ -198,14 +198,14 @@ INSERT INTO foods (
     633, 200, 7, 0.2,
     NULL, ARRAY['vegan', 'vegetarian', 'gluten-free'], 'user', 0.95, false),
 
-('French's Yellow Mustard', 'ingredient', 'Frenchs classic yellow mustard',
+('Frenchs Yellow Mustard', 'ingredient', 'Frenchs classic yellow mustard',
     100, 'g', 'tsp (5g)', 5,
     67, 3.3, 6.7, 3.3,
     3.3, 0, 0, 0,
     1333, 133, 67, 1.33,
     NULL, ARRAY['vegan', 'vegetarian', 'gluten-free'], 'user', 0.95, false),
 
-('Gulden's Spicy Brown Mustard', 'ingredient', 'Guldens spicy brown mustard',
+('Guldens Spicy Brown Mustard', 'ingredient', 'Guldens spicy brown mustard',
     100, 'g', 'tsp (5g)', 5,
     100, 6.7, 6.7, 6.7,
     3.3, 0, 0, 0,
@@ -256,14 +256,14 @@ INSERT INTO foods (
     ARRAY['soy', 'gluten'], ARRAY['vegan', 'vegetarian'], 'user', 0.95, false),
 
 -- MAYONNAISE
-('Hellmann's Real Mayonnaise', 'ingredient', 'Hellmanns real mayonnaise',
+('Hellmanns Real Mayonnaise', 'ingredient', 'Hellmanns real mayonnaise',
     100, 'g', 'tbsp (14g)', 14,
     714, 0, 0, 78.6,
     0, 0, 11.9, 36,
     571, 36, 14, 0.07,
     ARRAY['eggs', 'soy'], ARRAY['vegetarian', 'gluten-free'], 'user', 0.95, false),
 
-('Hellmann's Light Mayonnaise', 'ingredient', 'Hellmanns light mayonnaise',
+('Hellmanns Light Mayonnaise', 'ingredient', 'Hellmanns light mayonnaise',
     100, 'g', 'tbsp (15g)', 15,
     333, 0, 13.3, 30,
     0, 6.7, 5, 20,
@@ -336,7 +336,7 @@ INSERT INTO foods (
     1467, 67, 13, 0.13,
     NULL, ARRAY['vegan', 'vegetarian', 'gluten-free'], 'user', 0.94, false),
 
-('Ken's Steak House Chunky Blue Cheese', 'ingredient', 'Kens chunky blue cheese dressing',
+('Kens Steak House Chunky Blue Cheese', 'ingredient', 'Kens chunky blue cheese dressing',
     100, 'g', 'tbsp (16g)', 16,
     500, 3.1, 6.3, 50,
     0, 3.1, 9.4, 31,
