@@ -234,8 +234,8 @@ DECLARE
   weight_logs_last_14_days INT;
   current_shows_weight BOOLEAN;
 BEGIN
-  -- Only check if measurement is weight
-  IF NEW.measurement_type = 'weight' THEN
+  -- Only check if there's weight data (weight_lbs OR weight_kg)
+  IF NEW.weight_lbs IS NOT NULL OR NEW.weight_kg IS NOT NULL THEN
     -- Get current preference
     SELECT shows_weight_card INTO current_shows_weight
     FROM profiles
@@ -245,10 +245,10 @@ BEGIN
     IF current_shows_weight IS NULL THEN
       -- Count recent weight logs
       SELECT COUNT(*) INTO weight_logs_last_14_days
-      FROM measurements
+      FROM body_measurements
       WHERE user_id = NEW.user_id
-        AND measurement_type = 'weight'
-        AND measurement_date >= NOW() - INTERVAL '14 days';
+        AND (weight_lbs IS NOT NULL OR weight_kg IS NOT NULL)
+        AND measured_at >= NOW() - INTERVAL '14 days';
 
       -- If 2+ logs, auto-enable
       IF weight_logs_last_14_days >= 2 THEN
@@ -279,9 +279,9 @@ BEGIN
 END;
 $$;
 
--- Apply trigger to measurements table
+-- Apply trigger to body_measurements table
 CREATE TRIGGER trigger_auto_enable_weight_card
-AFTER INSERT ON measurements
+AFTER INSERT ON body_measurements
 FOR EACH ROW
 EXECUTE FUNCTION auto_enable_weight_card();
 
