@@ -192,7 +192,31 @@ class AgenticFoodMatcherService:
                 # Fall through to AI creation below
             else:
                 logger.info(f"[AgenticMatcher] ✅ Found in DB: {food_name}")
-                return {"matched": True, "food": match, "created": False}
+
+                # Normalize field names to match what _calculate_nutrition expects
+                # Database foods have total_carbs_g/total_fat_g, but calculation expects carbs_g/fat_g
+                normalized_food = {
+                    "id": match["id"],
+                    "name": match["name"],
+                    "brand_name": match.get("brand_name"),
+                    "serving_size": match["serving_size"],
+                    "serving_unit": match["serving_unit"],
+                    "calories": match.get("calories"),
+                    "protein_g": match.get("protein_g"),
+                    "carbs_g": match.get("total_carbs_g") or match.get("carbs_g", 0),  # Handle both field names
+                    "fat_g": match.get("total_fat_g") or match.get("fat_g", 0),        # Handle both field names
+                    "fiber_g": match.get("dietary_fiber_g"),
+                    "detected_quantity": float(quantity),
+                    "detected_unit": unit,
+                    "match_confidence": match.get("match_confidence", 1.0),
+                    "match_method": match.get("match_method", "database"),
+                    "is_recent": match.get("is_recent", False),
+                    "data_quality_score": match.get("data_quality_score", 1.0)
+                }
+
+                logger.info(f"[AgenticMatcher] Normalized nutrition: {normalized_food['calories']} cal, {normalized_food['carbs_g']}g C, {normalized_food['fat_g']}g F")
+
+                return {"matched": True, "food": normalized_food, "created": False}
 
         # STEP 2: No match - use Groq to validate and create
         logger.info(f"[AgenticMatcher] No DB match for '{food_name}' - using AI")

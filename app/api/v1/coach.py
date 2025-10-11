@@ -32,6 +32,7 @@ from app.api.v1.schemas.unified_coach_schemas import (
 from app.services.unified_coach_service import get_unified_coach_service
 from app.services.supabase_service import get_service_client
 from app.services.auth_service import get_current_user  # Use mock auth (same as quick_entry)
+from app.api.middleware.rate_limit import coach_chat_rate_limit
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -152,10 +153,11 @@ async def coach_health():
     - Chat response: $0.015 (Claude + RAG)
     - Embedding: FREE
 
-    **Rate limit:** 100 messages per day
+    **Rate limit:** 100 messages per day (enforced)
     """,
     tags=["coach"]
 )
+@coach_chat_rate_limit()
 async def send_message(
     request: UnifiedMessageRequest,
     background_tasks: BackgroundTasks,
@@ -270,6 +272,12 @@ async def send_message(
 # =====================================================
 # ENDPOINT 2: Confirm Detected Log
 # =====================================================
+
+@router.options("/confirm-log")
+async def confirm_log_options():
+    """Handle CORS preflight for confirm-log endpoint."""
+    return {"status": "ok"}
+
 
 @router.post(
     "/confirm-log",
