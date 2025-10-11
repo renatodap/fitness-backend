@@ -2,6 +2,23 @@
 Meals API Endpoints
 
 Handles manual meal logging and meal management.
+
+HOW NUTRITION WORKS:
+- Base nutrition stored in foods table per serving_size (typically 100g)
+- User inputs in servings (e.g., "1.5 breasts") OR grams (e.g., "210g")
+- Backend converts between servings↔grams using household_serving_grams if available
+- Nutrition calculated: multiplier = gram_quantity / serving_size
+- Each macronutrient: value * multiplier
+- Stored in meal_foods with pre-calculated nutrition
+
+Critical Fields for Calculations:
+- serving_size (required): Base amount for nutrition (e.g., 100)
+- serving_unit (required): Unit for serving_size (e.g., 'g')
+- household_serving_unit (optional): User-friendly name (e.g., 'breast', 'banana')
+- household_serving_grams (optional): Grams per household serving (e.g., 140g for breast)
+- ALL macros: calories, protein_g, total_carbs_g, total_fat_g, dietary_fiber_g, total_sugars_g, sodium_mg
+
+See quantity_converter.py for implementation details.
 """
 
 import logging

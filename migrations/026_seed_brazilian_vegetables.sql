@@ -1,0 +1,408 @@
+-- ============================================================================
+-- MIGRATION 026: SEED BRAZILIAN VEGETABLES (VEGETAIS E VERDURAS)
+-- ============================================================================
+-- Description: Common vegetables in Brazil with Portuguese names
+-- Total items: ~60 items
+-- Categories: Folhas, Legumes, Raízes, Tubérculos
+-- ============================================================================
+
+BEGIN;
+
+INSERT INTO foods (
+    name, food_type, description,
+    serving_size, serving_unit, household_serving_unit, household_serving_grams,
+    calories, protein_g, total_carbs_g, total_fat_g,
+    dietary_fiber_g, total_sugars_g, saturated_fat_g, cholesterol_mg,
+    sodium_mg, potassium_mg, calcium_mg, iron_mg,
+    allergens, dietary_flags, source, data_quality_score, verified
+) VALUES
+
+-- FOLHAS E VERDURAS (LEAFY GREENS)
+('Alface Crespa', 'ingredient', 'Curly lettuce',
+    100, 'g', 'xícara (47g)', 47,
+    15, 1.4, 2.9, 0.2,
+    1.3, 0.8, 0, 0,
+    28, 194, 36, 0.86,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Alface Americana', 'ingredient', 'Iceberg lettuce',
+    100, 'g', 'xícara (57g)', 57,
+    14, 0.9, 3, 0.1,
+    1.2, 1.4, 0, 0,
+    10, 141, 18, 0.41,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.96, false),
+
+('Alface Romana', 'ingredient', 'Romaine lettuce',
+    100, 'g', 'xícara (47g)', 47,
+    17, 1.2, 3.3, 0.3,
+    2.1, 1.2, 0, 0,
+    8, 247, 33, 0.97,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.96, false),
+
+('Rúcula', 'ingredient', 'Arugula',
+    100, 'g', 'xícara (20g)', 20,
+    25, 2.6, 3.7, 0.7,
+    1.6, 2, 0.1, 0,
+    27, 369, 160, 1.46,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Agrião', 'ingredient', 'Watercress',
+    100, 'g', 'xícara (34g)', 34,
+    11, 2.3, 1.3, 0.1,
+    0.5, 0.2, 0, 0,
+    41, 330, 120, 0.2,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Espinafre', 'ingredient', 'Spinach',
+    100, 'g', 'xícara (30g)', 30,
+    23, 2.9, 3.6, 0.4,
+    2.2, 0.4, 0.1, 0,
+    79, 558, 99, 2.71,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.96, false),
+
+('Couve', 'ingredient', 'Collard greens',
+    100, 'g', 'xícara picada (36g)', 36,
+    32, 3, 5.4, 0.4,
+    3.6, 0.8, 0.1, 0,
+    18, 213, 232, 0.47,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Couve-Flor', 'ingredient', 'Cauliflower',
+    100, 'g', 'xícara (107g)', 107,
+    25, 1.9, 5, 0.3,
+    2, 1.9, 0, 0,
+    30, 299, 22, 0.42,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.96, false),
+
+('Brócolis', 'ingredient', 'Broccoli',
+    100, 'g', 'xícara (91g)', 91,
+    34, 2.8, 7, 0.4,
+    2.6, 1.7, 0, 0,
+    33, 316, 47, 0.73,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.96, false),
+
+('Repolho Branco', 'ingredient', 'White cabbage',
+    100, 'g', 'xícara picada (89g)', 89,
+    25, 1.3, 5.8, 0.1,
+    2.5, 3.2, 0, 0,
+    18, 170, 40, 0.47,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Repolho Roxo', 'ingredient', 'Red cabbage',
+    100, 'g', 'xícara picada (89g)', 89,
+    31, 1.4, 7.4, 0.2,
+    2.1, 3.8, 0, 0,
+    27, 243, 45, 0.8,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Acelga', 'ingredient', 'Swiss chard',
+    100, 'g', 'xícara (36g)', 36,
+    19, 1.8, 3.7, 0.2,
+    1.6, 1.1, 0, 0,
+    213, 379, 51, 1.8,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.94, false),
+
+('Almeirão', 'ingredient', 'Chicory',
+    100, 'g', 'xícara (40g)', 40,
+    23, 1.7, 4.7, 0.3,
+    4, 0.7, 0.1, 0,
+    45, 420, 100, 0.9,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.93, false),
+
+-- LEGUMES (VEGETABLES)
+('Tomate', 'ingredient', 'Tomato',
+    100, 'g', 'tomate médio (123g)', 123,
+    18, 0.9, 3.9, 0.2,
+    1.2, 2.6, 0, 0,
+    5, 237, 10, 0.27,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.96, false),
+
+('Pepino', 'ingredient', 'Cucumber',
+    100, 'g', 'pepino médio (301g)', 301,
+    15, 0.7, 3.6, 0.1,
+    0.5, 1.7, 0, 0,
+    2, 147, 16, 0.28,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.96, false),
+
+('Pimentão Verde', 'ingredient', 'Green bell pepper',
+    100, 'g', 'pimentão (119g)', 119,
+    20, 0.9, 4.6, 0.2,
+    1.7, 2.4, 0, 0,
+    3, 175, 10, 0.34,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Pimentão Vermelho', 'ingredient', 'Red bell pepper',
+    100, 'g', 'pimentão (119g)', 119,
+    31, 1, 6, 0.3,
+    2.1, 4.2, 0, 0,
+    4, 211, 7, 0.43,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Pimentão Amarelo', 'ingredient', 'Yellow bell pepper',
+    100, 'g', 'pimentão (186g)', 186,
+    27, 1, 6.3, 0.2,
+    0.9, 5.4, 0, 0,
+    2, 212, 11, 0.46,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Berinjela', 'ingredient', 'Eggplant',
+    100, 'g', 'xícara (82g)', 82,
+    25, 1, 5.9, 0.2,
+    3, 3.5, 0, 0,
+    2, 229, 9, 0.23,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Abobrinha Italiana', 'ingredient', 'Zucchini',
+    100, 'g', 'abobrinha média (196g)', 196,
+    17, 1.2, 3.1, 0.3,
+    1, 2.5, 0.1, 0,
+    8, 261, 16, 0.37,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.96, false),
+
+('Abóbora Paulista (Moranga)', 'ingredient', 'Winter squash',
+    100, 'g', 'xícara (116g)', 116,
+    26, 1, 6.5, 0.1,
+    1.1, 2.2, 0, 0,
+    2, 350, 21, 0.7,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Abóbora Japonesa (Cabotiá)', 'ingredient', 'Kabocha squash',
+    100, 'g', 'xícara (116g)', 116,
+    34, 1.1, 8.6, 0.1,
+    1.2, 3.5, 0, 0,
+    4, 350, 15, 0.5,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.94, false),
+
+('Chuchu', 'ingredient', 'Chayote',
+    100, 'g', 'chuchu médio (203g)', 203,
+    19, 0.8, 4.5, 0.1,
+    1.7, 1.7, 0, 0,
+    2, 125, 17, 0.34,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Quiabo', 'ingredient', 'Okra',
+    100, 'g', 'xícara (100g)', 100,
+    33, 1.9, 7.5, 0.2,
+    3.2, 1.5, 0, 0,
+    7, 299, 82, 0.62,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Vagem', 'ingredient', 'Green beans',
+    100, 'g', 'xícara (100g)', 100,
+    31, 1.8, 7, 0.2,
+    2.7, 3.3, 0, 0,
+    6, 211, 37, 1.03,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.96, false),
+
+('Maxixe', 'ingredient', 'West Indian gherkin',
+    100, 'g', 'xícara (100g)', 100,
+    19, 0.7, 4.2, 0.2,
+    0.5, 1.4, 0, 0,
+    2, 140, 18, 0.4,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.92, false),
+
+('Jiló', 'ingredient', 'Scarlet eggplant',
+    100, 'g', 'xícara (93g)', 93,
+    27, 1.4, 5.7, 0.2,
+    3.5, 2, 0, 0,
+    3, 240, 12, 0.6,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.93, false),
+
+-- RAÍZES E TUBÉRCULOS (ROOTS AND TUBERS)
+('Cenoura', 'ingredient', 'Carrot',
+    100, 'g', 'cenoura média (61g)', 61,
+    41, 0.9, 9.6, 0.2,
+    2.8, 4.7, 0, 0,
+    69, 320, 33, 0.3,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.96, false),
+
+('Beterraba', 'ingredient', 'Beet',
+    100, 'g', 'beterraba média (82g)', 82,
+    43, 1.6, 9.6, 0.2,
+    2.8, 6.8, 0, 0,
+    78, 325, 16, 0.8,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Rabanete', 'ingredient', 'Radish',
+    100, 'g', 'xícara (116g)', 116,
+    16, 0.7, 3.4, 0.1,
+    1.6, 1.9, 0, 0,
+    39, 233, 25, 0.34,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Nabo', 'ingredient', 'Turnip',
+    100, 'g', 'xícara (130g)', 130,
+    28, 0.9, 6.4, 0.1,
+    1.8, 3.8, 0, 0,
+    67, 191, 30, 0.3,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.94, false),
+
+('Inhame', 'ingredient', 'Yam',
+    100, 'g', 'pedaço (136g)', 136,
+    118, 1.5, 27.9, 0.2,
+    4.1, 0.5, 0, 0,
+    9, 816, 17, 0.54,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Batata Doce', 'ingredient', 'Sweet potato',
+    100, 'g', 'batata média (130g)', 130,
+    86, 1.6, 20.1, 0.1,
+    3, 4.2, 0, 0,
+    55, 337, 30, 0.61,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.96, false),
+
+('Batata Inglesa', 'ingredient', 'Potato',
+    100, 'g', 'batata média (173g)', 173,
+    77, 2, 17.5, 0.1,
+    2.1, 0.8, 0, 0,
+    6, 425, 12, 0.81,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.96, false),
+
+('Batata Baroa (Mandioquinha)', 'ingredient', 'Peruvian carrot',
+    100, 'g', 'pedaço (100g)', 100,
+    92, 0.8, 22.2, 0.2,
+    3.7, 1.2, 0, 0,
+    8, 450, 18, 0.5,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.94, false),
+
+('Mandioca (Aipim)', 'ingredient', 'Cassava',
+    100, 'g', 'pedaço (136g)', 136,
+    160, 1.4, 38.1, 0.3,
+    1.8, 1.7, 0.1, 0,
+    14, 271, 16, 0.27,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+-- ERVAS E TEMPEROS VERDES (HERBS)
+('Salsinha (Salsa)', 'ingredient', 'Parsley',
+    100, 'g', 'xícara picada (60g)', 60,
+    36, 3, 6.3, 0.8,
+    3.3, 0.9, 0.1, 0,
+    56, 554, 138, 6.2,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Cebolinha Verde', 'ingredient', 'Green onion/scallion',
+    100, 'g', 'xícara picada (100g)', 100,
+    32, 1.8, 7.3, 0.2,
+    2.6, 2.3, 0, 0,
+    16, 276, 72, 1.48,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Coentro', 'ingredient', 'Cilantro',
+    100, 'g', 'xícara picada (16g)', 16,
+    23, 2.1, 3.7, 0.5,
+    2.8, 0.9, 0, 0,
+    46, 521, 67, 1.77,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Manjericão', 'ingredient', 'Basil',
+    100, 'g', 'xícara (21g)', 21,
+    23, 3.2, 2.7, 0.6,
+    1.6, 0.3, 0.1, 0,
+    4, 295, 177, 3.17,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.94, false),
+
+('Hortelã', 'ingredient', 'Mint',
+    100, 'g', 'xícara (14g)', 14,
+    44, 3.3, 8.4, 0.7,
+    6.8, 0, 0.2, 0,
+    30, 458, 199, 11.87,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.94, false),
+
+('Alho', 'ingredient', 'Garlic',
+    100, 'g', 'dente (3g)', 3,
+    149, 6.4, 33.1, 0.5,
+    2.1, 1, 0.1, 0,
+    17, 401, 181, 1.7,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.96, false),
+
+('Cebola Branca', 'ingredient', 'White onion',
+    100, 'g', 'cebola média (110g)', 110,
+    40, 1.1, 9.3, 0.1,
+    1.7, 4.2, 0, 0,
+    4, 146, 23, 0.21,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.96, false),
+
+('Cebola Roxa', 'ingredient', 'Red onion',
+    100, 'g', 'cebola média (110g)', 110,
+    40, 1.1, 9.3, 0.1,
+    1.7, 4.2, 0, 0,
+    4, 146, 23, 0.21,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.96, false),
+
+-- COGUMELOS (MUSHROOMS)
+('Champignon (Fresco)', 'ingredient', 'White button mushroom',
+    100, 'g', 'xícara (70g)', 70,
+    22, 3.1, 3.3, 0.3,
+    1, 2, 0, 0,
+    5, 318, 3, 0.5,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Cogumelo Shitake (Fresco)', 'ingredient', 'Fresh shiitake mushroom',
+    100, 'g', 'cogumelo (19g)', 19,
+    34, 2.2, 6.8, 0.5,
+    2.5, 2.4, 0.1, 0,
+    9, 304, 2, 0.4,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.94, false),
+
+('Cogumelo Paris', 'ingredient', 'Portobello mushroom',
+    100, 'g', 'cogumelo (84g)', 84,
+    22, 2.1, 3.9, 0.4,
+    1.3, 2.5, 0.1, 0,
+    9, 364, 3, 0.3,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.94, false),
+
+-- MILHO (CORN)
+('Milho Verde (em Espiga)', 'ingredient', 'Fresh corn on the cob',
+    100, 'g', 'espiga (103g)', 103,
+    86, 3.3, 18.7, 1.4,
+    2, 6.3, 0.2, 0,
+    15, 270, 2, 0.52,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free'], 'user', 0.96, false),
+
+('Milho Verde (em Lata)', 'ingredient', 'Canned sweet corn',
+    100, 'g', 'xícara (164g)', 164,
+    76, 2.9, 17.1, 1.2,
+    2.4, 4.5, 0.2, 0,
+    265, 195, 4, 0.61,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free'], 'user', 0.95, false),
+
+-- ERVILHA E OUTROS (PEAS AND OTHERS)
+('Ervilha Fresca', 'ingredient', 'Fresh green peas',
+    100, 'g', 'xícara (145g)', 145,
+    81, 5.4, 14.5, 0.4,
+    5.7, 5.7, 0.1, 0,
+    5, 244, 25, 1.47,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free'], 'user', 0.96, false),
+
+('Ervilha em Lata', 'ingredient', 'Canned green peas',
+    100, 'g', 'xícara (160g)', 160,
+    69, 4.4, 12.5, 0.3,
+    4.1, 3.8, 0.1, 0,
+    240, 88, 23, 1.31,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free'], 'user', 0.95, false),
+
+('Palmito', 'ingredient', 'Hearts of palm',
+    100, 'g', 'palmito (33g)', 33,
+    28, 2.5, 4.8, 0.6,
+    2.4, 2, 0.1, 0,
+    426, 177, 40, 2.04,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.94, false),
+
+('Azeitona Verde', 'ingredient', 'Green olives',
+    100, 'g', '10 azeitonas (40g)', 40,
+    145, 1.1, 3.8, 15.3,
+    3.3, 0.5, 2, 0,
+    1556, 42, 52, 0.49,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Azeitona Preta', 'ingredient', 'Black olives',
+    100, 'g', '10 azeitonas (40g)', 40,
+    116, 0.8, 6.3, 10.7,
+    3.2, 0, 1.4, 0,
+    735, 8, 88, 3.3,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false);
+
+COMMIT;
+
+SELECT '✅ BRAZILIAN VEGETABLES SEEDED!' as status, COUNT(*) as total_items
+FROM foods WHERE name IN ('Alface Crespa', 'Tomate', 'Batata Doce', 'Mandioca (Aipim)');

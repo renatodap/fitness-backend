@@ -22,6 +22,9 @@ from app.services.food_vision_service import get_food_vision_service
 from app.services.tool_service import get_tool_service, COACH_TOOLS
 from app.services.conversation_memory_service import get_conversation_memory_service
 from app.services.cache_service import get_cache_service  # NEW: Caching for massive speedup
+from app.services.complexity_analyzer_service import get_complexity_analyzer  # NEW: Smart routing
+from app.services.groq_coach_service import get_groq_coach  # NEW: Cheap simple queries
+from app.services.canned_response_service import get_canned_response  # NEW: Instant responses
 from anthropic import AsyncAnthropic
 from app.config import get_settings
 
@@ -51,6 +54,9 @@ class UnifiedCoachService:
         self.tool_service = get_tool_service()  # NEW: Agentic tool service
         self.conversation_memory = get_conversation_memory_service()  # CRITICAL: Conversation memory service
         self.cache = get_cache_service()  # NEW: Smart caching (70-90% query reduction!)
+        self.complexity_analyzer = get_complexity_analyzer()  # NEW: Smart routing
+        self.groq_coach = get_groq_coach()  # NEW: Cheap simple queries
+        self.canned_response = get_canned_response()  # NEW: Instant trivial responses
         self.anthropic = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
     async def process_message(

@@ -1,0 +1,348 @@
+-- ============================================================================
+-- MIGRATION 027: SEED BRAZILIAN FRUITS (FRUTAS)
+-- ============================================================================
+-- Description: Common fruits in Brazil with Portuguese names
+-- Total items: ~50 items
+-- Categories: Frutas tropicais, Frutas cítricas, Frutas comuns
+-- ============================================================================
+
+BEGIN;
+
+INSERT INTO foods (
+    name, food_type, description,
+    serving_size, serving_unit, household_serving_unit, household_serving_grams,
+    calories, protein_g, total_carbs_g, total_fat_g,
+    dietary_fiber_g, total_sugars_g, saturated_fat_g, cholesterol_mg,
+    sodium_mg, potassium_mg, calcium_mg, iron_mg,
+    allergens, dietary_flags, source, data_quality_score, verified
+) VALUES
+
+-- FRUTAS TROPICAIS (TROPICAL FRUITS)
+('Abacaxi', 'ingredient', 'Pineapple',
+    100, 'g', 'fatia (84g)', 84,
+    50, 0.5, 13.1, 0.1,
+    1.4, 9.9, 0, 0,
+    1, 109, 13, 0.29,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.96, false),
+
+('Manga Palmer', 'ingredient', 'Palmer mango',
+    100, 'g', 'manga (336g)', 336,
+    60, 0.8, 15, 0.4,
+    1.6, 13.7, 0.1, 0,
+    1, 168, 11, 0.16,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Manga Tommy', 'ingredient', 'Tommy Atkins mango',
+    100, 'g', 'manga (369g)', 369,
+    60, 0.8, 15, 0.4,
+    1.6, 13.7, 0.1, 0,
+    1, 168, 11, 0.16,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Mamão Papaia', 'ingredient', 'Papaya',
+    100, 'g', 'fatia (140g)', 140,
+    43, 0.5, 10.8, 0.3,
+    1.7, 7.8, 0.1, 0,
+    8, 182, 20, 0.25,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.96, false),
+
+('Mamão Formosa', 'ingredient', 'Formosa papaya',
+    100, 'g', 'fatia (140g)', 140,
+    45, 0.6, 11.3, 0.1,
+    1.8, 8, 0, 0,
+    3, 257, 24, 0.1,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Banana Prata', 'ingredient', 'Silver banana',
+    100, 'g', 'banana (48g)', 48,
+    98, 1.3, 25.8, 0.1,
+    2, 12.2, 0, 0,
+    1, 346, 8, 0.31,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.96, false),
+
+('Banana Nanica', 'ingredient', 'Cavendish banana',
+    100, 'g', 'banana (118g)', 118,
+    89, 1.1, 22.8, 0.3,
+    2.6, 12.2, 0.1, 0,
+    1, 358, 5, 0.26,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.96, false),
+
+('Banana da Terra', 'ingredient', 'Plantain banana',
+    100, 'g', 'banana (179g)', 179,
+    122, 1.3, 31.9, 0.4,
+    2.3, 15, 0.1, 0,
+    4, 499, 3, 0.6,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Banana Ouro', 'ingredient', 'Lady finger banana',
+    100, 'g', 'banana (28g)', 28,
+    112, 1.5, 29, 0.2,
+    3.1, 18, 0.1, 0,
+    1, 358, 6, 0.3,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.94, false),
+
+('Maracujá', 'ingredient', 'Passion fruit',
+    100, 'g', 'maracujá (18g)', 18,
+    97, 2.2, 23.4, 0.7,
+    10.4, 11.2, 0.1, 0,
+    28, 348, 12, 1.6,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Coco Verde (Água)', 'ingredient', 'Green coconut water',
+    100, 'g', 'copo (240ml)', 240,
+    19, 0.7, 3.7, 0.2,
+    1.1, 2.6, 0.2, 0,
+    105, 250, 24, 0.3,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.96, false),
+
+('Coco Seco (Polpa)', 'ingredient', 'Dried coconut meat',
+    100, 'g', 'pedaço (28g)', 28,
+    354, 3.3, 15.2, 33.5,
+    9, 6.2, 29.7, 0,
+    20, 356, 14, 2.43,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.95, false),
+
+('Acerola', 'ingredient', 'Acerola cherry',
+    100, 'g', 'xícara (98g)', 98,
+    32, 0.4, 7.7, 0.3,
+    1.1, 7.7, 0, 0,
+    7, 146, 12, 0.2,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.94, false),
+
+('Goiaba Vermelha', 'ingredient', 'Red guava',
+    100, 'g', 'goiaba (55g)', 55,
+    68, 2.6, 14.3, 1,
+    5.4, 8.9, 0.3, 0,
+    2, 417, 18, 0.26,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Goiaba Branca', 'ingredient', 'White guava',
+    100, 'g', 'goiaba (90g)', 90,
+    54, 0.7, 13.2, 0.6,
+    5.6, 9.2, 0.2, 0,
+    3, 229, 20, 0.3,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Carambola', 'ingredient', 'Starfruit',
+    100, 'g', 'carambola (91g)', 91,
+    31, 1, 6.7, 0.3,
+    2.8, 4, 0, 0,
+    2, 133, 3, 0.08,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.94, false),
+
+('Fruta do Conde (Pinha)', 'ingredient', 'Sugar apple',
+    100, 'g', 'fruta (155g)', 155,
+    94, 2.1, 23.6, 0.3,
+    4.4, 19.2, 0.1, 0,
+    4, 382, 30, 0.71,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.93, false),
+
+('Graviola', 'ingredient', 'Soursop',
+    100, 'g', 'xícara (225g)', 225,
+    66, 1, 16.8, 0.3,
+    3.3, 13.5, 0.1, 0,
+    14, 278, 14, 0.6,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.93, false),
+
+-- FRUTAS CÍTRICAS (CITRUS FRUITS)
+('Laranja Pera', 'ingredient', 'Pera orange',
+    100, 'g', 'laranja (131g)', 131,
+    47, 0.9, 11.8, 0.1,
+    2.4, 9.4, 0, 0,
+    0, 181, 40, 0.1,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.96, false),
+
+('Laranja Lima', 'ingredient', 'Sweet orange (low acid)',
+    100, 'g', 'laranja (184g)', 184,
+    45, 0.8, 11.3, 0.2,
+    2.2, 8.9, 0, 0,
+    1, 166, 43, 0.12,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Tangerina Ponkan', 'ingredient', 'Ponkan mandarin',
+    100, 'g', 'tangerina (109g)', 109,
+    53, 0.8, 13.3, 0.3,
+    1.8, 10.6, 0, 0,
+    2, 166, 37, 0.15,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Mexerica (Bergamota)', 'ingredient', 'Mandarin orange',
+    100, 'g', 'mexerica (88g)', 88,
+    53, 0.8, 13.3, 0.3,
+    1.8, 10.6, 0, 0,
+    2, 166, 37, 0.15,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Limão Taiti', 'ingredient', 'Persian lime',
+    100, 'g', 'limão (67g)', 67,
+    30, 0.7, 10.5, 0.2,
+    2.8, 1.7, 0, 0,
+    2, 102, 33, 0.6,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.96, false),
+
+('Limão Siciliano', 'ingredient', 'Lemon',
+    100, 'g', 'limão (84g)', 84,
+    29, 1.1, 9.3, 0.3,
+    2.8, 2.5, 0, 0,
+    2, 138, 26, 0.6,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.96, false),
+
+('Lima da Pérsia', 'ingredient', 'Sweet lime',
+    100, 'g', 'lima (100g)', 100,
+    43, 0.8, 10.7, 0.3,
+    4.8, 1.7, 0, 0,
+    2, 117, 33, 0.7,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.93, false),
+
+-- FRUTAS COMUNS (COMMON FRUITS)
+('Maçã Gala', 'ingredient', 'Gala apple',
+    100, 'g', 'maçã (182g)', 182,
+    52, 0.3, 13.8, 0.2,
+    2.4, 10.4, 0, 0,
+    1, 107, 6, 0.12,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.96, false),
+
+('Maçã Fuji', 'ingredient', 'Fuji apple',
+    100, 'g', 'maçã (223g)', 223,
+    52, 0.3, 13.8, 0.2,
+    2.4, 10.4, 0, 0,
+    1, 107, 6, 0.12,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.96, false),
+
+('Maçã Verde', 'ingredient', 'Granny Smith apple',
+    100, 'g', 'maçã (200g)', 200,
+    52, 0.3, 13.8, 0.2,
+    2.4, 10.4, 0, 0,
+    1, 107, 6, 0.12,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.96, false),
+
+('Pera Williams', 'ingredient', 'Williams pear',
+    100, 'g', 'pera (178g)', 178,
+    57, 0.4, 15.2, 0.1,
+    3.1, 9.8, 0, 0,
+    1, 116, 9, 0.18,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Uva Itália', 'ingredient', 'Italia grape',
+    100, 'g', 'xícara (92g)', 92,
+    69, 0.7, 18.1, 0.2,
+    0.9, 15.5, 0.1, 0,
+    2, 191, 10, 0.36,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Uva Niágara', 'ingredient', 'Niagara grape',
+    100, 'g', 'xícara (92g)', 92,
+    67, 0.6, 17.2, 0.4,
+    0.9, 16.3, 0.1, 0,
+    2, 191, 14, 0.29,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Uva Passa', 'ingredient', 'Raisins',
+    100, 'g', 'xícara (145g)', 145,
+    299, 3.1, 79.2, 0.5,
+    3.7, 59.2, 0.1, 0,
+    11, 749, 50, 1.88,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.96, false),
+
+('Morango', 'ingredient', 'Strawberry',
+    100, 'g', 'xícara (152g)', 152,
+    32, 0.7, 7.7, 0.3,
+    2, 4.9, 0, 0,
+    1, 153, 16, 0.41,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.96, false),
+
+('Melancia', 'ingredient', 'Watermelon',
+    100, 'g', 'fatia (286g)', 286,
+    30, 0.6, 7.6, 0.2,
+    0.4, 6.2, 0, 0,
+    1, 112, 7, 0.24,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.96, false),
+
+('Melão Amarelo', 'ingredient', 'Honeydew melon',
+    100, 'g', 'fatia (125g)', 125,
+    36, 0.5, 9.1, 0.1,
+    0.8, 8.1, 0, 0,
+    18, 228, 6, 0.17,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Melão Cantaloupe', 'ingredient', 'Cantaloupe melon',
+    100, 'g', 'fatia (69g)', 69,
+    34, 0.8, 8.2, 0.2,
+    0.9, 7.9, 0, 0,
+    16, 267, 9, 0.21,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Abacate', 'ingredient', 'Avocado',
+    100, 'g', 'abacate (201g)', 201,
+    160, 2, 8.5, 14.7,
+    6.7, 0.7, 2.1, 0,
+    7, 485, 12, 0.55,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo', 'keto'], 'user', 0.96, false),
+
+('Kiwi', 'ingredient', 'Kiwi fruit',
+    100, 'g', 'kiwi (69g)', 69,
+    61, 1.1, 14.7, 0.5,
+    3, 9, 0, 0,
+    3, 312, 34, 0.31,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.96, false),
+
+('Pêssego', 'ingredient', 'Peach',
+    100, 'g', 'pêssego (150g)', 150,
+    39, 0.9, 9.5, 0.3,
+    1.5, 8.4, 0, 0,
+    0, 190, 6, 0.25,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Nectarina', 'ingredient', 'Nectarine',
+    100, 'g', 'nectarina (142g)', 142,
+    44, 1.1, 10.6, 0.3,
+    1.7, 7.9, 0, 0,
+    0, 201, 6, 0.28,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Ameixa Vermelha', 'ingredient', 'Red plum',
+    100, 'g', 'ameixa (66g)', 66,
+    46, 0.7, 11.4, 0.3,
+    1.4, 9.9, 0, 0,
+    0, 157, 6, 0.17,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Ameixa Seca', 'ingredient', 'Prune (dried plum)',
+    100, 'g', 'ameixa (9.5g)', 9.5,
+    240, 2.2, 63.9, 0.4,
+    7.1, 38.1, 0, 0,
+    2, 732, 43, 0.93,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Figo', 'ingredient', 'Fig',
+    100, 'g', 'figo (50g)', 50,
+    74, 0.8, 19.2, 0.3,
+    2.9, 16.3, 0, 0,
+    1, 232, 35, 0.37,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.94, false),
+
+('Caqui', 'ingredient', 'Persimmon',
+    100, 'g', 'caqui (168g)', 168,
+    70, 0.6, 18.6, 0.2,
+    3.6, 12.5, 0, 0,
+    1, 161, 8, 0.15,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.94, false),
+
+('Romã', 'ingredient', 'Pomegranate',
+    100, 'g', 'romã (282g)', 282,
+    83, 1.7, 18.7, 1.2,
+    4, 13.7, 0.1, 0,
+    3, 236, 10, 0.3,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.95, false),
+
+('Lichia', 'ingredient', 'Lychee',
+    100, 'g', '10 lichias (76g)', 76,
+    66, 0.8, 16.5, 0.4,
+    1.3, 15.2, 0.1, 0,
+    1, 171, 5, 0.31,
+    NULL, ARRAY['vegan', 'vegetarian', 'gluten-free', 'paleo'], 'user', 0.94, false);
+
+COMMIT;
+
+SELECT '✅ BRAZILIAN FRUITS SEEDED!' as status, COUNT(*) as total_items
+FROM foods WHERE name IN ('Abacaxi', 'Banana Prata', 'Laranja Pera', 'Maçã Fuji');

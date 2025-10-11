@@ -25,7 +25,8 @@ from app.api.v1 import (
     garmin,
     merge_requests,
     test_groq,
-    debug
+    debug,
+    dashboard
 )
 
 api_router = APIRouter()
@@ -50,3 +51,4 @@ api_router.include_router(garmin.router)  # Garmin health integration (prefix: /
 api_router.include_router(merge_requests.router, tags=["merge-requests"])  # Activity deduplication & merge requests
 api_router.include_router(test_groq.router, tags=["test"])  # Test endpoints
 api_router.include_router(debug.router, tags=["debug"])  # Debug endpoints (remove in production)
+api_router.include_router(dashboard.router)  # Adaptive dashboard endpoints (prefix: /dashboard)
