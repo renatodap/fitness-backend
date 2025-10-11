@@ -323,14 +323,25 @@ async def confirm_log(
     5. Add success message to conversation
     6. Return success response
     """
+    logger.info("[CONFIRM_LOG] ======= Starting confirm_log endpoint =======")
+    logger.info(f"[CONFIRM_LOG] Request: conversation_id={request.conversation_id}, log_type={request.log_type}, user_message_id={request.user_message_id}")
+    logger.info(f"[CONFIRM_LOG] Log data keys: {list(request.log_data.keys())}")
+    logger.info(f"[CONFIRM_LOG] Current user: {current_user}")
+
     try:
+        logger.info("[CONFIRM_LOG] Extracting user_id...")
         user_id = current_user["id"]
+        logger.info(f"[CONFIRM_LOG] User ID: {user_id}")
+
+        logger.info("[CONFIRM_LOG] Getting Supabase client...")
         supabase = get_service_client()
+        logger.info("[CONFIRM_LOG] Supabase client obtained")
 
         # Extract original_text from user message
         original_text = ""
         if request.user_message_id:
             try:
+                logger.info(f"[CONFIRM_LOG] Fetching original message: {request.user_message_id}")
                 msg_response = supabase.table("coach_messages") \
                     .select("content") \
                     .eq("id", request.user_message_id) \
@@ -339,14 +350,21 @@ async def confirm_log(
 
                 if msg_response.data:
                     original_text = msg_response.data[0].get("content", "")
+                    logger.info(f"[CONFIRM_LOG] Original text length: {len(original_text)}")
+                else:
+                    logger.warning("[CONFIRM_LOG] No message data found")
             except Exception as e:
-                logger.warning(f"Could not fetch original message: {e}")
+                logger.warning(f"[CONFIRM_LOG] Could not fetch original message: {e}")
                 # Continue with empty string - non-critical
 
         # Get unified coach service
+        logger.info("[CONFIRM_LOG] Initializing unified coach service...")
         coach_service = get_unified_coach_service()
+        logger.info("[CONFIRM_LOG] Coach service initialized")
 
         # Confirm and save log with all required parameters
+        logger.info("[CONFIRM_LOG] Calling coach_service.confirm_log...")
+        logger.info(f"[CONFIRM_LOG] Parameters: user_id={user_id}, conversation_id={request.conversation_id}, log_type={request.log_type.value}")
         response = await coach_service.confirm_log(
             user_id=user_id,
             conversation_id=request.conversation_id,
@@ -356,16 +374,22 @@ async def confirm_log(
             original_text=original_text
         )
 
+        logger.info(f"[CONFIRM_LOG] ✅ Success! Response: {response}")
         return response
 
     except ValueError as e:
-        logger.error(f"Validation error in confirm_log: {e}")
+        logger.error(f"[CONFIRM_LOG] ❌ Validation error: {e}", exc_info=True)
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException as he:
+        logger.error(f"[CONFIRM_LOG] ❌ HTTP exception: {he.status_code} - {he.detail}")
+        raise
     except Exception as e:
-        logger.error(f"Error in confirm_log: {e}", exc_info=True)
+        logger.error(f"[CONFIRM_LOG] ❌ CRITICAL ERROR: {e}", exc_info=True)
+        logger.error(f"[CONFIRM_LOG] Error type: {type(e).__name__}")
+        logger.error(f"[CONFIRM_LOG] Error args: {e.args}")
         raise HTTPException(
             status_code=500,
-            detail="Failed to save log. Please try again."
+            detail=f"Failed to save log: {str(e)}"  # Include error message for debugging
         )
 
 

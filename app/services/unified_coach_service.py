@@ -1242,10 +1242,17 @@ Adapt your response accordingly while keeping the intensity where appropriate.""
         3. Add success message to conversation
         4. Vectorize the log
         """
-        logger.info(f"[UnifiedCoach] Confirming log: {log_type}")
+        logger.info(f"[UnifiedCoach.confirm_log] ======= Starting confirm_log service =======")
+        logger.info(f"[UnifiedCoach.confirm_log] user_id={user_id}, conversation_id={conversation_id}")
+        logger.info(f"[UnifiedCoach.confirm_log] log_type={log_type}, user_message_id={user_message_id}")
+        logger.info(f"[UnifiedCoach.confirm_log] log_data keys: {list(log_data.keys())}")
+        logger.info(f"[UnifiedCoach.confirm_log] original_text length: {len(original_text)}")
 
         try:
             # Save log using Quick Entry service
+            logger.info(f"[UnifiedCoach.confirm_log] Calling quick_entry.confirm_and_save_entry...")
+            logger.info(f"[UnifiedCoach.confirm_log] Quick Entry Service: {self.quick_entry}")
+
             save_result = await self.quick_entry.confirm_and_save_entry(
                 user_id=user_id,
                 entry_type=log_type,
@@ -1253,13 +1260,17 @@ Adapt your response accordingly while keeping the intensity where appropriate.""
                 original_text=original_text
             )
 
+            logger.info(f"[UnifiedCoach.confirm_log] Quick Entry result: {save_result}")
+
             if not save_result.get("success"):
+                logger.error(f"[UnifiedCoach.confirm_log] Quick Entry failed: {save_result.get('error')}")
                 return {
                     "success": False,
                     "error": save_result.get("error", "Failed to save log")
                 }
 
             # Update user message to log_confirmed
+            logger.info(f"[UnifiedCoach.confirm_log] Updating message {user_message_id} to log_confirmed...")
             self.supabase.table("coach_messages").update({
                 "message_type": "log_confirmed",
                 "quick_entry_log_id": save_result.get("quick_entry_log_id"),
@@ -1268,16 +1279,22 @@ Adapt your response accordingly while keeping the intensity where appropriate.""
                     "entry_id": save_result.get("entry_id")
                 }
             }).eq("id", user_message_id).execute()
+            logger.info(f"[UnifiedCoach.confirm_log] Message updated successfully")
 
             # Add success system message
+            logger.info(f"[UnifiedCoach.confirm_log] Building success message...")
             success_message = self._build_success_message(log_type, log_data)
+            logger.info(f"[UnifiedCoach.confirm_log] Success message: {success_message}")
+
+            logger.info(f"[UnifiedCoach.confirm_log] Saving system message...")
             system_message_id = await self._save_system_message(
                 user_id=user_id,
                 conversation_id=conversation_id,
                 content=success_message
             )
+            logger.info(f"[UnifiedCoach.confirm_log] System message saved: {system_message_id}")
 
-            logger.info(f"[UnifiedCoach] Log confirmed and saved: {save_result.get('entry_id')}")
+            logger.info(f"[UnifiedCoach.confirm_log] ✅ Log confirmed and saved: {save_result.get('entry_id')}")
 
             return {
                 "success": True,
@@ -1288,10 +1305,12 @@ Adapt your response accordingly while keeping the intensity where appropriate.""
             }
 
         except Exception as e:
-            logger.error(f"[UnifiedCoach] Log confirmation failed: {e}", exc_info=True)
+            logger.error(f"[UnifiedCoach.confirm_log] ❌ CRITICAL ERROR: {e}", exc_info=True)
+            logger.error(f"[UnifiedCoach.confirm_log] Error type: {type(e).__name__}")
+            logger.error(f"[UnifiedCoach.confirm_log] Error args: {e.args}")
             return {
                 "success": False,
-                "error": "Failed to save log. Please try again."
+                "error": f"Failed to save log: {str(e)}"
             }
 
     async def get_conversation_history(
