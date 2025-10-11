@@ -317,13 +317,13 @@ async def get_dashboard_context(
 
         # Build user context
         user_context = UserContext(
-            hasCompletedConsultation=profile.get("consultation_onboarding_completed", False),
+            hasCompletedConsultation=profile.get("consultation_onboarding_completed") or False,
             hasActiveProgram=has_active_program,
             streakDays=streak,
             tracksWeight=tracks_weight,
-            showsWeightCard=profile.get("shows_weight_card", False) or tracks_weight,
-            showsRecoveryCard=profile.get("shows_recovery_card", False),
-            showsWorkoutCard=profile.get("shows_workout_card", True)
+            showsWeightCard=profile.get("shows_weight_card") or tracks_weight,
+            showsRecoveryCard=profile.get("shows_recovery_card") or False,
+            showsWorkoutCard=profile.get("shows_workout_card", True) if profile.get("shows_workout_card") is not None else True
         )
 
         # Get program context (if active)
