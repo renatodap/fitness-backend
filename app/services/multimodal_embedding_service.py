@@ -405,6 +405,43 @@ class MultimodalEmbeddingService:
             logger.error(f"❌ Failed to delete embedding: {e}")
             raise
 
+    def embed_text_sync(self, text: str) -> List[float]:
+        """
+        Synchronous version of embed_text for Celery workers.
+
+        Celery workers can't use async/await, so this provides a sync wrapper.
+        Uses OpenAI's sync client.
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            384-dimensional embedding vector
+        """
+        if not text or not text.strip():
+            raise ValueError("Text cannot be empty")
+
+        try:
+            # Import sync OpenAI client
+            from openai import OpenAI
+
+            settings = get_settings()
+            sync_client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+            response = sync_client.embeddings.create(
+                model="text-embedding-3-small",
+                input=text,
+                dimensions=384
+            )
+
+            embedding = response.data[0].embedding
+            logger.debug(f"✅ Generated text embedding (sync): {len(embedding)} dimensions")
+            return embedding
+
+        except Exception as e:
+            logger.error(f"❌ Sync text embedding failed: {e}")
+            raise
+
 
 # Singleton instance
 _multimodal_service: Optional[MultimodalEmbeddingService] = None

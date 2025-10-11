@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str
     ANTHROPIC_API_KEY: str  # Claude API for unified coach
     GROQ_API_KEY: str  # Groq API for ultra-fast, ultra-cheap LLM inference
+    OPENROUTER_API_KEY: str  # OpenRouter for Perplexity and multimodal models
     REDIS_URL: str = "redis://localhost:6379"
 
     # Celery Settings
@@ -106,6 +107,7 @@ class Settings(BaseSettings):
             "OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
             "GROQ_API_KEY",
+            "OPENROUTER_API_KEY",
             "JWT_SECRET",
             "CRON_SECRET",
             "WEBHOOK_SECRET",
