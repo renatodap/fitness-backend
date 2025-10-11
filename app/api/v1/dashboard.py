@@ -285,7 +285,7 @@ async def get_dashboard_context(
 
         # Get user profile
         profile_response = await supabase.table("profiles") \
-            .select("has_completed_consultation, shows_weight_card, shows_recovery_card, shows_workout_card") \
+            .select("consultation_onboarding_completed, shows_weight_card, shows_recovery_card, shows_workout_card") \
             .eq("id", user_id) \
             .single() \
             .execute()
@@ -317,7 +317,7 @@ async def get_dashboard_context(
 
         # Build user context
         user_context = UserContext(
-            hasCompletedConsultation=profile.get("has_completed_consultation", False),
+            hasCompletedConsultation=profile.get("consultation_onboarding_completed", False),
             hasActiveProgram=has_active_program,
             streakDays=streak,
             tracksWeight=tracks_weight,
