@@ -71,7 +71,7 @@ class ConversationMemoryService:
 
         try:
             # STEP 1: Get recent messages (sliding window)
-            recent_messages = await self._get_recent_messages(
+            recent_messages = self._get_recent_messages(
                 user_id,
                 conversation_id,
                 limit=self.recent_window_size
@@ -94,7 +94,7 @@ class ConversationMemoryService:
                 logger.info(f"[ConversationMemory] Found {len(relevant_messages)} semantically relevant messages")
 
             # STEP 3: Get conversation summary (if available)
-            summary = await self._get_conversation_summary(conversation_id)
+            summary = self._get_conversation_summary(conversation_id)
 
             # STEP 4: Estimate token usage
             estimated_tokens = self._estimate_tokens(recent_messages, relevant_messages, summary)
@@ -130,7 +130,7 @@ class ConversationMemoryService:
                 "strategy_used": "error_fallback"
             }
 
-    async def _get_recent_messages(
+    def _get_recent_messages(
         self,
         user_id: str,
         conversation_id: str,
@@ -211,13 +211,13 @@ class ConversationMemoryService:
             except Exception as rpc_err:
                 logger.warning(f"[ConversationMemory] RPC search failed (function may not exist): {rpc_err}")
                 # Fallback: Just get oldest messages if semantic search not available
-                return await self._get_oldest_messages(user_id, conversation_id, exclude_recent, limit)
+                return self._get_oldest_messages(user_id, conversation_id, exclude_recent, limit)
 
         except Exception as e:
             logger.error(f"[ConversationMemory] Failed to get relevant messages: {e}")
             return []
 
-    async def _get_oldest_messages(
+    def _get_oldest_messages(
         self,
         user_id: str,
         conversation_id: str,
@@ -241,7 +241,7 @@ class ConversationMemoryService:
             logger.error(f"[ConversationMemory] Failed to get oldest messages: {e}")
             return []
 
-    async def _get_conversation_summary(self, conversation_id: str) -> Optional[str]:
+    def _get_conversation_summary(self, conversation_id: str) -> Optional[str]:
         """
         Get conversation summary if it exists.
 
