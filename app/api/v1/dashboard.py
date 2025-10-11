@@ -517,3 +517,112 @@ async def update_dashboard_preference(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update dashboard preference"
         )
+
+
+@router.get(
+    "/analytics/weekly",
+    response_model=WeeklyAnalyticsResponse,
+    summary="Get weekly analytics",
+    description="""
+    Get 7-day analytics for dashboard weekly trends card.
+
+    Returns:
+    - Weekly adherence percentage
+    - Average daily calories
+    - Meals logged count
+    - Workouts completed count
+    - Daily adherence breakdown
+    """
+)
+async def get_weekly_analytics(
+    current_user: dict = Depends(get_current_user)
+):
+    """Get weekly analytics data for trends card."""
+    try:
+        user_id = current_user["user_id"]
+        supabase = get_service_client()
+
+        # Calculate 7 days ago
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+
+        # Get meals for last 7 days
+        meals_response = supabase.table("meals") \
+            .select("logged_at, total_calories") \
+            .eq("user_id", user_id) \
+            .gte("logged_at", seven_days_ago.isoformat()) \
+            .execute()
+
+        meals = meals_response.data or []
+
+        # Get user's calorie target
+        profile = supabase.table("profiles") \
+            .select("id") \
+            .eq("id", user_id) \
+            .single() \
+            .execute()
+
+        # Try to get target from onboarding
+        target_calories = 2200  # default
+        try:
+            onboarding = supabase.table("user_onboarding") \
+                .select("daily_calorie_target") \
+                .eq("user_id", user_id) \
+                .single() \
+                .execute()
+            if onboarding.data and onboarding.data.get("daily_calorie_target"):
+                target_calories = onboarding.data["daily_calorie_target"]
+        except:
+            pass
+
+        # Get activities (workouts) for last 7 days
+        activities_response = supabase.table("activities") \
+            .select("id", count="exact") \
+            .eq("user_id", user_id) \
+            .gte("start_date", seven_days_ago.isoformat()) \
+            .execute()
+
+        workouts_count = activities_response.count or 0
+
+        # Calculate daily adherence
+        daily_adherence = []
+        day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+        for i in range(7):
+            day_date = (seven_days_ago + timedelta(days=i)).date()
+            day_name = day_names[day_date.weekday()]
+
+            # Count meals for this day
+            day_meals = [m for m in meals if datetime.fromisoformat(m["logged_at"].replace("Z", "+00:00")).date() == day_date]
+
+            # Adherence = (meals_logged / 3) * 100 (assuming 3 meals/day)
+            adherence = min(100, int((len(day_meals) / 3) * 100))
+
+            daily_adherence.append(DailyAdherence(
+                day=day_name,
+                percent=adherence
+            ))
+
+        # Calculate overall weekly adherence
+        total_expected = 7 * 3  # 7 days × 3 meals = 21 expected
+        total_actual = len(meals)
+        overall_adherence = min(100, int((total_actual / total_expected) * 100)) if total_expected > 0 else 0
+
+        # Calculate average calories
+        total_calories = sum(m.get("total_calories", 0) or 0 for m in meals)
+        avg_calories = int(total_calories / 7) if len(meals) > 0 else 0
+
+        return WeeklyAnalyticsResponse(
+            adherencePercent=overall_adherence,
+            averageCalories=avg_calories,
+            targetCalories=target_calories,
+            mealsLogged=len(meals),
+            workoutsCompleted=workouts_count,
+            dailyAdherence=daily_adherence
+        )
+
+    except Exception as e:
+        logger.error("Failed to get weekly analytics", user_id=user_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load weekly analytics"
+        )
