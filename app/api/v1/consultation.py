@@ -151,6 +151,70 @@ async def send_consultation_message(
 
 
 @router.get(
+    "/{session_id}/messages",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        404: {"model": ErrorResponse, "description": "Session not found"},
+        500: {"model": ErrorResponse, "description": "Server error"}
+    },
+    summary="Get consultation messages",
+    description="""
+    Get all messages (conversation history) for a consultation session.
+
+    Returns the complete message history in chronological order, including:
+    - User messages
+    - Assistant responses
+    - Timestamps
+    - AI model usage (provider, tokens, cost)
+
+    Used by the frontend to restore conversation when resuming an active consultation.
+    """
+)
+async def get_consultation_messages(
+    session_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """Get all messages for a consultation session."""
+    try:
+        consultation_service = get_consultation_service()
+
+        # Get conversation history from service
+        messages = await consultation_service._get_conversation_history(session_id)
+
+        # Verify session exists and belongs to user
+        session = consultation_service.supabase.table('consultation_sessions')\
+            .select('user_id')\
+            .eq('id', session_id)\
+            .single()\
+            .execute()
+
+        if not session.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Consultation session not found"
+            )
+
+        if session.data['user_id'] != current_user['user_id']:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to access this consultation"
+            )
+
+        logger.info(f"Retrieved {len(messages)} messages for consultation {session_id}")
+
+        return {"messages": messages, "total": len(messages)}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching consultation messages: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve messages. Please try again."
+        )
+
+
+@router.get(
     "/{session_id}/summary",
     response_model=ConsultationSummaryResponse,
     responses={
