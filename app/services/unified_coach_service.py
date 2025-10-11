@@ -10,7 +10,7 @@ This replaces separate AI Chat and Quick Entry features.
 
 import logging
 import uuid
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 
 from app.services.message_classifier_service import get_message_classifier
