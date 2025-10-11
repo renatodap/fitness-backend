@@ -144,14 +144,14 @@ class ContextDetector:
                     "suggested_tone": "celebrate_loud"
                 }
 
-        # DEFAULT: Normal Goggins mode
-        logger.info("[ContextDetector] Normal context - FULL GOGGINS MODE")
+        # DEFAULT: Normal intensity mode
+        logger.info("[ContextDetector] Normal context - FULL INTENSITY MODE")
         return {
             "context": "normal",
             "confidence": 1.0,
             "reasoning": "No special context detected - full intensity mode",
             "safety_concern": False,
-            "suggested_tone": "full_goggins"
+            "suggested_tone": "full_intensity"
         }
 
     def _detect_injury_mention(self, message: str) -> Optional[Dict[str, Any]]:

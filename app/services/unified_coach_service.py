@@ -560,7 +560,7 @@ Reasoning: {context_result['reasoning']}
 Safety Concern: {context_result['safety_concern']}
 Suggested Tone: {context_result['suggested_tone']}
 
-Adapt your response accordingly while keeping the Goggins intensity where appropriate."""
+Adapt your response accordingly while keeping the intensity where appropriate."""
                     base_system_prompt += context_guidance
                     logger.info(f"[UnifiedCoach._handle_chat_mode_AGENTIC] Added context guidance to system prompt")
 
