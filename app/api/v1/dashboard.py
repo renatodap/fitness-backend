@@ -120,7 +120,7 @@ async def calculate_streak(user_id: str) -> int:
         # Get meal logs for last 60 days (ordered by date)
         sixty_days_ago = (datetime.utcnow() - timedelta(days=60)).isoformat()
 
-        response = supabase.table("meal_logs") \
+        response = supabase.table("meals") \
             .select("logged_at") \
             .eq("user_id", user_id) \
             .gte("logged_at", sixty_days_ago) \
@@ -165,8 +165,8 @@ async def get_program_context(user_id: str) -> Optional[ProgramContext]:
         supabase = get_service_client()
 
         # Get active program
-        response = supabase.table("programs") \
-            .select("id, program_name, start_date, total_weeks") \
+        response = supabase.table("ai_generated_programs") \
+            .select("id, name, start_date, duration_weeks") \
             .eq("user_id", user_id) \
             .eq("status", "active") \
             .single() \
@@ -191,7 +191,7 @@ async def get_program_context(user_id: str) -> Optional[ProgramContext]:
         expected = 3 * 3  # 3 days × 3 meals = 9 expected
 
         # Count actual logs
-        meals_response = supabase.table("meal_logs") \
+        meals_response = supabase.table("meals") \
             .select("id", count="exact") \
             .eq("user_id", user_id) \
             .gte("logged_at", three_days_ago) \
@@ -204,7 +204,7 @@ async def get_program_context(user_id: str) -> Optional[ProgramContext]:
             dayNumber=days_elapsed,
             adherenceLast3Days=adherence_percent,
             weekNumber=week_number,
-            programName=program["program_name"]
+            programName=program["name"]
         )
 
     except Exception as e:
@@ -293,7 +293,7 @@ async def get_dashboard_context(
         profile = profile_response.data if profile_response.data else {}
 
         # Get active program status
-        program_response = supabase.table("programs") \
+        program_response = supabase.table("ai_generated_programs") \
             .select("id") \
             .eq("user_id", user_id) \
             .eq("status", "active") \
@@ -307,10 +307,10 @@ async def get_dashboard_context(
 
         # Check if user tracks weight (2+ weight logs in last 14 days)
         fourteen_days_ago = (datetime.utcnow() - timedelta(days=14)).isoformat()
-        weight_response = supabase.table("weight_logs") \
+        weight_response = supabase.table("body_measurements") \
             .select("id", count="exact") \
             .eq("user_id", user_id) \
-            .gte("logged_at", fourteen_days_ago) \
+            .gte("measured_at", fourteen_days_ago) \
             .execute()
 
         tracks_weight = (weight_response.count or 0) >= 2
