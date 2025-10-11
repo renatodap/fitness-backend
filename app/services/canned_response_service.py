@@ -135,6 +135,39 @@ class CannedResponseService:
                 "¡Hasta luego! ¡A ARRASAR! 💪",
                 "¡Nos vemos! ¡MANTÉN EL HAMBRE! 🔥",
             ],
+            # SAFETY-CONSCIOUS RESPONSES (David Goggins + wisdom)
+            "recovery_en": [
+                "Rest is PART OF THE PROCESS. Your body's rebuilding! 💪",
+                "Smart warriors RECOVER HARD! You'll come back STRONGER! 🔥",
+                "Recovery is where the GAINS happen! Respect the process! 💯",
+                "Champions know when to REST! Your body's getting STRONGER! 🦾",
+            ],
+            "recovery_pt": [
+                "Descanso é PARTE DO PROCESSO. Seu corpo está se reconstruindo! 💪",
+                "Guerreiros inteligentes DESCANSAM COM FORÇA! Você vai voltar MAIS FORTE! 🔥",
+                "Recuperação é onde os GANHOS acontecem! Respeite o processo! 💯",
+            ],
+            "recovery_es": [
+                "¡El descanso es PARTE DEL PROCESO! ¡Tu cuerpo se está reconstruyendo! 💪",
+                "¡Los guerreros inteligentes DESCANSAN FUERTE! ¡Volverás MÁS FUERTE! 🔥",
+                "¡La recuperación es donde se hacen las GANANCIAS! ¡Respeta el proceso! 💯",
+            ],
+            "injury_en": [
+                "Smart warriors HEAL FIRST. You'll come back STRONGER! 🔥",
+                "Listen to your body! Healing is PROGRESS too! 💪",
+                "Recovery today = BEAST MODE tomorrow! Take care! 💯",
+                "Champions know when to REST! Heal up STRONG! 🦾",
+            ],
+            "injury_pt": [
+                "Guerreiros inteligentes CURAM PRIMEIRO. Você vai voltar MAIS FORTE! 🔥",
+                "Escute seu corpo! Cura também é PROGRESSO! 💪",
+                "Recuperação hoje = MODO FERA amanhã! Se cuida! 💯",
+            ],
+            "injury_es": [
+                "¡Los guerreros inteligentes SANAN PRIMERO! ¡Volverás MÁS FUERTE! 🔥",
+                "¡Escucha tu cuerpo! ¡La curación también es PROGRESO! 💪",
+                "¡Recuperación hoy = MODO BESTIA mañana! ¡Cuídate! 💯",
+            ],
         }
 
         # Language detection patterns
