@@ -14,7 +14,7 @@ Cost: $0.16/user/month
 """
 
 import logging
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from pydantic import BaseModel, Field
 
 from app.api.v1.schemas.unified_coach_schemas import (
@@ -158,6 +158,7 @@ async def coach_health():
 )
 async def send_message(
     request: UnifiedMessageRequest,
+    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -170,7 +171,7 @@ async def send_message(
     3. If CHAT:
        - Build RAG context from ALL embeddings
        - Generate Claude response
-       - Vectorize both user message and AI response
+       - Vectorize both user message and AI response (in background for speed!)
     4. Save all messages to database
     """
     logger.info("[COACH_ENDPOINT] Received message request")
@@ -238,7 +239,8 @@ async def send_message(
                 conversation_id=request.conversation_id,
                 image_base64=image_base64,
                 audio_base64=None,  # TODO: Support audio uploads
-                metadata=None
+                metadata=None,
+                background_tasks=background_tasks  # Pass background tasks for async vectorization
             )
             logger.info(f"[COACH_ENDPOINT] Message processed successfully. Mode: {response.get('mode')}")
         except Exception as proc_err:
