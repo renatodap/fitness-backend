@@ -28,7 +28,6 @@ from pydantic import BaseModel, Field
 
 from app.api.middleware.auth import get_current_user
 from app.services.meal_logging_service_v2 import get_meal_logging_service_v2 as get_meal_logging_service
-from app.services.photo_meal_analysis_service import get_photo_meal_analysis_service
 from app.services.photo_meal_matcher_service import get_photo_meal_matcher_service
 from app.services.photo_meal_constructor_service import get_photo_meal_constructor_service
 
@@ -513,72 +512,62 @@ class ConfirmPhotoMealRequest(BaseModel):
     notes: Optional[str] = None
 
 
+class AnalyzeTextMealRequest(BaseModel):
+    """Request to analyze text food descriptions from client-side image analysis."""
+    food_items: List[dict] = Field(..., description="Foods detected by client (name, quantity, unit, grams)")
+    meal_type: str = Field(..., description="Meal type from client analysis")
+    description: str = Field(..., description="Overall meal description")
+
+
 @router.post(
-    "/photo/analyze",
+    "/photo/analyze-text",
     response_model=PhotoMealPreviewResponse,
     status_code=status.HTTP_200_OK,
-    summary="Analyze meal photo",
+    summary="Analyze text food descriptions from client-side photo analysis",
     description="""
-    Analyze a meal photo to detect foods and generate a meal preview.
+    Match text food descriptions to database foods and generate meal preview.
 
-    **Flow:**
-    1. Upload meal photo
-    2. OpenAI Vision detects foods and portions (NO calorie estimates)
-    3. Match detected foods with database
-    4. Construct meal preview with full nutrition
+    **NEW FLOW (Client-Side Analysis):**
+    1. Frontend analyzes photo with OpenAI Vision (detects foods, NO nutrition)
+    2. Frontend sends text food descriptions to this endpoint
+    3. Backend matches foods with database
+    4. Backend constructs meal preview with accurate nutrition
     5. Return preview for user confirmation
 
     **IMPORTANT:** This endpoint does NOT save the meal to the database.
     Use `/photo/confirm` to save after user confirmation.
 
-    **Supported formats:** JPG, PNG, GIF, WebP (max 10MB)
+    **Why client-side?** Keeps images on user's device, saves backend storage/bandwidth.
     """,
     responses={
-        200: {"description": "Photo analyzed successfully, meal preview returned"},
-        400: {"description": "Invalid image or analysis failed"},
+        200: {"description": "Foods matched successfully, meal preview returned"},
+        400: {"description": "Invalid input or matching failed"},
         401: {"description": "Unauthorized"},
         500: {"description": "Server error"}
     }
 )
-async def analyze_meal_photo(
-    image: UploadFile = File(..., description="Meal photo image file"),
+async def analyze_text_meal(
+    request: AnalyzeTextMealRequest,
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Analyze a meal photo and return a meal preview for confirmation.
+    Match text food descriptions to database and return meal preview.
 
     Args:
-        image: Uploaded image file
+        request: Food descriptions from client-side analysis
         current_user: Authenticated user from JWT
 
     Returns:
-        PhotoMealPreviewResponse with detected foods and nutrition
+        PhotoMealPreviewResponse with matched foods and nutrition
     """
     try:
         user_id = current_user["user_id"]
-        logger.info(f"Photo meal analysis request: user_id={user_id}, filename={image.filename}")
+        logger.info(f"Text meal analysis request: user_id={user_id}, foods={len(request.food_items)}")
 
-        # Validate file type
-        if not image.content_type or not image.content_type.startswith("image/"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid file type: {image.content_type}. Must be an image."
-            )
-
-        # Step 1: Analyze photo with OpenAI Vision
-        analysis_service = get_photo_meal_analysis_service()
-        analysis_result = await analysis_service.analyze_meal_photo(
-            image_file=image.file,
-            filename=image.filename,
-            user_id=user_id
-        )
-
-        logger.info(f"Photo analysis complete: {len(analysis_result['food_items'])} foods detected")
-
-        # Step 2: Match detected foods with database
+        # Step 1: Match detected foods with database
         matcher_service = get_photo_meal_matcher_service()
         match_result = await matcher_service.match_photo_foods(
-            detected_foods=analysis_result["food_items"],
+            detected_foods=request.food_items,
             user_id=user_id
         )
 
@@ -586,32 +575,32 @@ async def analyze_meal_photo(
             f"Food matching complete: {match_result['total_matched']}/{match_result['total_detected']} matched"
         )
 
-        # Step 3: Construct meal preview
+        # Step 2: Construct meal preview
         constructor_service = get_photo_meal_constructor_service()
         meal_preview = await constructor_service.construct_meal_preview(
             matched_foods=match_result["matched_foods"],
             meal_metadata={
-                "meal_type": analysis_result["meal_type"],
-                "description": analysis_result["description"]
+                "meal_type": request.meal_type,
+                "description": request.description
             },
             user_id=user_id
         )
 
-        logger.info(f"✅ Photo meal preview constructed: preview_id={meal_preview['preview_id']}")
+        logger.info(f"✅ Text meal preview constructed: preview_id={meal_preview['preview_id']}")
 
         return PhotoMealPreviewResponse(**meal_preview)
 
     except ValueError as e:
-        logger.warning(f"Photo analysis validation error: {e}")
+        logger.warning(f"Text analysis validation error: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
-        logger.error(f"Photo meal analysis failed: {e}", exc_info=True)
+        logger.error(f"Text meal analysis failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to analyze meal photo. Please try again."
+            detail="Failed to match foods. Please try again."
         )
 
 
