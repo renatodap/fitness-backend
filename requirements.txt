@@ -8,7 +8,8 @@ pydantic-settings==2.11.0
 supabase==2.20.0
 
 # AI/ML - Use OpenAI API instead of local models
-openai==1.109.1  # Also used for Groq API (OpenAI-compatible)
+openai==1.109.1  # OpenAI API
+groq==0.11.0  # Groq API for smart routing and simple queries (60x cheaper than Claude)
 anthropic==0.47.0  # Claude API for unified coach (updated for httpx compatibility)
 
 # Background Jobs

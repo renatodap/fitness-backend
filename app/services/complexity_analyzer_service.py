@@ -15,7 +15,20 @@ import logging
 import re
 import json
 from typing import Dict, Any, Optional
-from groq import Groq
+
+# Graceful import for optional groq dependency
+try:
+    from groq import Groq
+    GROQ_AVAILABLE = True
+except ImportError:
+    logger = logging.getLogger(__name__)
+    logger.warning(
+        "[ComplexityAnalyzer] Groq package not installed - smart routing will use "
+        "keyword-based classification only (no AI classification)"
+    )
+    Groq = None  # type: ignore
+    GROQ_AVAILABLE = False
+
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -33,7 +46,16 @@ class ComplexityAnalyzer:
     """
 
     def __init__(self):
-        self.groq = Groq(api_key=settings.GROQ_API_KEY)
+        # Initialize Groq only if available
+        if GROQ_AVAILABLE and settings.GROQ_API_KEY:
+            self.groq = Groq(api_key=settings.GROQ_API_KEY)
+            logger.info("[ComplexityAnalyzer] Groq AI classification enabled")
+        else:
+            self.groq = None
+            logger.warning(
+                "[ComplexityAnalyzer] Groq AI classification disabled - "
+                "using keyword-based classification only"
+            )
 
         # Regex patterns for trivial queries (instant classification)
         self.trivial_patterns = [
@@ -169,6 +191,10 @@ class ComplexityAnalyzer:
         Cost: ~$0.01 per 1000 queries (negligible)
         Speed: ~200ms
         """
+        # Check if Groq is available
+        if not self.groq:
+            raise Exception("Groq not available - cannot perform AI classification")
+
         prompt = f"""Analyze this fitness coach user message and classify its complexity.
 
 User message: "{message}"

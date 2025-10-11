@@ -22,8 +22,21 @@ from app.services.food_vision_service import get_food_vision_service
 from app.services.tool_service import get_tool_service, COACH_TOOLS
 from app.services.conversation_memory_service import get_conversation_memory_service
 from app.services.cache_service import get_cache_service  # NEW: Caching for massive speedup
-from app.services.complexity_analyzer_service import get_complexity_analyzer  # NEW: Smart routing
-from app.services.groq_coach_service import get_groq_coach  # NEW: Cheap simple queries
+
+# Graceful imports for optional Groq-based smart routing services
+try:
+    from app.services.complexity_analyzer_service import get_complexity_analyzer  # NEW: Smart routing
+    from app.services.groq_coach_service import get_groq_coach  # NEW: Cheap simple queries
+    SMART_ROUTING_AVAILABLE = True
+except Exception as e:
+    logging.getLogger(__name__).warning(
+        f"[UnifiedCoach] Smart routing services not available: {e}. "
+        "Will fall back to Claude for all queries."
+    )
+    get_complexity_analyzer = None  # type: ignore
+    get_groq_coach = None  # type: ignore
+    SMART_ROUTING_AVAILABLE = False
+
 from app.services.canned_response_service import get_canned_response  # NEW: Instant responses
 from anthropic import AsyncAnthropic
 from app.config import get_settings
@@ -54,8 +67,22 @@ class UnifiedCoachService:
         self.tool_service = get_tool_service()  # NEW: Agentic tool service
         self.conversation_memory = get_conversation_memory_service()  # CRITICAL: Conversation memory service
         self.cache = get_cache_service()  # NEW: Smart caching (70-90% query reduction!)
-        self.complexity_analyzer = get_complexity_analyzer()  # NEW: Smart routing
-        self.groq_coach = get_groq_coach()  # NEW: Cheap simple queries
+
+        # Initialize smart routing services (optional - graceful degradation if not available)
+        if SMART_ROUTING_AVAILABLE:
+            try:
+                self.complexity_analyzer = get_complexity_analyzer()  # NEW: Smart routing
+                self.groq_coach = get_groq_coach()  # NEW: Cheap simple queries
+                logger.info("[UnifiedCoach] Smart routing enabled (Groq + complexity analysis)")
+            except Exception as e:
+                logger.warning(f"[UnifiedCoach] Failed to initialize smart routing: {e}")
+                self.complexity_analyzer = None
+                self.groq_coach = None
+        else:
+            self.complexity_analyzer = None
+            self.groq_coach = None
+            logger.info("[UnifiedCoach] Smart routing disabled - using Claude for all queries")
+
         self.canned_response = get_canned_response()  # NEW: Instant trivial responses
         self.anthropic = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
@@ -265,12 +292,14 @@ Confidence: {food_analysis.get('confidence', 0) * 100:.0f}%
                     food_context = "\n=== IMAGE ===\nUser uploaded an image but analysis failed.\n"
 
             # STEP 0.5: SMART ROUTING - Analyze complexity and route to appropriate model
-            logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Analyzing query complexity...")
-            try:
-                complexity_analysis = await self.complexity_analyzer.analyze_complexity(
-                    message=message,
-                    has_image=image_base64 is not None
-                )
+            # (Only if smart routing is available)
+            if self.complexity_analyzer and self.groq_coach:
+                logger.info("[UnifiedCoach._handle_chat_mode_AGENTIC] Analyzing query complexity...")
+                try:
+                    complexity_analysis = await self.complexity_analyzer.analyze_complexity(
+                        message=message,
+                        has_image=image_base64 is not None
+                    )
                 logger.info(
                     f"[UnifiedCoach._handle_chat_mode_AGENTIC] Complexity: {complexity_analysis['complexity'].upper()}, "
                     f"confidence: {complexity_analysis['confidence']}, "

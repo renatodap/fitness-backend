@@ -23,7 +23,20 @@ NOT for:
 import logging
 import asyncio
 from typing import Dict, Any, List, Optional
-from groq import Groq
+
+# Graceful import for optional groq dependency
+try:
+    from groq import Groq
+    GROQ_AVAILABLE = True
+except ImportError:
+    logger = logging.getLogger(__name__)
+    logger.warning(
+        "[GroqCoach] Groq package not installed - simple query handling disabled. "
+        "Queries will fall back to Claude."
+    )
+    Groq = None  # type: ignore
+    GROQ_AVAILABLE = False
+
 from app.config import get_settings
 from app.services.tool_service import get_tool_service, COACH_TOOLS
 from app.services.cache_service import get_cache_service
@@ -44,7 +57,16 @@ class GroqCoachService:
     """
 
     def __init__(self):
-        self.groq = Groq(api_key=settings.GROQ_API_KEY)
+        # Initialize Groq only if available
+        if GROQ_AVAILABLE and settings.GROQ_API_KEY:
+            self.groq = Groq(api_key=settings.GROQ_API_KEY)
+            logger.info("[GroqCoach] Groq simple query handling enabled")
+        else:
+            self.groq = None
+            logger.warning(
+                "[GroqCoach] Groq simple query handling disabled - "
+                "queries will fall back to Claude"
+            )
         self.tool_service = get_tool_service()
         self.cache = get_cache_service()
 
@@ -73,6 +95,13 @@ class GroqCoachService:
                 "tools_called": List[str]
             }
         """
+        # Check if Groq is available
+        if not self.groq:
+            raise Exception(
+                "Groq service not available - package not installed or API key missing. "
+                "Falling back to Claude."
+            )
+
         logger.info(f"[GroqCoach] Handling simple query: {message[:100]}")
 
         # Build system prompt (simplified for simple queries)
